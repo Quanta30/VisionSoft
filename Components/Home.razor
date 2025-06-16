@@ -1,0 +1,10 @@
+@page "/"
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+
+@code{
+    protected override void OnInitialized(){
+    Navigation.NavigateTo("/login");
+    }
+}

@@ -1,0 +1,271 @@
+@page "/products"
+@using VisionSoft
+@using System.Data
+@rendermode InteractiveServer
+
+<PageTitle>Products</PageTitle>
+
+<FRM FormName="Create Product" 
+     TableName="Product"
+     HandleSubmit="OnProductSubmit" 
+     OnClear="OnProductClear">
+
+    <!-- Form Fields -->
+    <div class="card-body">
+        <!-- Row 1: Product Code and Name -->
+        <ROW>
+            <NInput Title="Product Code" 
+                    Value="@productCode" 
+                    ReadOnly="true" 
+                    Placeholder="Auto Generated" />
+            
+            <NInput Title="Product Name" 
+                    @bind-Value="@productName" 
+                    Placeholder="Enter product name" />
+        </ROW>
+
+        <!-- Row 2: Category and Brand -->
+        <ROW>
+            <NInput Title="Category" 
+                    @bind-Value="@category"
+                    Placeholder="Enter category" />
+            
+            <NInput Title="Brand" 
+                    @bind-Value="@brand" 
+                    Placeholder="Enter brand" />
+        </ROW>
+
+        <!-- Row 3: Description -->
+        <ROW>
+            <div class="col-12">
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" 
+                              @bind="description" 
+                              placeholder="Enter product description" 
+                              rows="3"></textarea>
+                </div>
+            </div>
+        </ROW>
+
+        <!-- Row 4: Unit and HSN Code -->
+        <ROW>
+            <NInput Title="Unit" 
+                    @bind-Value="@unit" 
+                    Placeholder="Enter unit (e.g., Pcs, Kg, Ltr)" />
+            
+            <NInput Title="HSN Code" 
+                    @bind-Value="@hsnCode" 
+                    Placeholder="Enter HSN code" />
+        </ROW>
+
+        <!-- Pricing Section -->
+        <ROW>
+            <CCard>
+                <h6 class="card-title mb-3">Pricing Information</h6>
+                
+                <NInput2 Title="Purchase Rate" 
+                         Layout=2 
+                         @bind-Value="@purchaseRate" 
+                         Placeholder="Enter purchase rate" 
+                         Type="number" 
+                         Step="0.01" />
+
+                <NInput2 Title="MRP" 
+                         Layout=2 
+                         @bind-Value="@mrp" 
+                         Placeholder="Enter MRP" 
+                         Type="number" 
+                         Step="0.01" />
+
+                <NInput2 Title="Selling Price" 
+                         Layout=2 
+                         @bind-Value="@sellingPrice" 
+                         Placeholder="Enter selling price" 
+                         Type="number" 
+                         Step="0.01" />
+
+                <NInput2 Title="GST %" 
+                         Layout=2 
+                         @bind-Value="@gstPercent" 
+                         Placeholder="Enter GST percentage" 
+                         Type="number" 
+                         Step="0.01" />
+
+                <hr />
+
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label fw-bold">Profit Margin:</label>
+                    </div>
+                    <div class="col-6">
+                        <span class="profit-margin">@profitMargin.ToString("F2")%</span>
+                    </div>
+                </div>
+            </CCard>
+        </ROW>
+
+        <!-- Row 5: Stock Information -->
+        <ROW>
+            <NInput Title="Min Stock Level" 
+                    @bind-Value="@minStockLevel" 
+                    Placeholder="Enter minimum stock level" 
+                    Type="number" />
+            
+            <NInput Title="Max Stock Level" 
+                    @bind-Value="@maxStockLevel" 
+                    Placeholder="Enter maximum stock level" 
+                    Type="number" />
+        </ROW>
+
+        <!-- Row 6: Status -->
+        <ROW>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-control" @bind="isActive">
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6"></div>
+        </ROW>
+    </div>
+</FRM>
+
+@code {
+    // Form field variables
+    private string productCode = "";
+    private string productName = "";
+    private string category = "";
+    private string brand = "";
+    private string description = "";
+    private string unit = "";
+    private string hsnCode = "";
+    
+    // Pricing variables
+    private decimal purchaseRate = 0;
+    private decimal mrp = 0;
+    private decimal sellingPrice = 0;
+    private decimal gstPercent = 18; // Default GST
+    private decimal profitMargin = 0;
+    
+    // Stock variables
+    private string minStockLevel = "";
+    private string maxStockLevel = "";
+    
+    // Status
+    private bool isActive = true;
+
+    ClsDatabase db = new ClsDatabase();
+
+    protected override void OnInitialized()
+    {
+        GenerateProductCode();
+        CalculateProfitMargin();
+    }
+
+    private void GenerateProductCode()
+    {
+        try
+        {
+            string nextNo = db.GenerateNextNo("Product", "ProductCode");
+            productCode = nextNo;
+        }
+        catch
+        {
+            productCode = "PRD" + DateTime.Now.Ticks.ToString().Substring(10);
+        }
+    }
+
+    private void CalculateProfitMargin()
+    {
+        if (purchaseRate > 0 && sellingPrice > 0)
+        {
+            profitMargin = ((sellingPrice - purchaseRate) / purchaseRate) * 100;
+        }
+        else
+        {
+            profitMargin = 0;
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnProductSubmit(TModel model)
+    {
+        // Validation
+        if (string.IsNullOrEmpty(productName))
+        {
+            throw new ArgumentException("Product name is required");
+        }
+        if (string.IsNullOrEmpty(category))
+        {
+            throw new ArgumentException("Category is required");
+        }
+        if (mrp <= 0)
+        {
+            throw new ArgumentException("MRP must be greater than 0");
+        }
+
+        // Calculate profit margin before saving
+        CalculateProfitMargin();
+
+        // Set fields for database
+        model.SetField("ProductCode", productCode);
+        model.SetField("ProductName", productName);
+        model.SetField("Category", category);
+        model.SetField("Brand", brand);
+        model.SetField("Description", description);
+        model.SetField("Unit", unit);
+        model.SetField("HSNCode", hsnCode);
+        model.SetField("PurchaseRate", purchaseRate.ToString("F2"));
+        model.SetField("MRP", mrp.ToString("F2"));
+        model.SetField("SellingPrice", sellingPrice.ToString("F2"));
+        model.SetField("GSTPercent", gstPercent.ToString("F2"));
+        model.SetField("ProfitMargin", profitMargin.ToString("F2"));
+        model.SetField("MinStockLevel", minStockLevel);
+        model.SetField("MaxStockLevel", maxStockLevel);
+        model.SetField("IsActive", isActive.ToString());
+        model.SetField("CreatedDate", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        model.SetField("CreatedBy", "Admin");
+    }
+
+    private async Task OnProductClear(TModel model)
+    {
+        // Clear all fields
+        productName = "";
+        category = "";
+        brand = "";
+        description = "";
+        unit = "";
+        hsnCode = "";
+        
+        purchaseRate = 0;
+        mrp = 0;
+        sellingPrice = 0;
+        gstPercent = 18;
+        profitMargin = 0;
+        
+        minStockLevel = "";
+        maxStockLevel = "";
+        isActive = true;
+        
+        GenerateProductCode();
+        model.ClearFields();
+        
+        CalculateProfitMargin();
+        StateHasChanged();
+    }
+
+    // Event handlers for price changes to recalculate profit margin
+    private void OnPurchaseRateChanged()
+    {
+        CalculateProfitMargin();
+    }
+
+    private void OnSellingPriceChanged()
+    {
+        CalculateProfitMargin();
+    }
+}

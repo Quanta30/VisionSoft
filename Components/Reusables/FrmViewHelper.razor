@@ -1,0 +1,163 @@
+@using System.Data
+@using Microsoft.AspNetCore.Components
+
+@if (Display)
+{
+    <!-- Modal Backdrop -->
+    <div class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+         style="background-color: rgba(0, 0, 0, 0.5); z-index: 1050;">
+        
+        <!-- Modal Container with proper sizing -->
+        <div class="position-relative" 
+             style="width: calc(100vw - 4rem); height: calc(100vh - 4rem); min-width: 800px; min-height: 600px; max-width: 1400px; max-height: 900px;"
+             @onclick="CloseModal">
+            
+            <!-- Modal Content -->
+            <div class="card border shadow-lg w-100 h-100" 
+                 @onclick:stopPropagation="true">
+                
+                <!-- Modal Header -->
+                <div class="card-header bg-light border-bottom text-dark">                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0 fw-semibold">
+                                
+                            Select Item
+                            </h5>
+                            @if (TableData != null && TableData.Rows.Count > 0)
+                            {
+                                <small class="opacity-75">@TableData.Rows.Count items available</small>
+                            }
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" 
+                                    class="btn btn-outline-danger btn-sm fw-semibold" 
+                                    aria-label="Close" 
+                                    @onclick="CloseModal"
+                                    @onclick:stopPropagation="true"
+                                    @onclick:preventDefault="true">
+                                <i class="bi bi-x-circle me-1"></i>
+                                CLOSE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Modal Body -->
+                <div class="card-body bg-white p-0 d-flex flex-column" style="height: calc(100% - 140px);">
+                    @if (TableData is null || TableData.Columns.Count == 0)
+                    {
+                        <div class="d-flex align-items-center justify-content-center h-100">
+                            <div class="text-center">
+                                <div class="mb-4">
+                                    <i class="bi bi-inbox display-1 text-muted"></i>
+                                </div>
+                                <h4 class="text-muted fw-light">No data available</h4>
+                                <p class="text-muted">Please check your data source and try again</p>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive flex-grow-1">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th class="text-center fw-semibold" style="width: 120px;">
+                                            <i class="bi bi-cursor-fill me-1 text-primary"></i>
+                                            Actions
+                                        </th>
+                                        @foreach (DataColumn col in TableData.Columns)
+                                        {
+                                            @if (col.ColumnName != "CreationDate" && col.ColumnName != "userEmail")
+                                            {
+                                                <th class="fw-semibold text-dark">@col.ColumnName</th>
+                                            }
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (DataRow row in TableData.Rows)
+                                    {
+                                        <tr class="border-bottom">
+                                            <td class="text-center align-middle py-3">
+                                                <button type="button" 
+                                                        class="btn btn-outline-primary btn-sm fw-semibold" 
+                                                        @onclick="() => HandleSelectClicked(row)"
+                                                        @onclick:stopPropagation="true"
+                                                        @onclick:preventDefault="true">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    Select
+                                                </button>
+                                            </td>
+                                            @foreach (DataColumn col in TableData.Columns)
+                                            {
+                                                @if (col.ColumnName != "CreationDate" && col.ColumnName != "userEmail")
+                                                {
+                                                    <td class="align-middle py-3">
+                                                        <span class="text-dark">@row[col]</span>
+                                                    </td>
+                                                }
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="card-footer bg-light border-top">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            @if (TableData != null && TableData.Rows.Count > 0)
+                            {
+                                <span class="text-muted small">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Click on any "Select" button to choose an item
+                                </span>
+                            }
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public DataTable? TableData { get; set; }
+    [Parameter] public EventCallback<DataRow> OnSelectClicked { get; set; }
+    [Parameter] public bool Display { get; set; } = false;
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private async Task CloseModal()
+    {
+        try
+        {
+            Console.WriteLine("CloseModal called");
+            Display = false;
+            await OnClosed.InvokeAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CloseModal: {ex.Message}");
+        }
+    }
+
+    private async Task HandleSelectClicked(DataRow row)
+    {
+        try
+        {
+            Console.WriteLine("HandleSelectClicked called");
+            await OnSelectClicked.InvokeAsync(row);
+            // Don't close here - let the parent component handle it
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in HandleSelectClicked: {ex.Message}");
+        }
+    }
+}

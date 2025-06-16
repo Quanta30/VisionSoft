@@ -1,0 +1,32 @@
+<div class="row @CssClass" style="@Style">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+    [Parameter] public string Spacing { get; set; } = "mb-3"; // Default bottom margin
+    [Parameter] public string Alignment { get; set; } = ""; // align-items-center, justify-content-center, etc.
+    [Parameter] public string Gutters { get; set; } = ""; // g-0, g-1, g-2, etc.
+
+    protected override void OnInitialized()
+    {
+        // Build CSS classes
+        var classes = new List<string> { "row" };
+        
+        if (!string.IsNullOrEmpty(Spacing))
+            classes.Add(Spacing);
+            
+        if (!string.IsNullOrEmpty(Alignment))
+            classes.Add(Alignment);
+            
+        if (!string.IsNullOrEmpty(Gutters))
+            classes.Add(Gutters);
+            
+        if (!string.IsNullOrEmpty(CssClass))
+            classes.Add(CssClass);
+        
+        CssClass = string.Join(" ", classes);
+    }
+}

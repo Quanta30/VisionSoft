@@ -1,0 +1,149 @@
+@page "/assettypemaster"
+@using VisionSoft
+@using System.Data
+@rendermode InteractiveServer
+
+<PageTitle>Asset Type Master</PageTitle>
+
+@if(viewing){
+    <FrmView TableName="AssetTypeMaster" OnClose="HandleView" EditClicked="OnEditClicked"/>
+}
+<FRM FormName="Asset Type Master Entry">
+    <ChildContent>
+        <!-- Row 1: Asset Type Code and Asset Type Name -->
+        <ROW>
+            <NInput Layout="1" Title="Asset Type Code *" Type="number" @bind-Value="model.assetTypeCodeStr" 
+                    Min="1" Placeholder="Enter asset type code" />
+            
+            <NInput Layout="1" Title="Asset Type Name *" Type="text" @bind-Value="model.assetTypeName" 
+                    Placeholder="Enter asset type name" />
+            
+            <div class="col-md-4">
+                <!-- Empty column for spacing -->
+            </div>
+        </ROW>
+    </ChildContent>
+
+    <!-- Card Footer Actions -->
+    <CardFooterContent>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-success" @onclick="HandleSave" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <i class="bi bi-floppy"></i>
+                    <span>Save Asset Type</span>
+                }
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleClear" disabled="@isSaving">
+                <i class="bi bi-arrow-repeat"></i> Clear Form
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleView">
+                <i class="bi bi-arrow-repeat"></i>View
+            </button>
+        </div>
+    </CardFooterContent>
+</FRM>
+
+<!-- Success/Error Messages -->
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @alertClass alert-dismissible fade show mt-3" role="alert">
+        <i class="bi @alertIcon me-2"></i>
+        @message
+        <button type="button" class="btn-close" @onclick="ClearMessage"></button>
+    </div>
+}
+
+@code {
+
+    AssetTypeMasterModel model = new AssetTypeMasterModel();
+    
+    // UI state variables
+    private bool isSaving = false;
+    private bool showValidation = false;
+    private string message = "";
+    private string alertClass = "";
+    private string alertIcon = "";
+    private bool viewing = false;
+    private bool isEditing = false;
+ 
+    ClsDatabase db = new ClsDatabase();
+
+    private async Task HandleSave()
+    {
+        if (!model.ValidateForm())
+        {
+            ShowMessage("Please fill all required fields with valid values.", "danger", "bi-exclamation-triangle");
+            showValidation = true;
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if(isEditing){
+                await model.Update();
+            }
+            else await model.SaveAssetType();
+            ShowMessage("Asset Type record saved successfully!", "success", "bi-check-circle");
+            await Task.Delay(1);
+            await HandleClear();
+            
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving Asset Type: {ex.Message}");
+            ShowMessage("Error saving asset type record. Please try again.", "danger", "bi-exclamation-triangle");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        // Reset form fields
+        model.Clear();
+        showValidation = false;
+        isEditing = false;
+        ClearMessage();
+        StateHasChanged();
+    }
+
+    private void ShowMessage(string msg, string type, string icon)
+    {
+        message = msg;
+        alertClass = $"alert-{type}";
+        alertIcon = icon;
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+        alertClass = "";
+        alertIcon = "";
+        StateHasChanged();
+    }
+
+    private void HandleView(){
+        viewing = !viewing;
+        StateHasChanged();
+    }
+
+    public void OnEditClicked(DataRow row){
+        model.set(row);
+        isEditing = true;
+        viewing = false;
+        StateHasChanged();
+    }
+}

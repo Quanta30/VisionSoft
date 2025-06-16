@@ -1,0 +1,247 @@
+/* Container */
+.login-container[b-dapoak83ca] {
+    min-height: 100vh;
+    background: #fafbfc;
+    display: flex;
+    align-items: center;
+    padding: 20px 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Card */
+.card[b-dapoak83ca] {
+    border: none;
+    border-radius: 4px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e9ecef;
+}
+
+.card-body[b-dapoak83ca] {
+    padding: 48px 40px;
+}
+
+/* Typography */
+.login-title[b-dapoak83ca] {
+    font-size: 28px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0;
+}
+
+.login-subtitle[b-dapoak83ca] {
+    color: #6c757d;
+    font-size: 16px;
+    margin: 8px 0 0 0;
+}
+
+/* Form Groups */
+.form-group[b-dapoak83ca] {
+    margin-bottom: 20px;
+}
+
+.form-control[b-dapoak83ca] {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 16px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    color: #495057;
+}
+
+.form-control:focus[b-dapoak83ca] {
+    outline: none;
+    border-color: #495057;
+    box-shadow: 0 0 0 2px rgba(73, 80, 87, 0.1);
+}
+
+.form-control[b-dapoak83ca]::placeholder {
+    color: #adb5bd;
+}
+
+/* Form Options */
+.form-options[b-dapoak83ca] {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    font-size: 14px;
+}
+
+/* Custom Checkbox */
+.checkbox-container[b-dapoak83ca] {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: #6c757d;
+    margin: 0;
+}
+
+.checkbox-container input[b-dapoak83ca] {
+    display: none;
+}
+
+.checkmark[b-dapoak83ca] {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #ced4da;
+    border-radius: 2px;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.checkbox-container input:checked + .checkmark[b-dapoak83ca] {
+    background: #495057;
+    border-color: #495057;
+}
+
+.checkbox-container input:checked + .checkmark[b-dapoak83ca]::after {
+    content: '✓';
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Links */
+.forgot-link[b-dapoak83ca], .signup-link[b-dapoak83ca] {
+    color: #495057;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.forgot-link:hover[b-dapoak83ca], .signup-link:hover[b-dapoak83ca] {
+    color: #212529;
+    text-decoration: underline;
+}
+
+/* Primary Button */
+.btn-primary[b-dapoak83ca] {
+    width: 100%;
+    background: #495057;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.btn-primary:hover:not(:disabled)[b-dapoak83ca] {
+    background: #343a40;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(73, 80, 87, 0.15);
+}
+
+.btn-primary:disabled[b-dapoak83ca] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Loading Spinner */
+.loading-spinner[b-dapoak83ca] {
+    width: 18px;
+    height: 18px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin-b-dapoak83ca 1s linear infinite;
+}
+
+@keyframes spin-b-dapoak83ca {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Divider */
+.divider[b-dapoak83ca] {
+    text-align: center;
+    margin: 24px 0;
+    position: relative;
+    color: #adb5bd;
+    font-size: 14px;
+}
+
+.divider[b-dapoak83ca]::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e9ecef;
+    z-index: 1;
+}
+
+.divider span[b-dapoak83ca] {
+    background: #ffffff;
+    padding: 0 16px;
+    position: relative;
+    z-index: 2;
+}
+
+/* Signup Text */
+.signup-text[b-dapoak83ca] {
+    color: #6c757d;
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Alert */
+.alert-error[b-dapoak83ca] {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-top: 16px;
+    border: 1px solid #f5c6cb;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .card-body[b-dapoak83ca] {
+        padding: 32px 24px;
+    }
+    
+    .login-title[b-dapoak83ca] {
+        font-size: 24px;
+    }
+    
+    .form-control[b-dapoak83ca] {
+        padding: 12px 14px;
+    }
+    
+    .btn-primary[b-dapoak83ca] {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-container[b-dapoak83ca] {
+        padding: 16px;
+    }
+    
+    .card-body[b-dapoak83ca] {
+        padding: 24px 20px;
+    }
+    
+    .form-options[b-dapoak83ca] {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+}

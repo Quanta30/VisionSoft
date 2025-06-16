@@ -1,0 +1,81 @@
+@using System.Data
+<div class="col-md-4">
+    <div class="mb-3">
+        <label class="form-label">@Title</label>
+        
+        <div class="input-group">
+            <input class="form-control"
+                placeholder="@Placeholder"
+                value="@_internalValue"
+                @oninput="OnInputChanged"
+                readonly="@ReadOnly" />
+            <button class="btn btn-outline-secondary" @onclick="OpenFrmViewHelper" @onclick:stopPropagation="true">?</button>
+        </div>
+    </div>
+</div>
+
+<FrmViewHelper TableData="@TableData" OnSelectClicked="HandleRowSelected" 
+             Display="@isDisplayed" OnClosed="Closed"  />
+
+@code {
+    private string _internalValue;
+    private DataTable? TableData;
+
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Placeholder { get; set; } = "Enter value";
+    [Parameter] public bool ReadOnly { get; set; } = false;
+
+    [Parameter] public string Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter] public string TableName { get; set; } = string.Empty;
+    [Parameter] public string ColumnName { get; set; } = string.Empty;
+
+    private bool isDisplayed = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _internalValue = Value;
+
+        if (!string.IsNullOrEmpty(TableName) && !string.IsNullOrEmpty(ColumnName))
+        {
+            await LoadTableData();
+        }
+    }
+
+    private async Task LoadTableData()
+    {
+        try
+        {
+            ClsDatabase db = new ClsDatabase();
+            string query = $"SELECT * FROM {TableName}";
+            TableData = db.GetDataTable(query);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading table data: {ex.Message}");
+        }
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        _internalValue = e.Value?.ToString() ?? string.Empty;
+        await ValueChanged.InvokeAsync(_internalValue);
+    }
+
+    private void OpenFrmViewHelper()
+    {
+        isDisplayed = true;
+    }
+
+    private async Task HandleRowSelected(DataRow selectedRow)
+    {
+        _internalValue = selectedRow[ColumnName]?.ToString() ?? string.Empty;
+        await ValueChanged.InvokeAsync(_internalValue);
+        isDisplayed = false;
+    }
+
+    public void Closed(){
+        isDisplayed = false;
+    }
+}

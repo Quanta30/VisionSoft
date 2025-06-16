@@ -1,0 +1,100 @@
+﻿@rendermode InteractiveServer
+
+@if(Layout == 1){
+    <div class="col-md-4">
+        <div class="mb-3">
+            <label class="form-label">@Title</label>
+            <input class="form-control @(ReadOnly ? "readonly-input" : "")"
+                   placeholder="@Placeholder"
+                   type="@Type"
+                   value="@_internalValue"
+                   @oninput="OnInputChanged"
+                   readonly="@ReadOnly"
+                   disabled="@ReadOnly"
+                   step="@Step"
+                   min="@Min"
+                   max="@Max"
+                   style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" />
+        </div>
+    </div>
+}
+else if(Layout == 2){
+    <div class="row mb-2">
+        <div class="col-6">
+            <label class="form-label">@Title</label>
+        </div>
+        <div class="col-6">
+            @if (IsDisplayOnly)
+            {
+                <span class="@DisplayContentClass">@DisplayContent</span>
+            }
+            else
+            {
+                <input type="@Type"
+                       class="form-control form-control-sm @(ReadOnly ? "readonly-input" : "")"
+                       value="@_internalValue"
+                       @oninput="OnInputChanged"
+                       placeholder="@Placeholder"
+                       step="@Step"
+                       min="@Min"
+                       max="@Max" 
+                       readonly="@ReadOnly"
+                       disabled="@ReadOnly"
+                       style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" />
+            }
+        </div>
+    </div>
+}
+
+<style>
+    .readonly-input {
+        background-color: #f8f9fa !important;
+        color: #6c757d !important;
+        cursor: not-allowed !important;
+        border-color: #dee2e6 !important;
+    }
+
+    .readonly-input:focus {
+        box-shadow: none !important;
+        border-color: #dee2e6 !important;
+    }
+
+    .readonly-input::placeholder {
+        color: #adb5bd !important;
+    }
+</style>
+
+@code {
+    private string _internalValue = string.Empty;
+
+    [Parameter] public int Layout { get; set; } = 1; // Default layout
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public bool IsDisplayOnly { get; set; } = false;
+    [Parameter] public string Type { get; set; } = "text";
+    [Parameter] public string Placeholder { get; set; } = "Enter value";
+    [Parameter] public bool ReadOnly { get; set; } = false;
+
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter] public string Min { get; set; } = string.Empty;
+    [Parameter] public string Max { get; set; } = string.Empty;
+    [Parameter] public string Step { get; set; } = string.Empty;
+
+    [Parameter] public RenderFragment? DisplayContent { get; set; }
+    [Parameter] public string DisplayContentClass { get; set; } = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _internalValue = Value ?? string.Empty;
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        if (!ReadOnly)
+        {
+            _internalValue = e.Value?.ToString() ?? string.Empty;
+            await ValueChanged.InvokeAsync(_internalValue);
+        }
+    }
+}

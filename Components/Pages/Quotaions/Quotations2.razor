@@ -1,0 +1,456 @@
+@page "/quotations2"
+@using VisionSoft
+@using System.Data
+@rendermode InteractiveServer
+
+<PageTitle>Quotations</PageTitle>
+
+<FRM FormName="Create Quotation" >
+    
+    <!-- Form Actions in Header -->
+
+    <!-- Form Content -->
+    <ChildContent>
+        <!-- Row 1: Quotation No and Date -->
+        <ROW>
+            <NInput Layout="1" Title="Quotation No. *" Type="text" @bind-Value="quotationNo" 
+                    ReadOnly="true" Placeholder="Auto Generated" />
+            
+            <NInput Layout="1" Title="Date *" Type="date" @bind-Value="quotationDate" />
+        
+
+        <!-- Row 2: Customer Info -->
+       
+            <NInput Layout="1" Title="Customer Name *" Type="text" @bind-Value="customerName" 
+                    Placeholder="Enter customer name" />
+        </ROW>
+        <ROW>
+            <NInput Layout="1" Title="Mobile No. *" Type="tel" @bind-Value="mobileNo" 
+                    Placeholder="Enter mobile number" />
+        
+
+        <!-- Row 3: City and Remarks -->
+        
+            <NInput Layout="1" Title="City" Type="text" @bind-Value="city" 
+                    Placeholder="Enter city" />
+            
+            <NInput Layout="1" Title="Remarks" Type="text" @bind-Value="remarks" 
+                    Placeholder="Enter remarks" />
+        </ROW>
+
+        <!-- Validation Messages -->
+        @if (showValidation)
+        {
+            <ROW>
+                <div class="col-12">
+                    @if (string.IsNullOrEmpty(customerName))
+                    {
+                        <div class="alert alert-danger py-2">Customer name is required</div>
+                    }
+                    @if (string.IsNullOrEmpty(mobileNo))
+                    {
+                        <div class="alert alert-danger py-2">Mobile number is required</div>
+                    }
+                    @if (productRowsData.Count == 0)
+                    {
+                        <div class="alert alert-danger py-2">At least one product is required</div>
+                    }
+                </div>
+            </ROW>
+        }
+
+        <!-- Products Section -->
+        <ROW>
+            <div class="col-12">
+                <h5 class="mb-3">Products</h5>
+                <RLister TableName="ProductMaster" OnRowsUpdated="OnRListerUpdated" />
+            </div>
+        </ROW>
+
+        <!-- Calculation Section -->
+        <ROW>
+            <div class="col-md-6">
+                <!-- Left side can have other content if needed -->
+            </div>
+            
+            <CCard>
+                <h6 class="mb-3 text-center">Calculations</h6>
+                
+                <NInput Layout="2" Title="Subtotal:" IsDisplayOnly="true">
+                    <DisplayContent>
+                        <span class="calculation-value">₹@subTotal.ToString("F2")</span>
+                    </DisplayContent>
+                </NInput>
+                
+                <NInput Layout="2" Title="Discount (%):" Type="number" @bind-Value="discountPercentStr" 
+                        Min="0" Max="100" Step="0.01" />
+
+                <NInput Layout="2" Title="GST (%):" Type="number" @bind-Value="gstPercentStr" 
+                        Min="0" Max="50" Step="0.01" />
+
+                <NInput Layout="2" Title="Add/Less:" Type="number" @bind-Value="addLessStr" 
+                        Step="0.01" />
+
+                <NInput Layout="2" Title="Round Off:" Type="number" @bind-Value="roundOffStr" 
+                        Step="0.01" />
+                
+                <hr class="my-3" />
+                
+                <NInput Layout="2" Title="Final Amount:" IsDisplayOnly="true">
+                    <DisplayContent>
+                        <span class="final-amount">₹@finalAmount.ToString("F2")</span>
+                    </DisplayContent>
+                </NInput>
+            </CCard>
+        </ROW>
+    </ChildContent>
+
+    <!-- Card Footer Actions -->
+    <CardFooterContent>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-success" @onclick="HandleSave" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <i class="bi bi-floppy"></i>
+                    <span>Save Quotation</span>
+                }
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleClear" disabled="@isSaving">
+                <i class="bi bi-arrow-repeat"></i> Clear Form
+            </button>
+        </div>
+    </CardFooterContent>
+</FRM>
+
+<!-- Success/Error Messages -->
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @alertClass alert-dismissible fade show mt-3" role="alert">
+        <i class="bi @alertIcon me-2"></i>
+        @message
+        <button type="button" class="btn-close" @onclick="ClearMessage"></button>
+    </div>
+}
+
+@code {
+    // Form field variables (strings for NInput binding)
+    private string quotationNo = "";
+    private string quotationDate = DateTime.Now.ToString("yyyy-MM-dd");
+    private string customerName = "";
+    private string mobileNo = "";
+    private string city = "";
+    private string remarks = "";
+    
+    // Calculation variables as strings for NInput binding
+    private string discountPercentStr = "0";
+    private string gstPercentStr = "18";
+    private string addLessStr = "0";
+    private string roundOffStr = "0";
+    
+    // Actual decimal calculation variables
+    private decimal subTotal = 0;
+    private decimal discountPercent = 0;
+    private decimal gstPercent = 18;
+    private decimal addLess = 0;
+    private decimal roundOff = 0;
+    private decimal finalAmount = 0;
+    
+    // Product rows from RLister
+    private List<DataRow> productRowsData = new();
+    
+    // UI state variables
+    private bool isSaving = false;
+    private bool showValidation = false;
+    private string message = "";
+    private string alertClass = "";
+    private string alertIcon = "";
+
+    ClsDatabase db = new ClsDatabase();
+
+    protected override void OnInitialized()
+    {
+        GenerateQuotationNumber();
+        CalculateTotals();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Convert string values to decimals when they change
+        if (decimal.TryParse(discountPercentStr, out var discount))
+            discountPercent = discount;
+        
+        if (decimal.TryParse(gstPercentStr, out var gst))
+            gstPercent = gst;
+        
+        if (decimal.TryParse(addLessStr, out var addLessVal))
+            addLess = addLessVal;
+        
+        if (decimal.TryParse(roundOffStr, out var roundOffVal))
+            roundOff = roundOffVal;
+        
+        CalculateTotals();
+    }
+
+    private void GenerateQuotationNumber()
+    {
+        try
+        {
+            string nextNo = db.GenerateNextNo("QuotationHead", "QuotationNo");
+            quotationNo = "QT" + nextNo.PadLeft(3, '0');
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating quotation number: {ex.Message}");
+            quotationNo = "QT" + DateTime.Now.Ticks.ToString().Substring(10);
+        }
+    }
+
+    // Handle RLister updates
+    private void OnRListerUpdated(List<DataRow> rows)
+    {
+        productRowsData = rows;
+        CalculateSubTotal();
+        CalculateTotals();
+    }
+
+    private void CalculateSubTotal()
+    {
+        subTotal = 0;
+        foreach (var row in productRowsData)
+        {
+            int quantity = 1;
+            if (row.Table.Columns.Contains("Quantity") && row["Quantity"] != DBNull.Value)
+            {
+                quantity = Convert.ToInt32(row["Quantity"]);
+            }
+
+            decimal mrp = 0m;
+            if (row.Table.Columns.Contains("MRP") && row["MRP"] != DBNull.Value)
+            {
+                mrp = Convert.ToDecimal(row["MRP"]);
+            }
+            else if (row.Table.Columns.Contains("SellingPrice") && row["SellingPrice"] != DBNull.Value)
+            {
+                mrp = Convert.ToDecimal(row["SellingPrice"]);
+            }
+            else if (row.Table.Columns.Contains("Rate") && row["Rate"] != DBNull.Value)
+            {
+                mrp = Convert.ToDecimal(row["Rate"]);
+            }
+            
+            subTotal += quantity * mrp;
+        }
+    }
+
+    private void CalculateTotals()
+    {
+        decimal discountAmount = subTotal * (discountPercent / 100);
+        decimal afterDiscount = subTotal - discountAmount;
+        decimal gstAmount = afterDiscount * (gstPercent / 100);
+        finalAmount = afterDiscount + gstAmount + addLess + roundOff;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        showValidation = true;
+        
+        bool isValid = true;
+        
+        if (string.IsNullOrWhiteSpace(customerName))
+        {
+            isValid = false;
+        }
+        
+        if (string.IsNullOrWhiteSpace(mobileNo))
+        {
+            isValid = false;
+        }
+        
+        if (productRowsData.Count == 0)
+        {
+            isValid = false;
+        }
+        
+        StateHasChanged();
+        return isValid;
+    }
+
+    private async Task HandleSave()
+    {
+        if (!ValidateForm())
+        {
+            ShowMessage("Please fill all required fields and add at least one product.", "danger", "bi-exclamation-triangle");
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            await SaveQuotation();
+            ShowMessage("Quotation saved successfully!", "success", "bi-check-circle");
+            await Task.Delay(1500); // Show message for 1.5 seconds
+            await HandleClear();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving quotation: {ex.Message}");
+            ShowMessage("Error saving quotation. Please try again.", "danger", "bi-exclamation-triangle");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveQuotation()
+    {
+        // Prepare columns and values for main quotation
+        string columns = "QuotationNo, Date, CustomerName, MobileNo, City, Remarks, SubTotal, DiscountPercent, GSTPercent, AddLess, RoundOff, FinalAmount, CreatedDate, CreatedBy";
+        
+        string values = $"'{quotationNo}', '{quotationDate}', '{customerName}', '{mobileNo}', '{city}', '{remarks}', " +
+                       $"{subTotal}, {discountPercent}, {gstPercent}, {addLess}, {roundOff}, {finalAmount}, " +
+                       $"'{DateTime.Now:yyyy-MM-dd HH:mm:ss}', 'Admin'";
+
+        // Save main quotation
+        bool mainSaved = db.SaveRecord("QuotationHead", columns, values);
+        
+        if (!mainSaved)
+        {
+            throw new Exception("Failed to save main quotation");
+        }
+
+        // Save quotation details
+        await SaveQuotationDetails();
+    }
+
+    private async Task SaveQuotationDetails()
+    {
+        foreach (var row in productRowsData)
+        {
+            try
+            {
+                string productId = row.Table.Columns.Contains("Id") && row["Id"] != DBNull.Value ? 
+                                  row["Id"].ToString() : "0";
+                
+                string productName = row.Table.Columns.Contains("ProductName") && row["ProductName"] != DBNull.Value ? 
+                                    row["ProductName"].ToString() : "";
+                
+                string productCode = row.Table.Columns.Contains("ProductCode") && row["ProductCode"] != DBNull.Value ? 
+                                    row["ProductCode"].ToString() : "";
+
+                int quantity = 1;
+                if (row.Table.Columns.Contains("Quantity") && row["Quantity"] != DBNull.Value)
+                    quantity = Convert.ToInt32(row["Quantity"]);
+
+                decimal rate = 0m;
+                if (row.Table.Columns.Contains("MRP") && row["MRP"] != DBNull.Value)
+                    rate = Convert.ToDecimal(row["MRP"]);
+                else if (row.Table.Columns.Contains("SellingPrice") && row["SellingPrice"] != DBNull.Value)
+                    rate = Convert.ToDecimal(row["SellingPrice"]);
+
+                decimal amount = quantity * rate;
+
+                string detailColumns = "QuotationNo, ProductId, ProductCode, ProductName, Quantity, Rate, Amount, CreatedDate, CreatedBy";
+                string detailValues = $"'{quotationNo}', {productId}, '{productCode}', '{productName}', {quantity}, {rate}, {amount}, " +
+                                     $"'{DateTime.Now:yyyy-MM-dd HH:mm:ss}', 'Admin'";
+
+                bool detailSaved = db.SaveRecord("QuotationDetails", detailColumns, detailValues);
+                
+                if (!detailSaved)
+                {
+                    throw new Exception($"Failed to save quotation detail for product: {productName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving quotation detail: {ex.Message}");
+                throw;
+            }
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        customerName = "";
+        mobileNo = "";
+        city = "";
+        remarks = "";
+        quotationDate = DateTime.Now.ToString("yyyy-MM-dd");
+        
+        // Reset calculation string values
+        discountPercentStr = "0";
+        gstPercentStr = "18";
+        addLessStr = "0";
+        roundOffStr = "0";
+        
+        // Reset calculation decimals
+        subTotal = 0;
+        discountPercent = 0;
+        gstPercent = 18;
+        addLess = 0;
+        roundOff = 0;
+        finalAmount = 0;
+        
+        productRowsData.Clear();
+        showValidation = false;
+        
+        GenerateQuotationNumber();
+        CalculateTotals();
+        ClearMessage();
+        
+        StateHasChanged();
+    }
+
+    private async Task HandlePreview()
+    {
+        if (!ValidateForm())
+        {
+            ShowMessage("Please fill all required fields to preview.", "warning", "bi-exclamation-triangle");
+            return;
+        }
+        
+        // TODO: Implement preview functionality
+        ShowMessage("Preview functionality will be implemented.", "info", "bi-info-circle");
+    }
+
+    private void ShowMessage(string msg, string type, string icon)
+    {
+        message = msg;
+        alertClass = $"alert-{type}";
+        alertIcon = icon;
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+        alertClass = "";
+        alertIcon = "";
+        StateHasChanged();
+    }
+}
+
+<style>
+    .alert {
+        margin-bottom: 0;
+    }
+    
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+</style>
