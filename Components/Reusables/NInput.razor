@@ -14,7 +14,8 @@
                    step="@Step"
                    min="@Min"
                    max="@Max"
-                   style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" />
+                   style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
+                   maxlength="@MaxLength"/>
         </div>
     </div>
 }
@@ -40,7 +41,8 @@ else if(Layout == 2){
                        max="@Max" 
                        readonly="@ReadOnly"
                        disabled="@ReadOnly"
-                       style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" />
+                       style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
+                       maxlength="@MaxLength"/>
             }
         </div>
     </div>
@@ -84,6 +86,8 @@ else if(Layout == 2){
     [Parameter] public RenderFragment? DisplayContent { get; set; }
     [Parameter] public string DisplayContentClass { get; set; } = string.Empty;
     [Parameter] public string ColSize {get; set;} = "col-md-4";
+
+    [Parameter] public string MaxLength {get; set;} = string.Empty;
 
     protected override void OnParametersSet()
     {

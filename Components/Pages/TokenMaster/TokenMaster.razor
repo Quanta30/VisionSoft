@@ -1,0 +1,429 @@
+@page "/tokenmaster"
+@using VisionSoft
+@using System.Data
+@rendermode InteractiveServer
+
+<PageTitle>Token Master</PageTitle>
+
+@if(viewing){
+    <FrmView TableName="TokenMaster" OnClose="HandleView" EditClicked="OnEditClicked"/>
+}
+<FRM FormName="Token Master Entry">
+    <ChildContent>
+        <!-- Row 1: Token ID, Token Date, Customer Code -->
+        <ROW>
+            <NInput Layout="1" Title="Token ID *" Type="text" @bind-Value="model.tokenIDStr" 
+                    Placeholder="Auto-generated" ReadOnly="true" MaxLength="50" />
+            
+            <NInput Layout="1" Title="Token Date" Type="datetime-local" @bind-Value="model.tokenDate" 
+                    Placeholder="Select token date and time" />
+            
+            <RInput Title="Customer Code *" @bind-Value="model.customerName" 
+                    TableName="CustomerMaster" ColumnName="CustomerName"
+                    Placeholder="Select customer" />
+        </ROW>
+
+        <!-- Row 2: Engineer Code, Product Code, Product Name -->
+        <ROW>
+            <RInput Title="Engineer Code *" @bind-Value="model.engineerName" 
+                    TableName="EngineerMaster" ColumnName="EngineerName"
+                    Placeholder="Select engineer" />
+            
+            <RInput Title="Product Code *" @bind-Value="model.productName" 
+                    TableName="ProductMaster" ColumnName="ProductName"
+                    Placeholder="Select product" />
+            
+            <NInput Layout="1" Title="Product Name *" Type="text" Value="@model.productNameManual" 
+                    Placeholder="Enter product name" MaxLength="50" ValueChanged="CheckProductNameLength" />
+        </ROW>
+
+        <!-- Row 3: Sales Bill No, Sales Bill Date, Priority -->
+        <ROW>
+            <NInput Layout="1" Title="Sales Bill No *" Type="text" Value="@model.salesBillNo" 
+                    Placeholder="Enter sales bill number" MaxLength="50" ValueChanged="CheckSalesBillNoLength" />
+            
+            <NInput Layout="1" Title="Sales Bill Date" Type="datetime-local" @bind-Value="model.salesBillDate" 
+                    Placeholder="Select sales bill date" />
+            
+            <NInput Layout="1" Title="Priority *" Type="text" Value="@model.priority" 
+                    Placeholder="Enter priority (High/Medium/Low)" MaxLength="50" ValueChanged="CheckPriorityLength" />
+        </ROW>
+
+        <!-- Row 4: Schedule Date, Schedule Time, Call Charges -->
+        <ROW>
+            <NInput Layout="1" Title="Schedule Date" Type="datetime-local" @bind-Value="model.scheduleDate" 
+                    Placeholder="Select schedule date" />
+            
+            <NInput Layout="1" Title="Schedule Time" Type="time" @bind-Value="model.scheduleTime" 
+                    Placeholder="Select schedule time" />
+            
+            <NInput Layout="1" Title="Call Charges *" Type="number" @bind-Value="model.callChargesStr" 
+                    Min="0" Step="0.01" Placeholder="Enter call charges" />
+        </ROW>
+
+        <!-- Row 5: Cancelled, Customer Warranty Entry No, Raised By -->
+        <ROW>
+            <NInput Layout="1" Title="Cancelled *" Type="number" @bind-Value="model.cancelledStr" 
+                    Min="0" Placeholder="Enter cancelled status" />
+            
+            <NInput Layout="1" Title="Customer Warranty Entry No *" Type="number" @bind-Value="model.customerWarrantyEntryNoStr" 
+                    Min="0" Placeholder="Enter warranty entry number" />
+            
+            <NInput Layout="1" Title="Raised By" Type="text" Value="@model.raisedBy" 
+                    Placeholder="Enter who raised the token" MaxLength="50" ValueChanged="CheckRaisedByLength" />
+        </ROW>
+
+        <!-- Row 6: Boolean Fields -->
+        <ROW>
+            <div class="col-md-2">
+                <label class="form-label">In House Sold</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="model.inHouseSold" />
+                    <label class="form-check-label">In House</label>
+                </div>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">Online</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="model.online" />
+                    <label class="form-check-label">Online Call</label>
+                </div>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">Under Warranty</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="model.underWarranty" />
+                    <label class="form-check-label">Under Warranty</label>
+                </div>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">Call Closed</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="model.callClosed" />
+                    <label class="form-check-label">Call Closed</label>
+                </div>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">Under AMC</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="model.underAMC" />
+                    <label class="form-check-label">Under AMC</label>
+                </div>
+            </div>
+        </ROW>
+
+        <!-- Row 7: Remark -->
+        <ROW>
+            <div class="col-md-8">
+                <label class="form-label">Remark *</label>
+                <textarea class="form-control" @bind="model.remark" @oninput="CheckRemarkLength"
+                          placeholder="Enter remark" rows="3" maxlength="500"></textarea>
+                <small class="text-muted">@model.remark.Length/500 characters</small>
+            </div>
+        </ROW>
+
+        <!-- Row 8: Suggestion -->
+        <ROW>
+            <div class="col-md-12">
+                <label class="form-label">Suggestion</label>
+                <textarea class="form-control" @bind="model.suggestion" @oninput="CheckSuggestionLength"
+                          placeholder="Enter suggestion (optional)" rows="4"></textarea>
+                <small class="text-muted">@model.suggestion.Length characters (unlimited)</small>
+            </div>
+        </ROW>
+    </ChildContent>
+
+    <!-- Card Footer Actions -->
+    <CardFooterContent>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-success" @onclick="HandleSave" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <i class="bi bi-floppy"></i>
+                    <span>Save Token</span>
+                }
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleClear" disabled="@isSaving">
+                <i class="bi bi-arrow-repeat"></i> Clear Form
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleView">
+                <i class="bi bi-arrow-repeat"></i>View
+            </button>
+        </div>
+    </CardFooterContent>
+</FRM>
+
+<!-- Length Warning Messages -->
+@if (!string.IsNullOrEmpty(lengthWarning))
+{
+    <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        @lengthWarning
+        <button type="button" class="btn-close" @onclick="ClearLengthWarning"></button>
+    </div>
+}
+
+<!-- Success/Error Messages -->
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @alertClass alert-dismissible fade show mt-3" role="alert">
+        <i class="bi @alertIcon me-2"></i>
+        @message
+        <button type="button" class="btn-close" @onclick="ClearMessage"></button>
+    </div>
+}
+
+@code {
+
+    TokenMasterModel model = new TokenMasterModel();
+    
+    // UI state variables
+    private bool isSaving = false;
+    private bool showValidation = false;
+    private string message = "";
+    private string alertClass = "";
+    private string alertIcon = "";
+    private bool viewing = false;
+    private bool isEditing = false;
+    private string lengthWarning = "";
+ 
+    ClsDatabase db = new ClsDatabase();
+
+    protected override void OnInitialized()
+    {
+        if (Config.DevelopmentMode)
+        {
+            model.InitializeTestData();
+        }
+        
+        model.GenerateTokenID();
+        StateHasChanged();
+    }
+
+    // Length checking methods - Updated to use string value directly
+    private void CheckProductNameLength(string value)
+    {
+        model.productNameManual = value;
+        CheckFieldLength(value, "Product Name", 50);
+    }
+
+    private void CheckSalesBillNoLength(string value)
+    {
+        model.salesBillNo = value;
+        CheckFieldLength(value, "Sales Bill No", 50);
+    }
+
+    private void CheckPriorityLength(string value)
+    {
+        model.priority = value;
+        CheckFieldLength(value, "Priority", 50);
+    }
+
+    private void CheckRaisedByLength(string value)
+    {
+        model.raisedBy = value;
+        CheckFieldLength(value, "Raised By", 50);
+    }
+
+    private void CheckRemarkLength(ChangeEventArgs e)
+    {
+        CheckFieldLength(e, "Remark", 500);
+    }
+
+    private void CheckSuggestionLength(ChangeEventArgs e)
+    {
+        // Suggestion is nvarchar(-1) which means unlimited length
+        // Just update the character count, no warning needed
+        StateHasChanged();
+    }
+
+    private void CheckFieldLength(string value, string fieldName, int maxLength)
+    {
+        if (value.Length > maxLength)
+        {
+            lengthWarning = $"Warning: {fieldName} cannot exceed {maxLength} characters. Current length: {value.Length}";
+            StateHasChanged();
+        }
+        else
+        {
+            ClearLengthWarning();
+        }
+    }
+
+    private void CheckFieldLength(ChangeEventArgs e, string fieldName, int maxLength)
+    {
+        string value = e.Value?.ToString() ?? "";
+        if (value.Length > maxLength)
+        {
+            lengthWarning = $"Warning: {fieldName} cannot exceed {maxLength} characters. Current length: {value.Length}";
+            StateHasChanged();
+        }
+        else
+        {
+            ClearLengthWarning();
+        }
+    }
+
+    private void GetReferenceCodes()
+    {
+        try
+        {
+            // Get CustomerCode from CustomerName
+            if (!string.IsNullOrEmpty(model.customerName))
+            {
+                string query = $"SELECT CustomerCode FROM CustomerMaster WHERE CustomerName = '{model.customerName}'";
+                DataTable dt = db.GetDataTable(query);
+                if (dt.Rows.Count > 0)
+                {
+                    model.customerCode = Convert.ToInt32(dt.Rows[0]["CustomerCode"]);
+                }
+            }
+
+            // Get EngineerCode from EngineerName
+            if (!string.IsNullOrEmpty(model.engineerName))
+            {
+                string query = $"SELECT EngineerCode FROM EngineerMaster WHERE EngineerName = '{model.engineerName}'";
+                DataTable dt = db.GetDataTable(query);
+                if (dt.Rows.Count > 0)
+                {
+                    model.engineerCode = Convert.ToInt32(dt.Rows[0]["EngineerCode"]);
+                }
+            }
+
+            // Get ProductCode from ProductName
+            if (!string.IsNullOrEmpty(model.productName))
+            {
+                string query = $"SELECT ProductCode FROM ProductMaster WHERE ProductName = '{model.productName}'";
+                DataTable dt = db.GetDataTable(query);
+                if (dt.Rows.Count > 0)
+                {
+                    model.productCode = Convert.ToInt32(dt.Rows[0]["ProductCode"]);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting reference codes: {ex.Message}");
+        }
+    }
+
+    private async Task HandleCloseCall()
+    {
+        if (!model.ValidateForm())
+        {
+            ShowMessage("Please fill all required fields before closing the call.", "danger", "bi-exclamation-triangle");
+            return;
+        }
+
+        model.callClosed = true;
+        ShowMessage("Call marked as closed.", "success", "bi-check-circle");
+        StateHasChanged();
+    }
+
+    private void ClearLengthWarning()
+    {
+        lengthWarning = "";
+        StateHasChanged();
+    }
+
+    private async Task HandleSave()
+    {
+        // Check for length violations before saving
+        if (model.productNameManual.Length > 50 || model.salesBillNo.Length > 50 || 
+            model.priority.Length > 50 || model.remark.Length > 500 ||
+            (!string.IsNullOrEmpty(model.raisedBy) && model.raisedBy.Length > 50))
+        {
+            ShowMessage("Cannot save: One or more fields exceed maximum length limit.", "danger", "bi-exclamation-triangle");
+            return;
+        }
+
+        if (!model.ValidateForm())
+        {
+            ShowMessage("Please fill all required fields with valid values.", "danger", "bi-exclamation-triangle");
+            showValidation = true;
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            GetReferenceCodes();
+            
+            if(isEditing){
+                await model.Update();
+            }
+            else await model.SaveToken();
+            ShowMessage("Token record saved successfully!", "success", "bi-check-circle");
+            await Task.Delay(1500);
+            await HandleClear();
+            
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving Token: {ex.Message}");
+            ShowMessage("Error saving token record. Please try again.", "danger", "bi-exclamation-triangle");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        // Reset form fields
+        model.Clear();
+        showValidation = false;
+        
+        // Only generate new TokenID if not editing
+        if (!isEditing)
+        {
+            model.GenerateTokenID();
+        }
+        
+        isEditing = false;
+        ClearMessage();
+        ClearLengthWarning();
+        StateHasChanged();
+    }
+
+    private void ShowMessage(string msg, string type, string icon)
+    {
+        message = msg;
+        alertClass = $"alert-{type}";
+        alertIcon = icon;
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+        alertClass = "";
+        alertIcon = "";
+        StateHasChanged();
+    }
+
+    private void HandleView(){
+        viewing = !viewing;
+        StateHasChanged();
+    }
+
+    public void OnEditClicked(DataRow row){
+        model.set(row);
+        isEditing = true;
+        viewing = false;
+        StateHasChanged();
+    }
+}

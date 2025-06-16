@@ -1,0 +1,283 @@
+@page "/smsmaster"
+@using VisionSoft
+@using System.Data
+@rendermode InteractiveServer
+
+<PageTitle>SMS Master</PageTitle>
+
+@if(viewing){
+    <FrmView TableName="SMSMaster" OnClose="HandleView" EditClicked="OnEditClicked"/>
+}
+<FRM FormName="SMS Master Entry">
+    <ChildContent>
+        <!-- Row 1: Entry No, Mobile No, Party Name -->
+        <ROW>
+            <NInput Layout="1" Title="Entry No *" Type="text" @bind-Value="model.entryNoStr" 
+                    Placeholder="Auto-generated" ReadOnly="true" MaxLength="50" />
+            
+            <NInput Layout="1" Title="Mobile No *" Type="text" Value="@model.mobileNo" 
+                    Placeholder="Enter mobile number" MaxLength="50" ValueChanged="CheckMobileNoLength" />
+            
+            <NInput Layout="1" Title="Party Name" Type="text" Value="@model.partyName" 
+                    Placeholder="Enter party name (optional)" MaxLength="150" ValueChanged="CheckPartyNameLength" />
+        </ROW>
+
+        <!-- Row 2: Message -->
+        <ROW>
+            <div class="col-md-8">
+                <label class="form-label">Message *</label>
+                <textarea class="form-control" @bind="model.message" @oninput="CheckMessageLength"
+                          placeholder="Enter SMS message" rows="4" maxlength="500"></textarea>
+                <small class="text-muted">@model.message.Length/500 characters</small>
+            </div>
+            
+            <div class="col-md-4">
+                <label class="form-label">SMS Status</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="model.sent" />
+                    <label class="form-check-label">Message Sent</label>
+                </div>
+            </div>
+        </ROW>
+    </ChildContent>
+
+    <!-- Card Footer Actions -->
+    <CardFooterContent>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-success" @onclick="HandleSave" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <i class="bi bi-floppy"></i>
+                    <span>Save SMS</span>
+                }
+            </button>
+            <button type="button" class="btn btn-info" @onclick="HandleSendSMS" disabled="@isSaving || model.sent">
+                <i class="bi bi-send"></i> Send SMS
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleClear" disabled="@isSaving">
+                <i class="bi bi-arrow-repeat"></i> Clear Form
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleView">
+                <i class="bi bi-arrow-repeat"></i>View
+            </button>
+        </div>
+    </CardFooterContent>
+</FRM>
+
+<!-- Length Warning Messages -->
+@if (!string.IsNullOrEmpty(lengthWarning))
+{
+    <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        @lengthWarning
+        <button type="button" class="btn-close" @onclick="ClearLengthWarning"></button>
+    </div>
+}
+
+<!-- Success/Error Messages -->
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @alertClass alert-dismissible fade show mt-3" role="alert">
+        <i class="bi @alertIcon me-2"></i>
+        @message
+        <button type="button" class="btn-close" @onclick="ClearMessage"></button>
+    </div>
+}
+
+@code {
+
+    SMSMasterModel model = new SMSMasterModel();
+    
+    // UI state variables
+    private bool isSaving = false;
+    private bool showValidation = false;
+    private string message = "";
+    private string alertClass = "";
+    private string alertIcon = "";
+    private bool viewing = false;
+    private bool isEditing = false;
+    private string lengthWarning = "";
+ 
+    ClsDatabase db = new ClsDatabase();
+
+    protected override void OnInitialized()
+    {
+        if (Config.DevelopmentMode)
+        {
+            model.InitializeTestData();
+        }
+        
+        model.GenerateEntryNumber();
+        StateHasChanged();
+    }
+
+    // Length checking methods - Updated to use string value directly
+    private void CheckMobileNoLength(string value)
+    {
+        model.mobileNo = value;
+        CheckFieldLength(value, "Mobile No", 50);
+    }
+
+    private void CheckPartyNameLength(string value)
+    {
+        model.partyName = value;
+        CheckFieldLength(value, "Party Name", 150);
+    }
+
+    private void CheckMessageLength(ChangeEventArgs e)
+    {
+        string value = e.Value?.ToString() ?? "";
+        if (value.Length > 500)
+        {
+            lengthWarning = "Warning: Message cannot exceed 500 characters. Current length: " + value.Length;
+            StateHasChanged();
+        }
+        else
+        {
+            ClearLengthWarning();
+        }
+    }
+
+    private void CheckFieldLength(string value, string fieldName, int maxLength)
+    {
+        if (value.Length > maxLength)
+        {
+            lengthWarning = $"Warning: {fieldName} cannot exceed {maxLength} characters. Current length: {value.Length}";
+            StateHasChanged();
+        }
+        else
+        {
+            ClearLengthWarning();
+        }
+    }
+
+    private void ClearLengthWarning()
+    {
+        lengthWarning = "";
+        StateHasChanged();
+    }
+
+    private async Task HandleSendSMS()
+    {
+        if (!model.ValidateForm())
+        {
+            ShowMessage("Please fill all required fields before sending SMS.", "danger", "bi-exclamation-triangle");
+            return;
+        }
+
+        if (model.sent)
+        {
+            ShowMessage("SMS has already been sent.", "warning", "bi-exclamation-triangle");
+            return;
+        }
+
+        try
+        {
+            // Here you would integrate with SMS service provider
+            // For demo purposes, we'll simulate sending
+            await Task.Delay(2000); // Simulate SMS sending delay
+            
+            model.sent = true;
+            ShowMessage($"SMS sent successfully to {model.mobileNo}!", "success", "bi-check-circle");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending SMS: {ex.Message}");
+            ShowMessage("Error sending SMS. Please try again.", "danger", "bi-exclamation-triangle");
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        // Check for length violations before saving
+        if (model.mobileNo.Length > 50 || model.partyName.Length > 150 || model.message.Length > 500)
+        {
+            ShowMessage("Cannot save: One or more fields exceed maximum length limit.", "danger", "bi-exclamation-triangle");
+            return;
+        }
+
+        if (!model.ValidateForm())
+        {
+            ShowMessage("Please fill all required fields with valid values.", "danger", "bi-exclamation-triangle");
+            showValidation = true;
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if(isEditing){
+                await model.Update();
+            }
+            else await model.SaveSMS();
+            ShowMessage("SMS record saved successfully!", "success", "bi-check-circle");
+            await Task.Delay(1500);
+            await HandleClear();
+            
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving SMS: {ex.Message}");
+            ShowMessage("Error saving SMS record. Please try again.", "danger", "bi-exclamation-triangle");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        // Reset form fields
+        model.Clear();
+        showValidation = false;
+        
+        // Only generate new EntryNo if not editing
+        if (!isEditing)
+        {
+            model.GenerateEntryNumber();
+        }
+        
+        isEditing = false;
+        ClearMessage();
+        ClearLengthWarning();
+        StateHasChanged();
+    }
+
+    private void ShowMessage(string msg, string type, string icon)
+    {
+        message = msg;
+        alertClass = $"alert-{type}";
+        alertIcon = icon;
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+        alertClass = "";
+        alertIcon = "";
+        StateHasChanged();
+    }
+
+    private void HandleView(){
+        viewing = !viewing;
+        StateHasChanged();
+    }
+
+    public void OnEditClicked(DataRow row){
+        model.set(row);
+        isEditing = true;
+        viewing = false;
+        StateHasChanged();
+    }
+}

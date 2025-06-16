@@ -60,6 +60,7 @@ C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\VisionSo
 C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\VisionSoft.AssemblyInfo.cs
 C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\VisionSoft.csproj.CoreCompileInputs.cache
 C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\VisionSoft.MvcApplicationPartsAssemblyInfo.cache
+C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\VisionSoft.sourcelink.json
 C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\rjimswa.dswa.cache.json
 C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
 C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json
@@ -79,4 +80,3 @@ C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\refint\V
 C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\VisionSoft.pdb
 C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\VisionSoft.genruntimeconfig.cache
 C:\Parag\Projects + Study\Csharp\VisionSoft\VisionSoft\obj\Debug\net8.0\ref\VisionSoft.dll
-C:\Parag\Projects + Study\Csharp\VisionSoft\Visionsoft\obj\Debug\net8.0\VisionSoft.sourcelink.json
