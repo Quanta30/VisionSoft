@@ -13,7 +13,7 @@
         <!-- Row 1: Area Code, Area Name, and Route Code -->
         <ROW>
             <NInput Layout="1" Title="Area Code *" Type="number" @bind-Value="model.areaCodeStr" 
-                    Min="1" Placeholder="Enter area code" />
+                    Min="1" Placeholder="Enter area code" ReadOnly=true/>
             
             <NInput Layout="1" Title="Area Name *" Type="text" @bind-Value="model.areaName" 
                     Placeholder="Enter area name" />
@@ -73,6 +73,15 @@
     private bool isEditing = false;
  
     ClsDatabase db = new ClsDatabase();
+
+    protected override void OnInitialized(){
+        GenerateAreaCode();
+    }
+
+    public void GenerateAreaCode(){
+        model.areaCodeStr = db.GenerateNextNo("AreaMaster", "AreaCode");
+        model.areaCode = Convert.ToInt32(model.areaCodeStr);
+    }
 
     private void GetRouteCodeFromName()
     {
@@ -134,6 +143,7 @@
         showValidation = false;
         isEditing = false;
         ClearMessage();
+        if(!isEditing)GenerateAreaCode();
         StateHasChanged();
     }
 

@@ -34,11 +34,11 @@ class CallCloseMasterModel
     {
         try
         {
-            string prefix = "CC";
-            string datePart = DateTime.Now.ToString("yyyyMMdd");
+            string prefix = "A10";
+            
             
             // Get next sequence number for today
-            string query = $"SELECT COUNT(*) FROM CallCloseMaster WHERE EntryNo LIKE '{prefix}{datePart}%'";
+            string query = $"SELECT COUNT(*) FROM CallCloseMaster WHERE EntryNo LIKE '{prefix}%'";
             DataTable dt = db.GetDataTable(query);
             
             int sequenceNumber = 1;
@@ -47,7 +47,7 @@ class CallCloseMasterModel
                 sequenceNumber = Convert.ToInt32(dt.Rows[0][0]) + 1;
             }
             
-            entryNo = $"{prefix}{datePart}{sequenceNumber:D3}";
+            entryNo = $"{prefix}{sequenceNumber:D3}";
         }
         catch (Exception ex)
         {
@@ -207,7 +207,36 @@ class CallCloseMasterModel
         cancelled = 0;
     }
 
-    private void InitializeTestData()
+    public void CalculateNetAmount()
+    {
+        try
+        {
+            // Parse string values to doubles
+            if (double.TryParse(amountStr, out double parsedAmount) &&
+                double.TryParse(discountStr, out double parsedDiscount))
+            {
+                amount = parsedAmount;
+                discount = parsedDiscount;
+
+                // Calculate net amount (Amount - Discount)
+                netAmount = amount - discount;
+
+                // Ensure net amount doesn't go negative
+                if (netAmount < 0)
+                    netAmount = 0;
+
+                // Update string value for display
+                netAmountStr = netAmount.ToString("F2");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error calculating net amount: {ex.Message}");
+            netAmountStr = "0.00";
+        }
+    }
+
+    public void InitializeTestData()
     {
         // Form field variables with test data
         modeOfPay = "Cash";
@@ -221,7 +250,7 @@ class CallCloseMasterModel
         considerInAccounts = true;
         cancelledStr = "0";
         closedBy = "Admin";
-        
+
         // Actual values for database operations
         amount = 1000.00;
         discount = 100.00;

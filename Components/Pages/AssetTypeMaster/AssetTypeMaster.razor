@@ -13,7 +13,7 @@
         <!-- Row 1: Asset Type Code and Asset Type Name -->
         <ROW>
             <NInput Layout="1" Title="Asset Type Code *" Type="number" @bind-Value="model.assetTypeCodeStr" 
-                    Min="1" Placeholder="Enter asset type code" />
+                    Min="1" Placeholder="Enter asset type code" ReadOnly=true/>
             
             <NInput Layout="1" Title="Asset Type Name *" Type="text" @bind-Value="model.assetTypeName" 
                     Placeholder="Enter asset type name" />
@@ -74,6 +74,14 @@
  
     ClsDatabase db = new ClsDatabase();
 
+    protected override void OnInitialized(){
+        GenerateNextNo();
+    }
+
+    public void GenerateNextNo(){
+        model.assetTypeCodeStr = db.GenerateNextNo("AssetTypeMaster","AssetTypeCode");
+        model.assetTypeCode = Convert.ToInt32(model.assetTypeCodeStr); 
+    }
     private async Task HandleSave()
     {
         if (!model.ValidateForm())
@@ -116,6 +124,7 @@
         showValidation = false;
         isEditing = false;
         ClearMessage();
+        if(!isEditing)GenerateNextNo();
         StateHasChanged();
     }
 

@@ -1,0 +1,176 @@
+@page "/companymaster"
+@using VisionSoft
+@using System.Data
+@rendermode InteractiveServer
+
+<PageTitle>Company Master</PageTitle>
+
+@if(viewing){
+    <FrmView TableName="CompanyMaster" OnClose="HandleView" EditClicked="OnEditClicked"/>
+}
+<FRM FormName="Company Master Entry">
+    <ChildContent>
+        <!-- Row 1: Company Code, Company Name -->
+        <ROW>
+            <NInput Layout="1" Title="Company Code *" Type="number" @bind-Value="model.companyCodeStr" 
+                    Min="1" Placeholder="Enter company code" ReadOnly=true/>
+            
+            <NInput Layout="1" Title="Company Name *" Type="text" @bind-Value="model.companyName" 
+                    Placeholder="Enter company name" />
+            
+            <NInput Layout="1" Title="Owner Mobile No" Type="tel" @bind-Value="model.ownerMobileNo" 
+                    Placeholder="Enter owner mobile number" />
+            <div class="col-md-4">
+                <!-- Empty column for spacing -->
+            </div>
+        </ROW>
+
+        <!-- Row 2: Company Permanent Lock, Owner Mobile No -->
+        <ROW>
+            <div class="col-md-4">
+                <label class="form-label">Company Permanent Lock *</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="model.companyPermanentLock" />
+                    <label class="form-check-label">Lock Company</label>
+                </div>
+            </div>
+            
+            
+            
+            <div class="col-md-4">
+                <!-- Empty column for spacing -->
+            </div>
+        </ROW>
+    </ChildContent>
+
+    <!-- Card Footer Actions -->
+    <CardFooterContent>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-success" @onclick="HandleSave" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <i class="bi bi-floppy"></i>
+                    <span>Save Company</span>
+                }
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleClear" disabled="@isSaving">
+                <i class="bi bi-arrow-repeat"></i> Clear Form
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleView">
+                <i class="bi bi-arrow-repeat"></i>View
+            </button>
+        </div>
+    </CardFooterContent>
+</FRM>
+
+<!-- Success/Error Messages -->
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @alertClass alert-dismissible fade show mt-3" role="alert">
+        <i class="bi @alertIcon me-2"></i>
+        @message
+        <button type="button" class="btn-close" @onclick="ClearMessage"></button>
+    </div>
+}
+
+@code {
+
+    CompanyMasterModel model = new CompanyMasterModel();
+    
+    // UI state variables
+    private bool isSaving = false;
+    private bool showValidation = false;
+    private string message = "";
+    private string alertClass = "";
+    private string alertIcon = "";
+    private bool viewing = false;
+    private bool isEditing = false;
+ 
+    ClsDatabase db = new ClsDatabase();
+
+    protected override void OnInitialized(){
+        GenerateNextNo();
+    }
+    public void GenerateNextNo(){
+        model.companyCodeStr = db.GenerateNextNo("CompanyMaster", "CompanyCode");
+        model.companyCode = Convert.ToInt32(model.companyCodeStr);
+    }
+    private async Task HandleSave()
+    {
+        if (!model.ValidateForm())
+        {
+            ShowMessage("Please fill all required fields with valid values.", "danger", "bi-exclamation-triangle");
+            showValidation = true;
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if(isEditing){
+                await model.Update();
+            }
+            else await model.SaveCompany();
+            ShowMessage("Company record saved successfully!", "success", "bi-check-circle");
+            await Task.Delay(1);
+            await HandleClear();
+            
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving Company: {ex.Message}");
+            ShowMessage("Error saving company record. Please try again.", "danger", "bi-exclamation-triangle");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        // Reset form fields
+        model.Clear();
+        showValidation = false;
+        isEditing = false;
+        ClearMessage();
+        if(!isEditing)GenerateNextNo();
+        StateHasChanged();
+    }
+
+    private void ShowMessage(string msg, string type, string icon)
+    {
+        message = msg;
+        alertClass = $"alert-{type}";
+        alertIcon = icon;
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+        alertClass = "";
+        alertIcon = "";
+        StateHasChanged();
+    }
+
+    private void HandleView(){
+        viewing = !viewing;
+        StateHasChanged();
+    }
+
+    public void OnEditClicked(DataRow row){
+        model.set(row);
+        isEditing = true;
+        viewing = false;
+        StateHasChanged();
+    }
+}

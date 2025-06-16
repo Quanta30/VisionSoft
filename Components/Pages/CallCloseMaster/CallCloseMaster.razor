@@ -34,13 +34,15 @@
                     Placeholder="Select completion time" />
         </ROW>
 
-        <!-- Row 3: Amount, Discount, Net Amount -->
+        <!-- Row 3: Amount, Discount, Net Amount (with ValueChanged for auto-calculation) -->
         <ROW>
-            <NInput Layout="1" Title="Amount *" Type="number" @bind-Value="model.amountStr" 
-                    Min="0" Step="0.01" Placeholder="Enter amount" />
+            <NInput Layout="1" Title="Amount *" Type="number" Value="@model.amountStr" 
+                    Min="0" Step="0.01" Placeholder="Enter amount"
+                    ValueChanged="@((string value) => OnAmountOrDiscountChanged(value, "amount"))" />
             
-            <NInput Layout="1" Title="Discount *" Type="number" @bind-Value="model.discountStr" 
-                    Min="0" Step="0.01" Placeholder="Enter discount" />
+            <NInput Layout="1" Title="Discount *" Type="number" Value="@model.discountStr" 
+                    Min="0" Step="0.01" Placeholder="Enter discount"
+                    ValueChanged="@((string value) => OnAmountOrDiscountChanged(value, "discount"))" />
             
             <NInput Layout="1" Title="Net Amount *" Type="number" @bind-Value="model.netAmountStr" 
                     Min="0" Step="0.01" Placeholder="Auto-calculated" ReadOnly="true" />
@@ -130,19 +132,43 @@
 
     protected override void OnInitialized()
     {
+        if (Config.DevelopmentMode)
+        {
+            model.InitializeTestData();
+        }
+        
         model.GenerateEntryNumber();
+        StateHasChanged();
     }
 
-    protected override void OnParametersSet()
+    private async Task OnAmountOrDiscountChanged(string value, string fieldType)
     {
-        // Calculate net amount when amount or discount changes
-        if (double.TryParse(model.amountStr, out var amount) && 
-            double.TryParse(model.discountStr, out var discount))
+        try
         {
-            model.netAmount = amount - discount;
-            model.netAmountStr = model.netAmount.ToString("F2");
+            // Update the appropriate field
+            switch (fieldType)
+            {
+                case "amount":
+                    model.amountStr = value;
+                    break;
+                case "discount":
+                    model.discountStr = value;
+                    break;
+            }
+
+            // Recalculate net amount
+            model.CalculateNetAmount();
+            
+            // Update the UI
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in calculation: {ex.Message}");
         }
     }
+
+    // Remove OnParametersSet since we're using ValueChanged instead
 
     private async Task HandleSave()
     {
@@ -163,7 +189,7 @@
             }
             else await model.SaveCallClose();
             ShowMessage("Call Close record saved successfully!", "success", "bi-check-circle");
-            await Task.Delay(1);
+            await Task.Delay(1500);
             await HandleClear();
             
         }

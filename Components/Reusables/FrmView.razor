@@ -2,156 +2,213 @@
 @using Microsoft.AspNetCore.Components
 @rendermode InteractiveServer
 
-
-    <!-- Modal Backdrop -->
-    <div class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
-         style="background-color: rgba(0, 0, 0, 0.5); z-index: 1050;">
+<!-- Modal Backdrop -->
+<div class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+     style="background-color: rgba(0, 0, 0, 0.5); z-index: 1050;">
+    
+    <!-- Modal Container with proper sizing -->
+    <div class="position-relative" 
+         style="width: calc(100vw - 4rem); height: calc(100vh - 4rem); min-width: 800px; min-height: 600px; max-width: 1400px; max-height: 900px;"
+         @onclick="CloseModal">
         
-        <!-- Modal Container with proper sizing -->
-        <div class="position-relative" 
-             style="width: calc(100vw - 4rem); height: calc(100vh - 4rem); min-width: 800px; min-height: 600px; max-width: 1400px; max-height: 900px;"
-             @onclick="CloseModal">
+        <!-- Modal Content -->
+        <div class="card border shadow-lg w-100 h-100" 
+             @onclick:stopPropagation="true">
             
-            <!-- Modal Content -->
-            <div class="card border shadow-lg w-100 h-100" 
-                 @onclick:stopPropagation="true">
+            <!-- Modal Header -->
+            <div class="card-header bg-light border-bottom text-dark">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="mb-0 fw-semibold">
+                            @TableName Data Management
+                        </h5>
+                        @if (TableData != null && TableData.Rows.Count > 0)
+                        {
+                            <small class="opacity-75">@totalRecords total records, showing @TableData.Rows.Count</small>
+                        }
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" 
+                                class="btn btn-outline-danger btn-sm fw-semibold" 
+                                aria-label="Close" 
+                                @onclick="CloseModal"
+                                @onclick:stopPropagation="true"
+                                @onclick:preventDefault="true">
+                            <i class="bi bi-x-circle me-1"></i>
+                            CLOSE
+                        </button>
+                    </div>
+                </div>
                 
-                <!-- Modal Header -->
-                <div class="card-header bg-light border-bottom text-dark">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <h5 class="mb-0 fw-semibold">
-                                @TableName Data Management
-                            </h5>
-                            @if (TableData != null && TableData.Rows.Count > 0)
-                            {
-                                <small class="opacity-75">@TableData.Rows.Count records available</small>
-                            }
+                <!-- Search Bar -->
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            
+                            <input type="text" 
+                                   class="form-control" 
+                                   placeholder="Search records..." 
+                                   @bind="searchText" 
+                                   @oninput="OnSearchInput"
+                                   @onclick:stopPropagation="true" />
+                            
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        @onclick="ClearSearch"
+                                        @onclick:stopPropagation="true">
+                                    <i class="bi bi-x">X</i>
+                                </button>
+                            
                         </div>
-                        <div class="col-auto">
-                            <button type="button" 
-                                    class="btn btn-outline-danger btn-sm fw-semibold" 
-                                    aria-label="Close" 
-                                    @onclick="CloseModal"
-                                    @onclick:stopPropagation="true"
-                                    @onclick:preventDefault="true">
-                                <i class="bi bi-x-circle me-1"></i>
-                                CLOSE
-                            </button>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <!-- Pagination Controls -->
+                        <div class="d-flex justify-content-end align-items-center gap-2">
+                            <span class="text-muted small">
+                                Page @currentPage of @totalPages
+                            </span>
+                            <div class="btn-group" role="group">
+                                <button type="button" 
+                                        class="btn btn-outline-primary btn-sm" 
+                                        @onclick="PreviousPage" 
+                                        disabled="@(currentPage <= 1)"
+                                        @onclick:stopPropagation="true">
+                                    <i class="bi bi-chevron-left">&lt;</i>
+                                </button>
+                                <button type="button" 
+                                        class="btn btn-outline-primary btn-sm" 
+                                        @onclick="NextPage" 
+                                        disabled="@(currentPage >= totalPages)"
+                                        @onclick:stopPropagation="true">
+                                    <i class="bi bi-chevron-right">&gt;</i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-
-                
-                <!-- Modal Body -->
-                <div class="card-body bg-white p-0 d-flex flex-column" style="height: calc(100% - 140px);">
-                    @if (TableData is null || TableData.Rows.Count == 0)
-                    {
-                        <div class="d-flex align-items-center justify-content-center h-100">
-                            <div class="text-center">
-                                <div class="mb-4">
-                                    <i class="bi bi-inbox display-1 text-muted"></i>
-                                </div>
-                                <h4 class="text-muted fw-light">No data available</h4>
-                                <p class="text-muted">Please check your data source and try again</p>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="card-body bg-white p-0 d-flex flex-column" style="height: calc(100% - 180px);">
+                @if (isLoading)
+                {
+                    <div class="d-flex align-items-center justify-content-center h-100">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
                             </div>
+                            <h6 class="mt-3 text-muted">Loading data...</h6>
                         </div>
-                    }
-                    else
-                    {
-                        <div class="table-responsive flex-grow-1">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light sticky-top">
-                                    <tr>
-                                        <th class="text-center fw-semibold" style="width: 150px;">
-                                            <i class="bi bi-gear me-1 text-primary"></i>
-                                            Actions
-                                        </th>
+                    </div>
+                }
+                else if (TableData is null || TableData.Rows.Count == 0)
+                {
+                    <div class="d-flex align-items-center justify-content-center h-100">
+                        <div class="text-center">
+                            <div class="mb-4">
+                                <i class="bi bi-inbox display-1 text-muted"></i>
+                            </div>
+                            <h4 class="text-muted fw-light">
+                                @(string.IsNullOrEmpty(searchText) ? "No data available" : "No matching records found")
+                            </h4>
+                            <p class="text-muted">
+                                @(string.IsNullOrEmpty(searchText) ? "Please check your data source and try again" : $"No records found for '{searchText}'")
+                            </p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive flex-grow-1">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="text-center fw-semibold" style="width: 150px;">
+                                        <i class="bi bi-gear me-1 text-primary"></i>
+                                        Actions
+                                    </th>
+                                    @foreach (DataColumn col in TableData.Columns)
+                                    {
+                                        @if (col.ColumnName != "CreationDate" && col.ColumnName != "userEmail")
+                                        {
+                                            <th class="fw-semibold text-dark">@col.ColumnName</th>
+                                        }
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (DataRow row in TableData.Rows)
+                                {
+                                    <tr class="border-bottom">
+                                        <td class="text-center align-middle py-3">
+                                            <div class="d-flex justify-content-center gap-1">
+                                                <button type="button" 
+                                                        class="btn btn-outline-primary btn-sm fw-semibold" 
+                                                        @onclick="() => EditRow(row)"
+                                                        @onclick:stopPropagation="true"
+                                                        @onclick:preventDefault="true"
+                                                        title="Edit Record">
+                                                    <i class="bi bi-pencil"></i>Edit
+                                                </button>
+                                                <button type="button" 
+                                                        class="btn btn-outline-danger btn-sm fw-semibold" 
+                                                        @onclick="() => DeleteRow(row)"
+                                                        @onclick:stopPropagation="true"
+                                                        @onclick:preventDefault="true"
+                                                        title="Delete Record">
+                                                    <i class="bi bi-trash"></i>Delete
+                                                </button>
+                                            </div>
+                                        </td>
                                         @foreach (DataColumn col in TableData.Columns)
                                         {
                                             @if (col.ColumnName != "CreationDate" && col.ColumnName != "userEmail")
                                             {
-                                                <th class="fw-semibold text-dark">@col.ColumnName</th>
+                                                <td class="align-middle py-3">
+                                                    <span class="text-dark">@row[col]</span>
+                                                </td>
                                             }
                                         }
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (DataRow row in TableData.Rows)
-                                    {
-                                        <tr class="border-bottom">
-                                            <td class="text-center align-middle py-3">
-                                                <div class="d-flex justify-content-center gap-1">
-                                                    <button type="button" 
-                                                            class="btn btn-outline-primary btn-sm fw-semibold" 
-                                                            @onclick="() => EditRow(row)"
-                                                            @onclick:stopPropagation="true"
-                                                            @onclick:preventDefault="true"
-                                                            title="Edit Record">
-                                                        <i class="bi bi-pencil"></i>Edit
-                                                    </button>
-                                                    <button type="button" 
-                                                            class="btn btn-outline-danger btn-sm fw-semibold" 
-                                                            @onclick="() => DeleteRow(row)"
-                                                            @onclick:stopPropagation="true"
-                                                            @onclick:preventDefault="true"
-                                                            title="Delete Record">
-                                                        <i class="bi bi-trash"></i>Delete
-                                                    </button>
-                                                </div>
-                                            </td>
-                                            @foreach (DataColumn col in TableData.Columns)
-                                            {
-                                                @if (col.ColumnName != "CreationDate" && col.ColumnName != "userEmail")
-                                                {
-                                                    <td class="align-middle py-3">
-                                                        <span class="text-dark">@row[col]</span>
-                                                    </td>
-                                                }
-                                            }
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </div>
-                
-                <!-- Modal Footer -->
-                <div class="card-footer bg-light border-top">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            @if (TableData != null && TableData.Rows.Count > 0)
-                            {
-                                <span class="text-muted small">
-                                    <i class="bi bi-info-circle me-1"></i>
-                                    Use the edit and delete buttons to manage your records
-                                </span>
-                            }
-                        </div>
-                        <div class="col-auto">
-                            @if (!string.IsNullOrEmpty(message))
-                            {
-                                <span class="badge @(alertClass.Contains("success") ? "bg-success" : "bg-danger")">
-                                    @message
-                                </span>
-                            }
-                        </div>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="card-footer bg-light border-top">
+                <div class="row align-items-center">
+                    <div class="col">
+                        @if (TableData != null && TableData.Rows.Count > 0)
+                        {
+                            <span class="text-muted small">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Showing @((currentPage - 1) * pageSize + 1) to @(Math.Min(currentPage * pageSize, totalRecords)) of @totalRecords records
+                            </span>
+                        }
+                    </div>
+                    <div class="col-auto">
+                        @if (!string.IsNullOrEmpty(message))
+                        {
+                            <span class="badge @(alertClass.Contains("success") ? "bg-success" : "bg-danger")">
+                                @message
+                            </span>
+                        }
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+</div>
 
 @code {
     [Parameter] public string TableName { get; set; } = string.Empty;
     [Parameter] public DataTable? TableData { get; set; }
     [Parameter] public bool Display { get; set; } = false;
     [Parameter] public EventCallback<string> OnClose { get; set; }
-    [Parameter] public EventCallback<DataRow> EditClicked{get; set;}
-
+    [Parameter] public EventCallback<DataRow> EditClicked { get; set; }
 
     // Pagination variables
     private int currentPage = 1;
@@ -159,6 +216,12 @@
     private int totalRecords = 0;
     private int totalPages = 0;
 
+    // Search variables
+    private string searchText = "";
+    private Timer? searchTimer;
+    private bool isLoading = false;
+    private bool isValidRegex = true;
+    private string regexError = "";
 
     private string message = "";
     private string alertClass = "";
@@ -168,10 +231,7 @@
     {
         if (!string.IsNullOrEmpty(TableName) && TableData == null)
         {
-            string query = $"SELECT COUNT(*) FROM {TableName}";
-            DataTable dataTable = db.GetDataTable(query);
-            totalRecords = Convert.ToInt32(dataTable.Rows[0][0]);
-            totalPages = totalRecords / pageSize;
+            await GetTotalRecords();
             await LoadData();
         }
     }
@@ -180,25 +240,263 @@
     {
         if (Display && !string.IsNullOrEmpty(TableName) && TableData == null)
         {
+            await GetTotalRecords();
             await LoadData();
         }
     }
 
-    private async Task LoadData()
-    {   
-        int offset = (currentPage-1)*pageSize;
+    private string GetSearchCondition()
+    {
+        if (string.IsNullOrEmpty(searchText)) return "1=1";
+        
         try
         {
-            string query = $@"SELECT * FROM {TableName} 
-                  ORDER BY (SELECT NULL) 
-                  OFFSET {offset} ROWS 
-                  FETCH NEXT {pageSize} ROWS ONLY";
-            TableData = db.GetDataTable(query);
-            StateHasChanged();
+            // Validate regex pattern
+            var regex = new System.Text.RegularExpressions.Regex(searchText, 
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            isValidRegex = true;
+            regexError = "";
+        }
+        catch (Exception ex)
+        {
+            isValidRegex = false;
+            regexError = ex.Message;
+            // Return a condition that matches nothing for invalid regex
+            return "1=0";
+        }
+        
+        // Get all searchable columns dynamically from the current table
+        var searchConditions = new List<string>();
+        
+        if (TableData != null && TableData.Columns.Count > 0)
+        {
+            foreach (DataColumn column in TableData.Columns)
+            {
+                // Only search in text-based columns (varchar, nvarchar, text, etc.)
+                if (IsTextColumn(column))
+                {
+                    // Use SQL Server's regex-like functionality with LIKE and wildcards
+                    // For true regex, we'll need to use CLR functions or handle it in C#
+                    searchConditions.Add($"CAST({column.ColumnName} AS NVARCHAR(MAX)) LIKE '%{EscapeSqlString(searchText)}%'");
+                }
+            }
+        }
+        
+        // Fallback to common columns if no TableData available yet
+        if (searchConditions.Count == 0)
+        {
+            var commonColumns = new[] { "Name", "Code", "Description", "Title", "EntryNo", "TokenID", "City", "Narration", "AssetName", "AreaName", "ProductName" };
+            foreach (var column in commonColumns)
+            {
+                searchConditions.Add($"{column} LIKE '%{EscapeSqlString(searchText)}%'");
+            }
+        }
+        
+        return searchConditions.Count > 0 ? string.Join(" OR ", searchConditions) : "1=1";
+    }
+        private bool IsTextColumn(DataColumn column)
+    {
+        var textTypes = new[] 
+        { 
+            typeof(string), 
+            typeof(char)
+        };
+        
+        return textTypes.Contains(column.DataType) || 
+               column.DataType == typeof(object); // Sometimes text columns come as object
+    }
+
+    private string EscapeSqlString(string input)
+    {
+        // Escape single quotes and other SQL injection risks
+        return input.Replace("'", "''").Replace("--", "").Replace(";", "");
+    }
+
+    private async Task LoadData()
+    {
+        int offset = (currentPage - 1) * pageSize;
+        isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            DataTable rawData;
+            
+            if (string.IsNullOrEmpty(searchText))
+            {
+                // No search - use database pagination
+                string query = $@"SELECT * FROM {TableName} 
+                      ORDER BY (SELECT NULL) 
+                      OFFSET {offset} ROWS 
+                      FETCH NEXT {pageSize} ROWS ONLY";
+                      
+                rawData = db.GetDataTable(query);
+            }
+            else
+            {
+                // For regex search, get all data and filter in C#
+                string query = $"SELECT * FROM {TableName}";
+                var allData = db.GetDataTable(query);
+                rawData = FilterDataWithRegex(allData);
+                
+                // Apply pagination to filtered results
+                rawData = ApplyPagination(rawData, offset, pageSize);
+            }
+            
+            TableData = rawData;
         }
         catch (Exception ex)
         {
             ShowMessage($"Error loading data: {ex.Message}", "alert-danger");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private DataTable FilterDataWithRegex(DataTable sourceData)
+    {
+        if (string.IsNullOrEmpty(searchText) || !isValidRegex)
+            return sourceData;
+
+        var filteredData = sourceData.Clone(); // Copy structure
+        
+        try
+        {
+            var regex = new System.Text.RegularExpressions.Regex(searchText, 
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            
+            foreach (DataRow row in sourceData.Rows)
+            {
+                bool matchFound = false;
+                
+                // Check each text column for regex match
+                foreach (DataColumn column in sourceData.Columns)
+                {
+                    if (IsTextColumn(column))
+                    {
+                        string cellValue = row[column]?.ToString() ?? "";
+                        if (regex.IsMatch(cellValue))
+                        {
+                            matchFound = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (matchFound)
+                {
+                    filteredData.ImportRow(row);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Regex filtering error: {ex.Message}");
+            regexError = ex.Message;
+            isValidRegex = false;
+        }
+        
+        return filteredData;
+    }
+
+    private DataTable ApplyPagination(DataTable sourceData, int offset, int pageSize)
+    {
+        var paginatedData = sourceData.Clone();
+        
+        var rowsToTake = sourceData.Rows
+            .Cast<DataRow>()
+            .Skip(offset)
+            .Take(pageSize);
+            
+        foreach (var row in rowsToTake)
+        {
+            paginatedData.ImportRow(row);
+        }
+        
+        return paginatedData;
+    }
+
+    private async Task GetTotalRecords()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(searchText))
+            {
+                // No search - count directly from database
+                string countQuery = $"SELECT COUNT(*) FROM {TableName}";
+                DataTable dataTable = db.GetDataTable(countQuery);
+                totalRecords = Convert.ToInt32(dataTable.Rows[0][0]);
+            }
+            else
+            {
+                // For regex search, get all data and count filtered results
+                string query = $"SELECT * FROM {TableName}";
+                var allData = db.GetDataTable(query);
+                var filteredData = FilterDataWithRegex(allData);
+                totalRecords = filteredData.Rows.Count;
+            }
+            
+            totalPages = totalRecords > 0 ? (int)Math.Ceiling((double)totalRecords / pageSize) : 1;
+            
+            // Reset to page 1 if current page exceeds total pages
+            if (currentPage > totalPages && totalPages > 0)
+            {
+                currentPage = 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting total records: {ex.Message}");
+            totalRecords = 0;
+            totalPages = 1;
+        }
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchText = e.Value?.ToString() ?? "";
+        
+        // Cancel previous timer
+        searchTimer?.Dispose();
+        
+        // Start new timer for 500ms delay
+        searchTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                currentPage = 1; // Reset to first page on search
+                await GetTotalRecords();
+                await LoadData();
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task ClearSearch()
+    {
+        searchText = "";
+        currentPage = 1;
+        await GetTotalRecords();
+        await LoadData();
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadData();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadData();
         }
     }
 
@@ -207,6 +505,8 @@
         Display = false;
         message = "";
         alertClass = "";
+        searchText = ""; // Clear search on close
+        currentPage = 1; // Reset pagination
         
         if (OnClose.HasDelegate)
         {
@@ -221,9 +521,6 @@
         var primaryKey = row[0];
         ShowMessage($"Edit functionality for ID: {primaryKey}", "alert-info");
         EditClicked.InvokeAsync(row);
-        
-        // TODO: Implement edit functionality
-        // You can add an edit modal or navigate to edit page
     }
 
     private async Task DeleteRow(DataRow row)
@@ -238,9 +535,10 @@
             
             if (success)
             {
-                TableData.Rows.Remove(row);
+                // Reload data to refresh pagination and counts
+                await GetTotalRecords();
+                await LoadData();
                 ShowMessage("Record deleted successfully!", "alert-success");
-                StateHasChanged();
                 
                 // Auto-hide message after 3 seconds
                 await Task.Delay(3000);
@@ -263,5 +561,10 @@
         message = msg;
         alertClass = type;
         StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        searchTimer?.Dispose();
     }
 }

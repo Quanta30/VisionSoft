@@ -1,4 +1,6 @@
-﻿namespace VisionSoft
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
+
+namespace VisionSoft
 {
     public class Config
     {
@@ -6,6 +8,7 @@
         public static string UserTable = "Users";
         public static string CustomerTable = "Customers";
         public static bool IsLoggedIn { get; set; } = false;
+        public static bool DevelopmentMode = true;
 
     }
 }

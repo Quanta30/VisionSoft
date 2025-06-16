@@ -2,9 +2,59 @@
 @inject NavigationManager Navigation
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 
+<PageTitle>VisionSoft - Navigation</PageTitle>
+
+<div class="container mt-4">
+    <h2>VisionSoft - Development Navigation</h2>
+    <hr>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <h4>Master Forms</h4>
+            <ul class="list-unstyled">
+                <li><a href="/amcmaster" class="btn btn-link">AMC Master</a></li>
+                <li><a href="/areamaster" class="btn btn-link">Area Master</a></li>
+                <li><a href="/assetmaster" class="btn btn-link">Asset Master</a></li>
+                <li><a href="/assettypemaster" class="btn btn-link">Asset Type Master</a></li>
+                <li><a href="/callclosemaster" class="btn btn-link">Call Close Master</a></li>
+                <li><a href="/companymaster" class="btn btn-link">Company Master</a></li>
+                <li><a href="/customermaster" class="btn btn-link">Customer Master</a></li>
+                <li><a href="/departmentmaster" class="btn btn-link">Department Master</a></li>
+                <li><a href="/engineermaster" class="btn btn-link">Engineer Master</a></li>
+                <li><a href="/groupmaster" class="btn btn-link">Group Master</a></li>
+                <li><a href="/productmaster" class="btn btn-link">Product Master</a></li>
+                <li><a href="/referencemaster" class="btn btn-link">Reference Master</a></li>
+            </ul>
+        </div>
+        
+        <div class="col-md-4">
+            <h4>Master Forms</h4>
+            <ul class="list-unstyled">
+                <li><a href="/dailyattendancemaster" class="btn btn-link">Daily Attendance</a></li>
+                <li><a href="/dailytravelmaster" class="btn btn-link">Daily Travel</a></li>
+                <li><a href="/GSTStateMaster" class="btn btn-link">GST State Master</a></li>
+                <li><a href="/GSTCategoryMaster" class="btn btn-link">GST Category Master</a></li>
+                <li><a href="/hsnmaster" class="btn btn-link">HSN Master</a></li>
+                <li><a href="/ledgermaster" class="btn btn-link">Ledger Master</a></li>
+                <li><a href="/remindermaster" class="btn btn-link">Reminder Master</a></li>
+            </ul>
+            
+            <h4>Other</h4>
+            <ul class="list-unstyled">
+                <li><a href="/login" class="btn btn-link">Login</a></li>
+            </ul>
+        </div>
+        
+        <div class="col-md-4">
+            <h4>Quick Add New Links Here:</h4>
+            <ul class="list-unstyled">
+                <!-- Add new links here -->
+                <!-- <li><a href="/newform" class="btn btn-link">New Form</a></li> -->
+            </ul>
+        </div>
+    </div>
+</div>
 
 @code{
-    protected override void OnInitialized(){
-    Navigation.NavigateTo("/login");
-    }
+    // Simple navigation page for development
 }

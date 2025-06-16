@@ -1,7 +1,7 @@
 ﻿@rendermode InteractiveServer
 
 @if(Layout == 1){
-    <div class="col-md-4">
+    <div class=@ColSize>
         <div class="mb-3">
             <label class="form-label">@Title</label>
             <input class="form-control @(ReadOnly ? "readonly-input" : "")"
@@ -83,6 +83,7 @@ else if(Layout == 2){
 
     [Parameter] public RenderFragment? DisplayContent { get; set; }
     [Parameter] public string DisplayContentClass { get; set; } = string.Empty;
+    [Parameter] public string ColSize {get; set;} = "col-md-4";
 
     protected override void OnParametersSet()
     {

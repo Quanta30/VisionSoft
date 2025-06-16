@@ -1,0 +1,183 @@
+@page "/groupmaster"
+@using VisionSoft
+@using System.Data
+@rendermode InteractiveServer
+
+<PageTitle>Group Master</PageTitle>
+
+@if(viewing){
+    <FrmView TableName="GroupMaster" OnClose="HandleView" EditClicked="OnEditClicked"/>
+}
+<FRM FormName="Group Master Entry">
+    <ChildContent>
+        <!-- Row 1: Group Code, Group Name, Alias -->
+        <ROW>
+            <NInput Layout="1" Title="Group Code *" Type="number" @bind-Value="model.groupCodeStr" 
+                    Min="1" Placeholder="Auto-generated" ReadOnly="true" />
+            
+            <NInput Layout="1" Title="Group Name *" Type="text" @bind-Value="model.groupName" 
+                    Placeholder="Enter group name" />
+            
+            <NInput Layout="1" Title="Alias *" Type="text" @bind-Value="model.alias" 
+                    Placeholder="Enter alias" />
+        </ROW>
+
+        <!-- Row 2: Under Group Code, Nature of Group, Affect Profit Loss -->
+        <ROW>
+            <NInput Layout="1" Title="Under Group Code *" Type="number" @bind-Value="model.underGroupCodeStr" 
+                    Min="0" Placeholder="Enter under group code" />
+            
+            <NInput Layout="1" Title="Nature of Group *" Type="text" @bind-Value="model.natureOfGroup" 
+                    Placeholder="Enter nature of group" />
+            
+            <div class="col-md-4">
+                <label class="form-label">Affect Profit Loss *</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="model.affectProfitLoss" />
+                    <label class="form-check-label">Yes</label>
+                </div>
+            </div>
+        </ROW>
+    </ChildContent>
+
+    <!-- Card Footer Actions -->
+    <CardFooterContent>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-success" @onclick="HandleSave" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <i class="bi bi-floppy"></i>
+                    <span>Save Group</span>
+                }
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleClear" disabled="@isSaving">
+                <i class="bi bi-arrow-repeat"></i> Clear Form
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleView">
+                <i class="bi bi-arrow-repeat"></i>View
+            </button>
+        </div>
+    </CardFooterContent>
+</FRM>
+
+<!-- Success/Error Messages -->
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @alertClass alert-dismissible fade show mt-3" role="alert">
+        <i class="bi @alertIcon me-2"></i>
+        @message
+        <button type="button" class="btn-close" @onclick="ClearMessage"></button>
+    </div>
+}
+
+@code {
+
+    GroupMasterModel model = new GroupMasterModel();
+    
+    // UI state variables
+    private bool isSaving = false;
+    private bool showValidation = false;
+    private string message = "";
+    private string alertClass = "";
+    private string alertIcon = "";
+    private bool viewing = false;
+    private bool isEditing = false;
+ 
+    ClsDatabase db = new ClsDatabase();
+
+    protected override void OnInitialized()
+    {
+        if (Config.DevelopmentMode)
+        {
+            model.InitializeTestData();
+        }
+        
+        model.GenerateGroupCode();
+        StateHasChanged();
+    }
+
+    private async Task HandleSave()
+    {
+        if (!model.ValidateForm())
+        {
+            ShowMessage("Please fill all required fields with valid values.", "danger", "bi-exclamation-triangle");
+            showValidation = true;
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if(isEditing){
+                await model.Update();
+            }
+            else await model.SaveGroup();
+            ShowMessage("Group record saved successfully!", "success", "bi-check-circle");
+            await Task.Delay(1500);
+            await HandleClear();
+            
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving Group: {ex.Message}");
+            ShowMessage("Error saving group record. Please try again.", "danger", "bi-exclamation-triangle");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        // Reset form fields
+        model.Clear();
+        showValidation = false;
+        
+        // Only generate new GroupCode if not editing
+        if (!isEditing)
+        {
+            model.GenerateGroupCode();
+        }
+        
+        isEditing = false;
+        ClearMessage();
+        StateHasChanged();
+    }
+
+    private void ShowMessage(string msg, string type, string icon)
+    {
+        message = msg;
+        alertClass = $"alert-{type}";
+        alertIcon = icon;
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+        alertClass = "";
+        alertIcon = "";
+        StateHasChanged();
+    }
+
+    private void HandleView(){
+        viewing = !viewing;
+        StateHasChanged();
+    }
+
+    public void OnEditClicked(DataRow row){
+        model.set(row);
+        isEditing = true;
+        viewing = false;
+        StateHasChanged();
+    }
+}
