@@ -94,6 +94,15 @@ public class Model
     }
 
 
+    //Populate Dictionary Using Primary Key
+    public void PopulateViaKey(int key)
+    {
+        DataTable dataTable = db.GetDataTable($"Select * From {TableName} where {PrimaryKeyColumn}={key}");
+        DataRow row = dataTable.Rows[0];
+        Populate(row);
+    }
+
+
 
     //AutoGenerate The Primary Key Code with Max
     public void SetPrimarykey()

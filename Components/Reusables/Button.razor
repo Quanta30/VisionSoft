@@ -28,8 +28,10 @@
     private string bsCls = "btn-outline-secondary";
 
     protected override void OnInitialized(){
-        if(btnType == "Save")bsCls="btn-success";
-        if(spanText == "")spanText = Text;
+        if(btnType == "Save" || Text=="Save")bsCls="btn-success";
+        else if(btnType == "Blue" || Text=="Edit" || Text == "Select")bsCls="btn-outline-primary btn-sm fw-semibold";
+        else if(btnType == "Danger" || Text == "Cancel" || Text == "Remove" || Text == "Delete")bsCls="btn-outline-danger btn-sm fw-semibold";
+        else if(spanText == "")spanText = Text;
     }
 
     private async Task Click(){

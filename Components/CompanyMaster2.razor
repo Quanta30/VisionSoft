@@ -12,13 +12,13 @@
     <ChildContent>
         <!-- Row 1: Company Code, Company Name -->
         <ROW>
-            <NInput Layout="1" Title="Company Code *" Type="number" @bind-Value="@model.dict["CompanyCode"]" 
+            <Input Layout="1" Title="Company Code *" Type="number" @bind-Value="@model.dict["CompanyCode"]" 
                     Min="1" Placeholder="Enter company code" ReadOnly=true/>
             
-            <NInput Layout="1" Title="Company Name *" Type="text" @bind-Value="@model.dict["CompanyName"]" 
+            <Input Layout="1" Title="Company Name *" Type="text" @bind-Value="@model.dict["CompanyName"]" 
                     Placeholder="Enter company name" />
             
-            <NInput Layout="1" Title="Owner Mobile No" Type="tel" @bind-Value="@model.dict["OwnerMobileNo"]" 
+            <Input Layout="1" Title="Owner Mobile No" Type="tel" @bind-Value="@model.dict["OwnerMobileNo"]" 
                     Placeholder="Enter owner mobile number" />
         </ROW>
 
@@ -26,6 +26,8 @@
         <ROW>
             <Checkbox Title="CompanyPermanantLock" @bind-Value="@model.dict["CompanyPermanantLock"]" />
         </ROW>
+
+        <TableViewer dataTable="dt"/>
     </ChildContent>
 
     <!-- Card Footer Actions -->
@@ -57,8 +59,17 @@
         set => model.dict["CompanyPermanantLock"] = value ? "1" : "0";
     }
 
+
+    ClsDatabase db = new ClsDatabase();
+    DataTable dt = new DataTable();
+
+  
+
+    
+
     protected override void OnInitialized()
     {
+        dt = db.GetDataTable("Select * from CompanyMaster");
         // The Model constructor already calls SetPrimarykey() which generates the next number
         StateHasChanged();
     }
@@ -155,4 +166,5 @@
             MessageCmp.ShowMessage("Error loading record data.", "danger", "bi-exclamation-triangle");
         }
     }
+    
 }
