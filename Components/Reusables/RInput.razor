@@ -29,15 +29,18 @@
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
     [Parameter] public string TableName { get; set; } = string.Empty;
-    [Parameter] public string ColumnName { get; set; } = string.Empty;
+    [Parameter] public string DisplayColumn { get; set; } = string.Empty;
+
+    [Parameter] public string PrimaryColumn {get; set;} = string.Empty;
 
     private bool isDisplayed = false;
+    private string InternalValue;
 
     protected override async Task OnParametersSetAsync()
     {
         _internalValue = Value;
 
-        if (!string.IsNullOrEmpty(TableName) && !string.IsNullOrEmpty(ColumnName))
+        if (!string.IsNullOrEmpty(TableName) && !string.IsNullOrEmpty(PrimaryColumn))
         {
             await LoadTableData();
         }
@@ -70,7 +73,7 @@
 
     private async Task HandleRowSelected(DataRow selectedRow)
     {
-        _internalValue = selectedRow[ColumnName]?.ToString() ?? string.Empty;
+        _internalValue = selectedRow[PrimaryColumn]?.ToString() ?? string.Empty;
         await ValueChanged.InvokeAsync(_internalValue);
         isDisplayed = false;
     }

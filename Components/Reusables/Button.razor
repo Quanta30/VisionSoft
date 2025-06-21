@@ -1,0 +1,42 @@
+<button type="button" class="btn @bsCls" @onclick="Click" disabled="@isClicked">
+                @if (isClicked)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>@spanText</span>
+                }
+                else
+                {
+                    <i class="bi bi-floppy"></i>
+                    <span>@Text</span>
+                }
+</button>
+
+
+
+@code{
+    [Parameter] public string btnType{get; set;} = "";
+
+    [Parameter] public string Text {get; set;} = "";
+    [Parameter] public string spanText{get; set;} = "";
+
+    [Parameter] public EventCallback OnClick{get; set;}
+
+    [Parameter] public int DelayTime{get; set;} = 0;
+
+    private bool isClicked = false;
+
+    private string bsCls = "btn-outline-secondary";
+
+    protected override void OnInitialized(){
+        if(btnType == "Save")bsCls="btn-success";
+        if(spanText == "")spanText = Text;
+    }
+
+    private async Task Click(){
+        isClicked = true;
+        await OnClick.InvokeAsync();
+        if(DelayTime>0)await Task.Delay(DelayTime);
+        isClicked = false;
+    }
+    
+}

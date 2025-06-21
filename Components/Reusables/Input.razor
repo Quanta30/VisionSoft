@@ -1,7 +1,7 @@
 ﻿@rendermode InteractiveServer
 
 @if(Layout == 1){
-    <div class="col-md-6">
+    <div class=@ColSize>
         <div class="mb-3">
             <label class="form-label">@Title</label>
             <input class="form-control @(ReadOnly ? "readonly-input" : "")"
@@ -14,7 +14,8 @@
                    step="@Step"
                    min="@Min"
                    max="@Max"
-                   style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" />
+                   style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
+                   maxlength="@MaxLength"/>
         </div>
     </div>
 }
@@ -40,7 +41,9 @@ else if(Layout == 2){
                        max="@Max" 
                        readonly="@ReadOnly"
                        disabled="@ReadOnly"
-                       style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" />
+                       style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
+                       maxlength="@MaxLength"
+                       />
             }
         </div>
     </div>
@@ -65,7 +68,7 @@ else if(Layout == 2){
 </style>
 
 @code {
-    private decimal _internalValue = 0;
+    private string _internalValue = string.Empty;
 
     [Parameter] public int Layout { get; set; } = 1; // Default layout
     [Parameter] public string Title { get; set; } = string.Empty;
@@ -74,8 +77,8 @@ else if(Layout == 2){
     [Parameter] public string Placeholder { get; set; } = "Enter value";
     [Parameter] public bool ReadOnly { get; set; } = false;
 
-    [Parameter] public decimal Value { get; set; } = 0;
-    [Parameter] public EventCallback<decimal> ValueChanged { get; set; }
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
     [Parameter] public string Min { get; set; } = string.Empty;
     [Parameter] public string Max { get; set; } = string.Empty;
@@ -83,17 +86,20 @@ else if(Layout == 2){
 
     [Parameter] public RenderFragment? DisplayContent { get; set; }
     [Parameter] public string DisplayContentClass { get; set; } = string.Empty;
+    [Parameter] public string ColSize {get; set;} = "col-md-4";
+
+    [Parameter] public string MaxLength {get; set;} = string.Empty;
 
     protected override void OnParametersSet()
     {
-        _internalValue = Value;
+        _internalValue = Value ?? string.Empty;
     }
 
     private async Task OnInputChanged(ChangeEventArgs e)
     {
         if (!ReadOnly)
         {
-            _internalValue = Convert.ToInt32(e.Value);
+            _internalValue = e.Value?.ToString() ?? string.Empty;
             await ValueChanged.InvokeAsync(_internalValue);
         }
     }

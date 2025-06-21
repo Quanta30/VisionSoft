@@ -1,0 +1,259 @@
+@* @page "/adjustment2"
+@using VisionSoft
+@using System.Data
+@rendermode InteractiveServer
+
+<PageTitle>Physical Stock Adjustment</PageTitle>
+
+@if(viewing){
+    <FrmView TableName="AdjustmentHead" OnClose="HandleView" EditClicked="OnEditClicked"/>
+}
+
+<FRM FormName="Physical Stock Adjustment">
+    <ChildContent>
+        <!-- Row 1: Adjustment No, Adjustment Date, Net Amount -->
+        <ROW>
+            <NInput Layout="1" Title="Adjustment No *" Type="text" @bind-Value="headModel.adjustmentNoStr" 
+                    Placeholder="Auto-generated" ReadOnly="true" />
+            
+            <NInput Layout="1" Title="Adjustment Date" Type="datetime-local" @bind-Value="headModel.adjustmentDate" 
+                    Placeholder="Select adjustment date" />
+            
+            <NInput Layout="1" Title="Net Amount *" Type="number" @bind-Value="headModel.netAmountStr" 
+                    Placeholder="Calculated automatically" ReadOnly="true" Step="0.01" />
+        </ROW>
+
+        <!-- Row 2: Narration, Cancelled -->
+        <ROW>
+            <NInput Layout="2" Title="Narration *" Type="text" @bind-Value="headModel.narration" 
+                    Placeholder="Enter narration" MaxLength="200"  />
+            
+            <NInput Layout="1" Title="Cancelled" Type="number" @bind-Value="headModel.cancelledStr" 
+                    Min="0" Max="1" Placeholder="0 or 1" />
+        </ROW>
+
+        <!-- Adjustment Details Section -->
+        <ROW>
+            <div class="col-md-12">
+                <h5>Adjustment Details</h5>
+                <RAdjustmentLister2 DetailModel="detailModel" OnUpdate="HandleDetailsUpdate" @ref="adjustmentLister" />
+            </div>
+        </ROW>
+    </ChildContent>
+
+    <!-- Card Footer Actions -->
+    <CardFooterContent>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-success" @onclick="HandleSave" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <i class="bi bi-floppy"></i>
+                    <span>Save Adjustment</span>
+                }
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleClear" disabled="@isSaving">
+                <i class="bi bi-arrow-repeat"></i> Clear Form
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="HandleView">
+                <i class="bi bi-list"></i> View List
+            </button>
+        </div>
+    </CardFooterContent>
+</FRM>
+
+<!-- Length Warning Messages -->
+@if (!string.IsNullOrEmpty(lengthWarning))
+{
+    <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        @lengthWarning
+        <button type="button" class="btn-close" @onclick="ClearLengthWarning"></button>
+    </div>
+}
+
+<!-- Success/Error Messages -->
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @alertClass alert-dismissible fade show mt-3" role="alert">
+        <i class="bi @alertIcon me-2"></i>
+        @message
+        <button type="button" class="btn-close" @onclick="ClearMessage"></button>
+    </div>
+}
+
+@code {
+    AdjustmentHeadModel2 headModel = new AdjustmentHeadModel2();
+    List<AdjustmentDetailModel2> details = new List<AdjustmentDetailModel2>();
+    RAdjustmentLister2? adjustmentLister;
+    
+    // UI state variables
+    private bool isSaving = false;
+    private bool showValidation = false;
+    private string message = "";
+    private string alertClass = "";
+    private string alertIcon = "";
+    private bool viewing = false;
+    private bool isEditing = false;
+    private string lengthWarning = "";
+    
+    ClsDatabase db = new ClsDatabase();
+
+    protected override void OnInitialized()
+    {
+        headModel.GenerateAdjustmentNo();
+        headModel.OnNarrationChanged = CheckNarrationLength;
+        StateHasChanged();
+    }
+
+    private async Task HandleDetailsUpdate()
+    {
+        
+        float totalAmount = 0;
+        foreach(AdjustmentDetailModel2 detail in details){
+        totalAmount += detail.GetAmount();
+        }
+        headModel.UpdateNetAmount(totalAmount);
+        StateHasChanged();
+    }
+
+    private void CheckNarrationLength(string value)
+    {
+        CheckFieldLength(value, "Narration", 200);
+    }
+
+    private void CheckFieldLength(string value, string fieldName, int maxLength)
+    {
+        if (value.Length > maxLength)
+        {
+            lengthWarning = $"Warning: {fieldName} cannot exceed {maxLength} characters. Current length: {value.Length}";
+            StateHasChanged();
+        }
+        else
+        {
+            ClearLengthWarning();
+        }
+    }
+
+    private void ClearLengthWarning()
+    {
+        lengthWarning = "";
+        StateHasChanged();
+    }
+
+    private async Task HandleSave()
+    {
+        // Check for length violations
+        if (headModel.narration.Length > 200)
+        {
+            ShowMessage("Cannot save: Narration exceeds maximum length limit.", "danger", "bi-exclamation-triangle");
+            return;
+        }
+
+        if (!headModel.ValidateForm())
+        {
+            ShowMessage("Please fill all required fields.", "danger", "bi-exclamation-triangle");
+            showValidation = true;
+            return;
+        }
+
+
+        if (!detailModel.ValidateDetails() || detailModel.adjustmentDetails.Count == 0)
+        {
+            ShowMessage("Please add at least one valid adjustment detail.", "danger", "bi-exclamation-triangle");
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if(isEditing)
+            {
+                // Update head
+                await headModel.UpdateAdjustmentHead();
+                
+                // Save details (this will delete existing and re-insert)
+                await detailModel.SaveAllDetails(headModel.adjustmentNo);
+            }
+            else 
+            {
+                // Save head first
+                await headModel.SaveAdjustmentHead();
+                
+                // Save details
+                await detailModel.SaveAllDetails(headModel.adjustmentNo);
+            }
+            
+            ShowMessage("Adjustment record saved successfully!", "success", "bi-check-circle");
+            await Task.Delay(1500);
+            await HandleClear();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving Adjustment: {ex.Message}");
+            ShowMessage($"Error saving adjustment record: {ex.Message}", "danger", "bi-exclamation-triangle");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        headModel.Clear();
+        detailModel.Clear();
+        showValidation = false;
+        
+        // Clear the adjustment lister
+        adjustmentLister?.ClearAll();
+        
+        if (!isEditing)
+        {
+            headModel.GenerateAdjustmentNo();
+        }
+        
+        isEditing = false;
+        ClearMessage();
+        ClearLengthWarning();
+        StateHasChanged();
+    }
+
+    private void ShowMessage(string msg, string type, string icon)
+    {
+        message = msg;
+        alertClass = $"alert-{type}";
+        alertIcon = icon;
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+        alertClass = "";
+        alertIcon = "";
+        StateHasChanged();
+    }
+
+    private void HandleView()
+    {
+        viewing = !viewing;
+        StateHasChanged();
+    }
+
+    public void OnEditClicked(DataRow row)
+    {
+        headModel.Set(row);
+        detailModel.LoadAdjustmentDetails(headModel.adjustmentNo);
+        isEditing = true;
+        viewing = false;
+        StateHasChanged();
+    }
+} *@

@@ -12,12 +12,6 @@
                             @FormName
                         </h5>
                     </div>
-                    @if (FormActions != null)
-                    {
-                        <div class="col-auto">
-                            @FormActions
-                        </div>
-                    }
                 </div>
             </div>
         }
@@ -29,7 +23,9 @@
         @if (CardFooterContent != null)
         {
             <div class="card-footer bg-light border-top">
-                @CardFooterContent
+                <div class="d-flex justify-content-end gap-2">
+                    @CardFooterContent
+                </div>
             </div>
         }
     </div>
@@ -38,6 +34,5 @@
 @code {
     [Parameter] public string FormName { get; set; } = string.Empty;
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public RenderFragment? FormActions { get; set; }
     [Parameter] public RenderFragment? CardFooterContent { get; set; }
 }
