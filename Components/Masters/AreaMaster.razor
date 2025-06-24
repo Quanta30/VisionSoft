@@ -1,0 +1,169 @@
+@page "/areamaster"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer 
+
+<T_Msg @ref="Msg" />
+@if (isViewing)
+{
+    <FrmView TableName="AreaMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+}
+
+<T_Frm FormName="Area Master">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Area Code *" ReadOnly="true" @bind-Value="@model.dict["AreaCode"]" ColSize="col-md-4" />
+            <T_Input Title="Area Name *" @bind-Value="@model.dict["AreaName"]" MaxLength="500" ColSize="col-md-4" />
+            <T_RInput Title="Route" TableName="RouteMaster" DisplayColumn="RouteName" PrimaryColumn="RouteCode"
+                      @bind-Value="@model.dict["RouteCode"]" ColSize="col-md-4" />
+        </T_Row>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+    </CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<AreaMaster> dotNetRef;
+
+    Model model = new Model("AreaMaster", "AreaCode");
+    private bool isViewing = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            Console.WriteLine("AreaMaster OnAfterRenderAsync executed");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            if (!ValidateForm()) return;
+
+            bool success = isEditing
+                ? model.Update()
+                : model.Save();
+
+            if (success)
+            {
+                await Msg.Success();
+
+                if (!isEditing)
+                {
+                    HandleClear();
+                }
+
+                isEditing = false;
+            }
+            else
+            {
+                await Msg.SaveError();
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.SaveError();
+            Console.WriteLine($"Error saving Area record: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public void HandleClear()
+    {
+        model.Clear();
+        isEditing = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandlePrint()
+    {
+        Console.WriteLine("Print Area Master");
+        // implement printing logic if needed
+        StateHasChanged();
+    }
+
+    public async Task HandleEdit(DataRow row)
+    {
+        try
+        {
+            isEditing = true;
+            isViewing = false;
+
+            foreach (var key in model.dict.Keys.ToList())
+            {
+                model.dict[key] = row[key]?.ToString() ?? model.dict[key];
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Area record: {ex.Message}");
+        }
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        // Required field validations
+        if (string.IsNullOrWhiteSpace(model.dict["AreaCode"])) 
+            errors.Add("Area Code is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["AreaName"])) 
+            errors.Add("Area Name is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["RouteCode"])) 
+            errors.Add("Route is required");
+
+        // Length validation for AreaName
+        if (!string.IsNullOrWhiteSpace(model.dict["AreaName"]) && model.dict["AreaName"].Length > 500)
+            errors.Add("Area Name cannot exceed 500 characters");
+
+        // Numeric validation for codes
+        if (!string.IsNullOrWhiteSpace(model.dict["AreaCode"]) && !int.TryParse(model.dict["AreaCode"], out _))
+            errors.Add("Area Code must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["RouteCode"]) && !int.TryParse(model.dict["RouteCode"], out _))
+            errors.Add("Route Code must be a valid number");
+
+        if (errors.Any())
+        {
+            var message = string.Join(", ", errors);
+            Msg.Show(message, "danger", "bi-exclamation-triangle");
+            return false;
+        }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+}

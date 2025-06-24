@@ -15,6 +15,26 @@
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
+    <script>
+        window.setupFormKeyHandler = (dotNetRef)=>{
+            console.log("HelloWorld")
+            document.addEventListener('keydown', (event)=>{
+                if(event.altKey && (event.key==='V' || event.key === 'v')){
+                    console.log("ShortCut Key: ALT + V Pressed")
+                    dotNetRef.invokeMethodAsync('HandleView');
+                    Console.log("HERE");
+                }
+                if(event.altKey && (event.key==='S' || event.key === 's')){
+                    console.log("ShortCut Key: ALT + S Pressed")
+                    dotNetRef.invokeMethodAsync('HandleSave');
+                }
+                if(event.altKey && (event.key ==='A' || event.key === 'a')){
+                    console.log("ShortCut Key: ALT + A Pressed")
+                    dotNetRef.invokeMethodAsync('HandleAdd');
+                }
+            })
+        }
+    </script>
 </body>
 
 </html>

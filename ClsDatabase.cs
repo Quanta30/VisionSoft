@@ -106,20 +106,13 @@ public class ClsDatabase
         }
     
         //Get value of a specific column from a table based on condition
-        public string GetScalar(string TableName, string ColumnName, string Condition)
+        public string GetScalar(string Query)
         {
             try
             {
-                string sqlQuery = $"SELECT {ColumnName} FROM {TableName} WHERE {Condition}";
+                string sqlQuery = Query;
                 DataTable dt = GetDataTable(sqlQuery);
-                if (dt.Rows.Count > 0 && dt.Rows[0][ColumnName] != DBNull.Value)
-                {
-                    return dt.Rows[0][ColumnName].ToString();
-                }
-                else
-                {
-                    return string.Empty; // Return empty string if no value found
-                }
+                return dt.Rows[0][0].ToString();
             }
             catch (Exception ex)
             {

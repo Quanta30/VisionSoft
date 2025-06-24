@@ -1,0 +1,428 @@
+@using System.Data
+@rendermode InteractiveServer
+
+
+<!-- Modal Backdrop -->
+<div class="position-fixed top-0 start-0 w-100 h-100 d-flex 
+            align-items-center justify-content-center"
+     style="background-color: rgba(0,0,0,0.5); z-index:1050;">
+    
+    <!-- Modal Container -->
+    <div class="position-relative bg-white rounded-3 shadow"
+         style="width: 90vw; height: 90vh; max-width: 1200px; min-width: 600px;"
+         @onclick="CloseModal" @onkeydown="HandleKeyPress" tabindex="0">
+
+        <!-- Card -->
+        <div class="card w-100 h-100 border-0" @onclick:stopPropagation="true">
+
+            <!-- Header with Gray Background -->
+            <div class="card-header bg-light border-bottom">
+                <!-- Title & Close Row -->
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <h5 class="mb-0 text-dark fw-semibold">Select @TableName</h5>
+                    <button type="button" class="btn btn-danger btn-sm" @onclick="CloseModal">Close</button>
+                </div>
+                
+                <!-- Search and Pagination Row -->
+                <div class="d-flex justify-content-between align-items-center gap-3 mt-3">
+                    <!-- Search Section -->
+                    <div style="width: 400px;">
+                        <div class="input-group">
+                            <input type="text" class="form-control"
+                                   style="height: 36px;"
+                                   placeholder="Search @TableName..."
+                                   @bind="searchText" @oninput="OnSearchInput" @ref="searchInput" />
+                            <button type="button" class="btn btn-outline-secondary" @onclick="ClearSearch">X</button>
+                        </div>
+                    </div>
+
+                    <!-- Pagination Section -->
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-primary btn-sm" @onclick="PreviousPage"
+                                disabled="@(currentPage <= 1)">◀</button>
+                        <span class="text-muted">Page</span>
+                        <input type="number" class="form-control text-center"
+                               style="width: 70px; height: 36px;" 
+                               value="@currentPage"
+                               @onchange="OnPageChange" min="1" max="@totalPages" />
+                        <span class="text-muted">of @totalPages</span>
+                        <button type="button" class="btn btn-primary btn-sm" @onclick="NextPage"
+                                disabled="@(currentPage >= totalPages)">▶</button>
+                    </div>
+                </div>
+
+                <!-- Records Info Row -->
+                <div class="mt-2 text-end">
+                    <small class="text-muted">
+                        @if (totalRecords > 0)
+                        {
+                            <span>Showing @((currentPage - 1) * pageSize + 1)
+                                  to @(Math.Min(currentPage * pageSize, totalRecords))
+                                  of @totalRecords records</span>
+                        }
+                        else
+                        {
+                            <span>No records found</span>
+                        }
+                    </small>
+                </div>
+            </div>
+
+            <!-- Table Body -->
+            <div class="card-body p-0 overflow-auto" style="height: calc(100% - 140px);">
+                @if (IsLoading)
+                {
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                }
+                else if (TableData != null && TableData.Rows.Count > 0)
+                {
+                    <div class="table-responsive h-100">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="text-center py-3" style="width: 120px; border-top: 1px solid #dee2e6;">Actions</th>
+                                    @foreach (DataColumn col in TableData.Columns)
+                                    {
+                                        <th class="py-3" style="border-top: 1px solid #dee2e6;">@col.ColumnName</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < TableData.Rows.Count; i++)
+                                {
+                                    var rowIndex = i;
+                                    <tr class="@(selectedRowIndex == rowIndex ? "table-primary" : "")">
+                                        <td class="text-center">
+                                            @if (SelectClicked.HasDelegate)
+                                            {
+                                                <button type="button" class="btn btn-primary btn-sm" 
+                                                        @onclick="() => SelectRow(rowIndex)">Select</button>
+                                            }
+                                            else
+                                            {
+                                                <div class="d-flex justify-content-center gap-1">
+                                                    <button type="button" class="btn btn-outline-primary btn-sm" 
+                                                            @onclick="() => EditRow(rowIndex)">Edit</button>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                            @onclick="() => DeleteRow(rowIndex)">Delete</button>
+                                                </div>
+                                            }
+                                        </td>
+                                        @foreach (DataColumn col in TableData.Columns)
+                                        {
+                                            <td>@TableData.Rows[i][col]</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted p-4">No data available</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+
+    [Parameter] public string TableName { get; set; } = "";
+    [Parameter] public string searchText{get; set;} = "";//Search Text is automatically inserted at the search input
+
+
+    //EventCallback for Buttons Clicked
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [Parameter] public EventCallback<DataRow> EditClicked { get; set; }
+    [Parameter] public EventCallback<DataRow> DeleteClicked {get; set; }
+    
+    [Parameter] public EventCallback<DataRow> SelectClicked {get; set; }
+    
+
+
+    //Element Refernce for AutoFocus
+    private ElementReference searchInput;
+
+    //Other Variables
+    private ClsDatabase db = new();
+    private DataTable? TableData;
+    private List<string> Columns = new();
+    private string PrimaryKeyColumn = "";
+    private bool IsLoading;
+    
+    private int selectedRowIndex = 0;//Row Index that is selected using keyboard
+
+    //Pagination
+    private int pageSize = 10;
+    private int totalPages = 0;
+    private int currentPage = 1;
+    private int totalRecords = 0;
+
+
+    //Runs when Parameters are changed, First Render, Parent State Changed
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(TableName))
+        {
+            await InitializeColumns();
+            await LoadData();
+        }
+    }
+
+    //Runs After Every Rerender, state change
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(firstRender){
+            await searchInput.FocusAsync();//Only runs on first render
+        }
+    }
+
+
+    //Getting List of Column Heads/Names so that It can be later used in LoadData
+    private async Task InitializeColumns()
+    {
+        if (Columns.Count == 0)
+        {
+            try
+            {
+                var dtCols = db.GetDataTable($@"
+                    SELECT COLUMN_NAME 
+                    FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_NAME = '{TableName}' 
+                    ORDER BY ORDINAL_POSITION");
+                
+                Columns = dtCols.Rows
+                            .Cast<DataRow>()
+                            .Select(r => r["COLUMN_NAME"].ToString()!)
+                            .ToList();
+                
+                PrimaryKeyColumn = Columns.FirstOrDefault() ?? "";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting columns: {ex.Message}");
+            }
+        }
+    }
+
+
+    //Load Data only on the current page
+    //And matching the pattern in the Search Box for all column entries Pattern : {%patter%} For all columns
+    //Uses ROW_NUMBER() sql window Function to add serial no. to the dataTable, So that it can be divided into pages
+    private async Task LoadData()
+    {
+        selectedRowIndex = 0;
+        IsLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Build WHERE clause for search
+            string whereClause = "";
+            if (!string.IsNullOrWhiteSpace(searchText) && Columns.Count > 0)
+            {
+                var pattern = $@"%{searchText}%";
+                whereClause = "WHERE " + string.Join(" OR ",
+                    Columns.Select(c => $"CAST({c} AS NVARCHAR(MAX)) LIKE '{pattern}'"));
+            }
+
+            // Get total count
+            string countQuery = $"SELECT COUNT(*) as cnt FROM {TableName} {whereClause}";
+            totalRecords = Convert.ToInt32(db.GetDataTable(countQuery).Rows[0]["cnt"]);
+            totalPages = totalRecords > 0 ? (int)Math.Ceiling((double)totalRecords / pageSize) : 1;
+
+            // Validate current page
+            if (currentPage > totalPages && totalPages > 0)
+            {
+                currentPage = totalPages;
+            }
+            else if (currentPage < 1)
+            {
+                currentPage = 1;
+            }
+
+            // Use ROW_NUMBER() for pagination
+            int startRow = (currentPage - 1) * pageSize + 1;
+            int endRow = currentPage * pageSize;
+            string columnList = string.Join(", ", Columns);
+            TableData = db.GetDataTable($@"
+                WITH RowNumCTE AS (
+                    SELECT 
+                        *,
+                        ROW_NUMBER() OVER (ORDER BY {PrimaryKeyColumn}) as row_num
+                    FROM 
+                        {TableName}
+                    {whereClause}
+                )
+                SELECT {columnList} FROM RowNumCTE 
+                WHERE row_num BETWEEN {startRow} AND {endRow}");
+            //TableData = db.GetDataTable("Select * From CallCloseMaster where EntryNo = 'A9999'");
+            //Console.WriteLine("Current Page " + currentPage);
+
+            // Print column headers first
+            Console.WriteLine("=== Column Headers ===");
+            foreach(DataColumn column in TableData.Columns)
+            {
+                Console.Write(column.ColumnName + " | ");
+            }
+            Console.WriteLine(); // New line after headers
+            Console.WriteLine(new string('-', 80)); // Separator line
+
+            // Print all row values
+            Console.WriteLine("=== Row Data ===");
+            foreach(DataRow row in TableData.Rows)
+            {
+                foreach(DataColumn column in TableData.Columns)
+                {
+                    Console.Write((row[column]?.ToString() ?? "NULL") + " | ");
+                }
+                Console.WriteLine(); // New line after each row
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+            TableData = null;
+            totalRecords = 0;
+            totalPages = 0;
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    //Navigation keys to navigate the table
+    //After Key Press blazor automatically calls StateHasChanged
+    private async Task HandleKeyPress(KeyboardEventArgs e){
+        switch(e.Key){
+            case "Escape":
+                await CloseModal();
+                break;
+            case "ArrowUp":
+
+                selectedRowIndex--;
+                if(selectedRowIndex<0)selectedRowIndex=0;
+                break;
+            case "ArrowDown":
+                selectedRowIndex++;
+                if(selectedRowIndex>pageSize)selectedRowIndex=pageSize-1;
+                break;
+            case "ArrowLeft":
+                await PreviousPage();
+                break;
+            case "ArrowRight":
+                await NextPage();
+                break;
+            case "Enter":
+                HandleEnter(selectedRowIndex);
+                break;
+            
+        }
+    }
+
+
+    //Enter key to select or edit the currently focused record
+    private void HandleEnter(int rowIndex){
+        if(SelectClicked.HasDelegate){
+            Console.WriteLine("Handling Enter Inside Select");
+            SelectRow(rowIndex);
+        }
+        else{
+            EditRow(rowIndex);
+        }
+    }
+
+    //Event Handlers for Action Buttons : Edit, Delete, Select
+    private void EditRow(int rowIndex)
+    {
+        EditClicked.InvokeAsync(TableData.Rows[rowIndex]);
+    }
+
+    private void SelectRow(int rowIndex){
+        SelectClicked.InvokeAsync(TableData.Rows[rowIndex]);
+    }
+
+    private async Task DeleteRow(int rowIndex)
+    {
+        if(DeleteClicked.HasDelegate){
+            await DeleteClicked.InvokeAsync(TableData.Rows[rowIndex]);
+        }
+        else if (TableData != null && rowIndex < TableData.Rows.Count)
+        {
+            var pkey = TableData.Rows[rowIndex][PrimaryKeyColumn]?.ToString();
+            if (!string.IsNullOrEmpty(pkey))
+            {
+                db.ExecuteQuery($"DELETE FROM {TableName} WHERE {PrimaryKeyColumn} = '{pkey}'");
+                await LoadData();
+            }
+        }
+    }
+
+    //Runs When there is input change in search bar
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchText = e.Value?.ToString() ?? "";
+        currentPage = 1; // Reset to first page on search
+        await LoadData();
+    }
+
+    //Clears the search bar on button press
+    private async Task ClearSearch()
+    {
+        searchText = "";
+        currentPage = 1;
+        await LoadData();
+    }
+
+    //Close The view
+    private async Task CloseModal()
+    {
+        await OnClosed.InvokeAsync();
+    }
+
+    // Pagination Methods
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadData();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadData();
+        }
+    }
+
+    private async Task OnPageChange(ChangeEventArgs e)//Runs when page number is changed
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newPage))
+        {
+            if (newPage >= 1 && newPage <= totalPages)
+            {
+                currentPage = newPage;
+                await LoadData();
+            }
+            else
+            {
+                // Reset to valid page if invalid input
+                currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+                StateHasChanged();
+            }
+        }
+        e.Value = currentPage;  
+    }
+
+}

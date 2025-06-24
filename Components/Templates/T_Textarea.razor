@@ -1,0 +1,119 @@
+@rendermode InteractiveServer
+
+<div class=@ColSize>
+    <div class="mb-3">
+        <label class="form-label">@Title</label>
+        <textarea class="form-control @(ReadOnly ? "readonly-input" : "") @(!isValid ? "is-invalid" : "")"
+                    placeholder="@Placeholder"
+                    @bind="@_internalValue"
+                    @oninput="OnInputChanged"
+                    readonly="@ReadOnly"
+                    disabled="@ReadOnly"
+                    rows="@Rows"
+                    maxlength="@(MaxLength < int.MaxValue ? MaxLength.ToString() : null)"
+                    style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")">
+        </textarea>
+        
+        @if  (_internalValue.Length == MaxLength)
+                {
+                    <small class="text-danger mt-1 d-block">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Maximum length is @MaxLength characters. Current: @_internalValue.Length
+                    </small>
+                }
+    </div>
+</div>
+
+<style>
+    .readonly-input {
+        background-color: #f8f9fa !important;
+        color: #6c757d !important;
+        cursor: not-allowed !important;
+        border-color: #dee2e6 !important;
+    }
+
+    .readonly-input:focus {
+        box-shadow: none !important;
+        border-color: #dee2e6 !important;
+    }
+
+    .readonly-input::placeholder {
+        color: #adb5bd !important;
+    }
+
+
+        /* Custom invalid styles with red shadow */
+    .form-control.is-invalid {
+        border-color: #dc3545 !important;
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+    }
+
+    .form-control.is-invalid:focus {
+        border-color: #dc3545 !important;
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+    }
+</style>
+
+@code {
+    private string _internalValue = string.Empty;
+
+    [Parameter] public string Value { get; set; } = string.Empty;//To Be Binded 
+    [Parameter] public string Title { get; set; } = string.Empty;
+
+
+    //Parameter for Input Box Properties and Styling
+    [Parameter] public string Type { get; set; } = "text";
+    [Parameter] public string Placeholder { get; set; } = "Enter value";
+    [Parameter] public string Min { get; set; } = string.Empty;
+    [Parameter] public string Max { get; set; } = string.Empty;
+    [Parameter] public string Step { get; set; } = string.Empty;
+    [Parameter] public string ColSize {get; set;} = "col-md-4";
+    [Parameter] public int Rows{get; set;} = 1;
+
+
+    //Parameters For Validataion
+    [Parameter] public int MaxLength {get; set;} = int.MaxValue;
+
+
+    //Integer Variables
+    [Parameter] public int Layout { get; set; } = 1; // Default layout
+
+    //Boolean Variables
+    [Parameter] public bool ReadOnly { get; set; } = false;
+    [Parameter] public bool isValid{get; set;} = true;
+    [Parameter] public bool Required{get; set;} = false;
+
+
+    //EventCallbacks and RenderFragments
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+
+
+
+    //Runs During (When Edit is clicked and variable is changed, it automatically updates the UI)
+    //Component Creation, Parameters Updated, StateHasChanged Called in Parent Component
+    protected override void OnParametersSet()
+    {
+        _internalValue = Value ?? string.Empty;
+    }
+
+    //Runs When Input is Changed In Input Area
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        if (!ReadOnly)
+        {
+            _internalValue = e.Value?.ToString() ?? string.Empty;
+            await ValueChanged.InvokeAsync(_internalValue);
+        }
+        Validate();
+    }
+
+
+    //Validate the Input
+    public void Validate(){
+        isValid = true;
+        if(_internalValue.Length > MaxLength || (_internalValue == "" && Required)){
+            isValid = false;
+        }
+    }
+}

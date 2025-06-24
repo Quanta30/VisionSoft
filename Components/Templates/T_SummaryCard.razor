@@ -1,0 +1,59 @@
+@* T_SummaryCard.razor - Enhanced Minimal Design *@
+<div class="mt-3">
+    <div class="d-flex justify-content-end">
+        <div class="summary-card @CardClass" style="@Style">
+            <div class="summary-header">
+                <h6 class="summary-title">@Title</h6>
+            </div>
+            <div class="summary-content @ItemClass">
+                @ChildContent
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .summary-card {
+        min-width: 400px;
+        max-width: 500px;
+        background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+
+    .summary-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        transform: translateY(-1px);
+    }
+
+    .summary-header {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 12px 16px 8px 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .summary-title {
+        margin: 0;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .summary-content {
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.6);
+    }
+</style>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Summary";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string CardClass { get; set; } = "";
+    [Parameter] public string ItemClass { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+}

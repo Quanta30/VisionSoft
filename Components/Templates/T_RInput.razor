@@ -1,0 +1,118 @@
+@using System.Data
+<div class="@ColSize">
+    <div class="mb-3">
+        <label class="form-label">@Title</label>
+        
+        <div class="input-group">
+            <input class="form-control"
+                placeholder="@Placeholder"
+                value="@_displayValue"
+                @oninput="OnInputChanged"
+                readonly="@ReadOnly" />
+            <button class="btn btn-outline-secondary" @onclick="OpenFrmViewHelper" @onclick:stopPropagation="true">?</button>
+        </div>
+    </div>
+</div>
+
+@if(isViewing){
+<FrmView TableName="@TableName" SelectClicked="HandleRowSelected" 
+              OnClosed="Closed"  searchText="@_displayValue"/>
+}
+
+@code {
+    private string _displayValue = string.Empty; // What user sees in the input
+    [Parameter] public string Value { get; set; } = string.Empty; // What gets bound (Primary Key)
+    private bool isViewing = false;
+
+    //String Parameters
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string TableName { get; set; } = string.Empty;
+    [Parameter] public string DisplayColumn { get; set; } = string.Empty;
+    [Parameter] public string PrimaryColumn { get; set; } = string.Empty;
+    [Parameter] public string Placeholder { get; set; } = "Enter value";
+    [Parameter] public string ColSize { get; set; } = "col-md-4";
+
+    //Boolean Parameter Variables
+    [Parameter] public bool ReadOnly { get; set; } = false;
+
+    //Event CallBacks
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    //Runs when parameters change - load display value based on bound Value
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Value) && !string.IsNullOrWhiteSpace(TableName) && !string.IsNullOrWhiteSpace(DisplayColumn))
+        {
+            await LoadDisplayValue();
+        }
+        else
+        {
+            _displayValue = string.Empty;
+        }
+    }
+
+    // Load the display value from database based on the bound Value (Primary Key)
+    private async Task LoadDisplayValue()
+    {
+        try
+        {
+            ClsDatabase db = new ClsDatabase();
+            string query = $"SELECT {DisplayColumn} FROM {TableName} WHERE {PrimaryColumn} = '{Value}'";
+            var result = db.GetDataTable(query);
+            
+            if (result.Rows.Count > 0)
+            {
+                _displayValue = result.Rows[0][DisplayColumn]?.ToString() ?? string.Empty;
+            }
+            else
+            {
+                _displayValue = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading display value: {ex.Message}");
+            _displayValue = string.Empty;
+        }
+    }
+
+    //Handle manual input changes (for search functionality)
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        if (!ReadOnly)
+        {
+            _displayValue = e.Value?.ToString() ?? string.Empty;
+            OpenFrmViewHelper();
+        }
+    }
+
+    //Handle Button Click: Open FrmView
+    private void OpenFrmViewHelper()
+    {
+        isViewing = true;
+        StateHasChanged();
+    }
+
+    //Handle row selection from FrmView
+    private async Task HandleRowSelected(DataRow selectedRow)
+    {
+        isViewing = false;
+        
+        // Set display value (what user sees)
+        _displayValue = selectedRow[DisplayColumn]?.ToString() ?? string.Empty;
+        
+        // Set actual bound value (Primary Key)
+        var newValue = selectedRow[PrimaryColumn]?.ToString() ?? string.Empty;
+        
+        // Update the bound Value and notify parent
+        await ValueChanged.InvokeAsync(newValue);
+        
+        StateHasChanged();
+    }
+
+    public void Closed()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+}

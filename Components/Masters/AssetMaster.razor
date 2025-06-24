@@ -1,0 +1,186 @@
+@page "/assetmaster"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer 
+
+<T_Msg @ref="Msg" />
+@if (isViewing)
+{
+    <FrmView TableName="AssetMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+}
+
+<T_Frm FormName="Asset Master">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Asset Code *" ReadOnly="true" @bind-Value="@model.dict["AssetCode"]" ColSize="col-md-4" />
+            <T_Input Title="Asset Name *" @bind-Value="@model.dict["AssetName"]" MaxLength="100" ColSize="col-md-4" />
+            <T_Input Title="Asset Number *" @bind-Value="@model.dict["AssetNumber"]" MaxLength="50" ColSize="col-md-4" />
+        </T_Row>
+        <T_Row>
+            <T_RInput Title="Department" TableName="DepartmentMaster" DisplayColumn="DepartmentName" PrimaryColumn="DepartmentCode"
+                      @bind-Value="@model.dict["DepartmentCode"]" ColSize="col-md-6" />
+            <T_RInput Title="Asset Type" TableName="AssetTypeMaster" DisplayColumn="AssetTypeName" PrimaryColumn="AssetTypeCode"
+                      @bind-Value="@model.dict["AssetTypeCode"]" ColSize="col-md-6" />
+        </T_Row>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+    </CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<AssetMaster> dotNetRef;
+
+    Model model = new Model("AssetMaster", "AssetCode");
+    private bool isViewing = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            Console.WriteLine("AssetMaster OnAfterRenderAsync executed");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            if (!ValidateForm()) return;
+
+            bool success = isEditing
+                ? model.Update()
+                : model.Save();
+
+            if (success)
+            {
+                await Msg.Success();
+
+                if (!isEditing)
+                {
+                    HandleClear();
+                }
+
+                isEditing = false;
+            }
+            else
+            {
+                await Msg.SaveError();
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.SaveError();
+            Console.WriteLine($"Error saving Asset record: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public void HandleClear()
+    {
+        model.Clear();
+        isEditing = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandlePrint()
+    {
+        Console.WriteLine("Print Asset Master");
+        // implement printing logic if needed
+        StateHasChanged();
+    }
+
+    public async Task HandleEdit(DataRow row)
+    {
+        try
+        {
+            isEditing = true;
+            isViewing = false;
+
+            foreach (var key in model.dict.Keys.ToList())
+            {
+                model.dict[key] = row[key]?.ToString() ?? model.dict[key];
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Asset record: {ex.Message}");
+        }
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        // Required field validations
+        if (string.IsNullOrWhiteSpace(model.dict["AssetCode"])) 
+            errors.Add("Asset Code is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["AssetName"])) 
+            errors.Add("Asset Name is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["AssetNumber"])) 
+            errors.Add("Asset Number is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["DepartmentCode"])) 
+            errors.Add("Department is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["AssetTypeCode"])) 
+            errors.Add("Asset Type is required");
+
+        // Length validations
+        if (!string.IsNullOrWhiteSpace(model.dict["AssetName"]) && model.dict["AssetName"].Length > 100)
+            errors.Add("Asset Name cannot exceed 100 characters");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["AssetNumber"]) && model.dict["AssetNumber"].Length > 50)
+            errors.Add("Asset Number cannot exceed 50 characters");
+
+        // Numeric validation for codes
+        if (!string.IsNullOrWhiteSpace(model.dict["AssetCode"]) && !int.TryParse(model.dict["AssetCode"], out _))
+            errors.Add("Asset Code must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["DepartmentCode"]) && !int.TryParse(model.dict["DepartmentCode"], out _))
+            errors.Add("Department Code must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["AssetTypeCode"]) && !int.TryParse(model.dict["AssetTypeCode"], out _))
+            errors.Add("Asset Type Code must be a valid number");
+
+        if (errors.Any())
+        {
+            var message = string.Join(", ", errors);
+            Msg.Show(message, "danger", "bi-exclamation-triangle");
+            return false;
+        }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+}

@@ -1,0 +1,99 @@
+@page "/Quotations"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer 
+
+
+<T_Msg @ref="Msg"/>
+@if(isViewing){
+    <FrmView TableName="AdjustmentHead" OnClosed="HandleClose" EditClicked="HandleEdit"
+        DeleteClicked="HandleDelete"/>
+}
+<T_Frm FormName="Quotation">
+<ChildContent>
+    <T_Row>
+        <T_Input Title="Quotation No *" ReadOnly=true @bind-Value="@model.dict["QuotationNo"]" ColSize="col-md-3"/>
+        <T_Input Title="Quotation Date" Type="date" @bind-Value="@model.dict["Quotationdate"]" ColSize="col-md-3"/>
+        <T_Input Title="Customer Name" @bind-Value="@model.dict["CustomerName"]" MaxLength=100 ColSize="col-md-3"/>
+        <T_Input Title="City" @bind-Value="@model.dict["City"]" MaxLength=50 ColSize="col-md-3"/>
+    </T_Row>
+    <T_Row>
+        <T_Input Title="Mobile No." @bind-Value="@model.dict["Mobileno"]" MaxLength="50" ColSize="col-md-3"/>
+        <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
+        <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-6"/>
+    </T_Row>
+    <T_Button Text="Add +" btnType="Save" Style=""/>
+    <T_TableView />
+    <T_SummaryCard >
+        <T_Input Title="Total Amount" Layout=2 ReadOnly @bind-Value="@model.dict["TotalAmount"]" Placeholder="-"/>
+        <T_Input Title="GST" Layout=2 ReadOnly @bind-Value="@model.dict["GstAmount"]" Placeholder="-"/>
+        <T_Input Title="Discount" Layout=2 @bind-Value="@model.dict["Discount"]"/>
+        <T_Input Title="Add/Less" Layout=2 @bind-Value="@model.dict["AddLess"]"/>
+        <T_Input Title="Rounding" Layout=2 @bind-Value="@model.dict["Rounding"]"/>
+        <T_Input Title="Net Amount" Layout=2 ReadOnly @bind-Value="@model.dict["NetAmount"]" Placeholder="-"/>
+    </T_SummaryCard>
+</ChildContent>
+
+<CardFooterContent>
+    <T_Button Text="Save" Style=""/>
+    <T_Button Text="Clear" Style=""/>
+    <T_Button Text="View" Style=""/>
+    <T_Button Text="Print" Style=""/>
+</CardFooterContent>
+
+
+</T_Frm>
+
+@code{
+    //ELEMENT REFERENCES
+    private T_Msg Msg;
+    public DotNetObjectReference<Quotations2> dotNetRef;
+
+    //Models
+    Model model = new Model("QuotationHead", "QuotationNo");
+    List<Model> details = new List<Model>();
+
+    //BooleanValues
+    private bool isViewing = false;
+    private bool isAddClicked = false;
+    private bool isEditing = false;
+
+
+
+
+
+
+
+    //Handle Methods
+    public void HandleSelect(DataRow row){
+
+    }
+
+    [JSInvokable]
+    public void HandleView(){
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HanldleAdd(){
+        isAddClicked = !isAddClicked;
+        StateHasChanged();
+    }
+
+    public void HandleEdit(DataRow row){
+        isEditing = true;
+        //Fetch
+    }
+
+    public void HandleClose(){
+        isAddClicked = false;
+        isViewing = false;
+    }
+
+    public void HandleDelete(DataRow row){
+
+    }
+
+
+}

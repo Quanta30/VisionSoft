@@ -9,6 +9,7 @@ public class Model
 
     string TableName = "";
     string PrimaryKeyColumn = "";
+    string PrimaryKeyPrefix = "";
     public Dictionary<string, string> dict = new Dictionary<string, string>();
 
 
@@ -17,7 +18,15 @@ public class Model
         TableName = TableNamePara;
         PrimaryKeyColumn = PrimaryKeyPara;
         InitiateKeys();
-        SetPrimarykey();
+        if(PrimaryKeyColumn != "")SetPrimaryKey();
+    }
+    public Model(String TableNamePara, String PrimaryKeyPara, String PrimaryKeyPrefixPara)
+    {
+        TableName = TableNamePara;
+        PrimaryKeyColumn = PrimaryKeyPara;
+        PrimaryKeyPrefix = PrimaryKeyPrefixPara;
+        InitiateKeys();
+        if(PrimaryKeyColumn != "")SetPrimaryKey(PrimaryKeyPrefix);
     }
 
 
@@ -48,7 +57,7 @@ public class Model
         }
         string Query = $@"
                 UPDATE {TableName}
-                SET Quantity = {setQuantity} 
+                SET {setQuantity} 
                 WHERE {PrimaryKeyColumn}='{dict[PrimaryKeyColumn]}'";
 
         return db.ExecuteQuery(Query);
@@ -68,7 +77,7 @@ public class Model
     public void InitiateKeys()
     {
         //Console.WriteLine("Here2");
-        String Query = $@"SELECT COLUMN_NAME 
+        String Query = $@"SELECT COLUMN_NAME,DATA_TYPE 
                         FROM INFORMATION_SCHEMA.COLUMNS 
                         WHERE TABLE_NAME = '{TableName}'";
 
@@ -77,6 +86,41 @@ public class Model
         {
             //Console.WriteLine(row["COLUMN_NAME"]);
             dict[row["COLUMN_NAME"].ToString()] = "";
+            string columnName = row["COLUMN_NAME"].ToString();
+            string dataType = row["DATA_TYPE"].ToString().ToLower();
+
+            // INITIALIZE WITH APPROPRIATE VALUE FOR TESTING PURPOSE : TO BE REMOVED
+            //TO BE REMOVED : DATA_TYPE FROM THE QUERY, string dataType, SwitchCase
+            switch (dataType)
+            {
+                case "int":
+                case "bigint":
+                case "smallint":
+                case "tinyint":
+                    dict[columnName] = "1";
+                    break;
+                case "float":
+                case "real":
+                case "decimal":
+                case "numeric":
+                case "money":
+                case "smallmoney":
+                    dict[columnName] = "1.1";
+                    break;
+                case "bit":
+                    dict[columnName] = "false";
+                    break;
+                case "datetime":
+                case "datetime2":
+                case "smalldatetime":
+                case "date":
+                case "time":
+                    dict[columnName] = DateTime.Now.ToString("yyyy-MM-dd");
+                    break;
+                default: // varchar, nvarchar, char, nchar, text, ntext, etc.
+                    dict[columnName] = "DemoValue";
+                    break;
+            }
         }
     }
 
@@ -105,9 +149,21 @@ public class Model
 
 
     //AutoGenerate The Primary Key Code with Max
-    public void SetPrimarykey()
+    public void SetPrimaryKey()
     {
         dict[PrimaryKeyColumn] = db.GenerateNextNo(TableName, PrimaryKeyColumn);
+    }
+
+    //AutoGenerate The Primary Key Code Having Prefix
+    public void SetPrimaryKey(string prefix){
+        string query = $@"
+            SELECT MAX(CAST(SUBSTRING({PrimaryKeyColumn}, {PrimaryKeyPrefix.Length + 1}, LEN({PrimaryKeyColumn})) AS INT))
+            FROM {TableName}
+            WHERE {PrimaryKeyColumn} LIKE '{PrimaryKeyPrefix}%'";
+
+        string maxVal = db.GetScalar(query);
+        int nextNumber = int.Parse(maxVal) + 1;
+        dict[PrimaryKeyColumn] = prefix + nextNumber.ToString();
     }
 
 
@@ -118,7 +174,10 @@ public class Model
         {
             dict[key] = "";
         }
-        SetPrimarykey(); // Reset primary key
+        if(PrimaryKeyColumn != ""){
+            if(PrimaryKeyPrefix == "")SetPrimaryKey(); // Reset primary key
+            else SetPrimaryKey(PrimaryKeyPrefix);
+        }
     }
 
 

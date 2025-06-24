@@ -1,0 +1,78 @@
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @alertClass alert-dismissible fade show notification-toast" role="alert">
+        <i class="bi @alertIcon me-2"></i>
+        @message
+        <button type="button" class="btn-close" @onclick="Clear"></button>
+    </div>
+}
+
+<style>
+    .notification-toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 400px;
+        margin: 0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border: none;
+    }
+    
+    .notification-toast.fade.show {
+        animation: slideInRight 0.3s ease-out;
+    }
+    
+    @@keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+</style>
+
+@code{
+    public string message = "";
+    public string alertClass = "";
+    public string alertIcon = "";
+
+
+    //Clear Messages
+    public void Clear(){
+        message="";
+        alertClass="";
+        alertIcon="";
+        StateHasChanged();
+    }
+
+
+    //Show The Message With Type-(success, danger), icon bootstrap
+    public void Show(string msg, string type, string icon)
+    {
+        message = msg;
+        alertClass = $"alert-{type}";
+        alertIcon = icon;
+        StateHasChanged();
+    }
+
+
+    //Success Message Notification after saving
+    public async Task Success(){
+        Show("Record saved successfully!", "success", "bi-check-circle");
+        await Task.Delay(3000);  // Show longer for success
+        Clear();
+    }
+
+    //Error Message Notification after saving
+    public async Task SaveError(){
+        Show("Error saving company record. Please try again.", "danger", "bi-exclamation-triangle");
+        await Task.Delay(5000);  // Show longer for errors
+        Clear();
+    }
+
+}

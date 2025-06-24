@@ -1,0 +1,161 @@
+@page "/assettypemaster"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer 
+
+<T_Msg @ref="Msg" />
+@if (isViewing)
+{
+    <FrmView TableName="AssetTypeMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+}
+
+<T_Frm FormName="Asset Type Master">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Asset Type Code *" ReadOnly="true" @bind-Value="@model.dict["AssetTypeCode"]" ColSize="col-md-6" />
+            <T_Input Title="Asset Type Name *" @bind-Value="@model.dict["AssetTypeName"]" MaxLength="100" ColSize="col-md-6" />
+        </T_Row>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+    </CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<AssetTypeMaster> dotNetRef;
+
+    Model model = new Model("AssetTypeMaster", "AssetTypeCode");
+    private bool isViewing = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            Console.WriteLine("AssetTypeMaster OnAfterRenderAsync executed");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            if (!ValidateForm()) return;
+
+            bool success = isEditing
+                ? model.Update()
+                : model.Save();
+
+            if (success)
+            {
+                await Msg.Success();
+
+                if (!isEditing)
+                {
+                    HandleClear();
+                }
+
+                isEditing = false;
+            }
+            else
+            {
+                await Msg.SaveError();
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.SaveError();
+            Console.WriteLine($"Error saving Asset Type record: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public void HandleClear()
+    {
+        model.Clear();
+        isEditing = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandlePrint()
+    {
+        Console.WriteLine("Print Asset Type Master");
+        // implement printing logic if needed
+        StateHasChanged();
+    }
+
+    public async Task HandleEdit(DataRow row)
+    {
+        try
+        {
+            isEditing = true;
+            isViewing = false;
+
+            foreach (var key in model.dict.Keys.ToList())
+            {
+                model.dict[key] = row[key]?.ToString() ?? model.dict[key];
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Asset Type record: {ex.Message}");
+        }
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        // Required field validations
+        if (string.IsNullOrWhiteSpace(model.dict["AssetTypeCode"])) 
+            errors.Add("Asset Type Code is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["AssetTypeName"])) 
+            errors.Add("Asset Type Name is required");
+
+        // Length validation
+        if (!string.IsNullOrWhiteSpace(model.dict["AssetTypeName"]) && model.dict["AssetTypeName"].Length > 100)
+            errors.Add("Asset Type Name cannot exceed 100 characters");
+
+        // Numeric validation for code
+        if (!string.IsNullOrWhiteSpace(model.dict["AssetTypeCode"]) && !int.TryParse(model.dict["AssetTypeCode"], out _))
+            errors.Add("Asset Type Code must be a valid number");
+
+        if (errors.Any())
+        {
+            var message = string.Join(", ", errors);
+            Msg.Show(message, "danger", "bi-exclamation-triangle");
+            return false;
+        }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+}

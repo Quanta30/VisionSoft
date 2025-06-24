@@ -1,0 +1,227 @@
+@page "/callclosemaster"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer 
+
+<T_Msg @ref="Msg" />
+@if (isViewing)
+{
+    <FrmView TableName="CallCloseMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+}
+
+<T_Frm FormName="Call Close Master">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Entry No *" ReadOnly="true" @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-4" />
+            <T_Input Title="Entry Date" Type="date" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-4" />
+            <T_Input Title="Mode of Pay *" @bind-Value="@model.dict["ModeOfPay"]" MaxLength="50" ColSize="col-md-4" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Token ID *" @bind-Value="@model.dict["TokenID"]" MaxLength="50" ColSize="col-md-4" />
+            <T_Input Title="Completion Date" Type="date" @bind-Value="@model.dict["CompletionDate"]" ColSize="col-md-4" />
+            <T_Input Title="Completion Time" Type="time" @bind-Value="@model.dict["CompletionTime"]" ColSize="col-md-4" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Amount *" Type="number" Step="0.01" @bind-Value="@model.dict["Amount"]" ColSize="col-md-4" />
+            <T_Input Title="Discount" Type="number" Step="0.01" @bind-Value="@model.dict["Discount"]" ColSize="col-md-4" />
+            <T_Input Title="Net Amount *" Type="number" Step="0.01" @bind-Value="@model.dict["NetAmount"]" ColSize="col-md-4" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Narration" @bind-Value="@model.dict["Narration"]" MaxLength="500" ColSize="col-md-6" />
+            <T_Input Title="Closed By" @bind-Value="@model.dict["ClosedBy"]" MaxLength="50" ColSize="col-md-6" />
+        </T_Row>
+        <T_Row>
+            <T_Checkbox Title="Consider In Accounts" @bind-Value="@model.dict["ConsiderInAccounts"]" />
+            <T_Input Title="Cancelled" Type="number" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-4" />
+        </T_Row>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+    </CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<CallCloseMaster> dotNetRef;
+
+    Model model = new Model("CallCloseMaster", "EntryNo", "A");
+    private bool isViewing = false;
+    private bool isEditing = false;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            Console.WriteLine("CallCloseMaster OnAfterRenderAsync executed");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+            
+            // Initialize dates
+            if (string.IsNullOrEmpty(model.dict["EntryDate"]))
+                model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        }
+    }
+
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            
+            if (!ValidateForm()) return;
+
+            bool success = isEditing
+                ? model.Update()
+                : model.Save();
+
+            if (success)
+            {
+                await Msg.Success();
+
+                if (!isEditing)
+                {
+                    HandleClear();
+                }
+
+                isEditing = false;
+            }
+            else
+            {
+                await Msg.SaveError();
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.SaveError();
+            Console.WriteLine($"Error saving Call Close record: {ex.Message}");
+        }
+        HandleClear();
+    }
+
+    [JSInvokable]
+    public void HandleClear()
+    {
+        model.Clear();
+        isEditing = false;
+        
+        // Reset entry date to today
+        model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandlePrint()
+    {
+        Console.WriteLine("Print Call Close Master");
+        // implement printing logic if needed
+        StateHasChanged();
+    }
+
+    public async Task HandleEdit(DataRow row)
+    {
+        try
+        {
+            isEditing = true;
+            isViewing = false;
+            @* foreach(DataColumn column in row.Table.Columns){
+                Console.WriteLine($"{column.ColumnName}: {row[column]?.ToString() ?? "NULL"}");
+            }    *@
+            model.Populate(row);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Call Close record: {ex.Message}");
+        }
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        // Required field validations
+        if (string.IsNullOrWhiteSpace(model.dict["EntryNo"])) 
+            errors.Add("Entry No is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["ModeOfPay"])) 
+            errors.Add("Mode of Pay is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["TokenID"])) 
+            errors.Add("Token ID is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["Amount"])) 
+            errors.Add("Amount is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["NetAmount"])) 
+            errors.Add("Net Amount is required");
+
+        // Length validations
+        if (!string.IsNullOrWhiteSpace(model.dict["EntryNo"]) && model.dict["EntryNo"].Length > 50)
+            errors.Add("Entry No cannot exceed 50 characters");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["ModeOfPay"]) && model.dict["ModeOfPay"].Length > 50)
+            errors.Add("Mode of Pay cannot exceed 50 characters");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["TokenID"]) && model.dict["TokenID"].Length > 50)
+            errors.Add("Token ID cannot exceed 50 characters");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["Narration"]) && model.dict["Narration"].Length > 500)
+            errors.Add("Narration cannot exceed 500 characters");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["ClosedBy"]) && model.dict["ClosedBy"].Length > 50)
+            errors.Add("Closed By cannot exceed 50 characters");
+
+        // Numeric validations
+        if (!string.IsNullOrWhiteSpace(model.dict["Amount"]) && !double.TryParse(model.dict["Amount"], out _))
+            errors.Add("Amount must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["Discount"]) && !double.TryParse(model.dict["Discount"], out _))
+            errors.Add("Discount must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["NetAmount"]) && !double.TryParse(model.dict["NetAmount"], out _))
+            errors.Add("Net Amount must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["Cancelled"]) && !int.TryParse(model.dict["Cancelled"], out _))
+            errors.Add("Cancelled must be a valid number");
+
+        // Date validations
+        if (!string.IsNullOrWhiteSpace(model.dict["EntryDate"]) && !DateTime.TryParse(model.dict["EntryDate"], out _))
+            errors.Add("Entry Date must be a valid date");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["CompletionDate"]) && !DateTime.TryParse(model.dict["CompletionDate"], out _))
+            errors.Add("Completion Date must be a valid date");
+
+        if (errors.Any())
+        {
+            var message = string.Join(", ", errors);
+            Msg.Show(message, "danger", "bi-exclamation-triangle");
+            return false;
+        }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+}
