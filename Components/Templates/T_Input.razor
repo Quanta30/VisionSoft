@@ -57,6 +57,22 @@ else if(Layout == 2){
         </div>
     </div>
 }
+else if(Layout == 3){
+    // Inline layout for table cells
+    <input type="@Type"
+           class="form-control form-control-sm @(ReadOnly ? "readonly-input" : "")"
+           value="@_internalValue"
+           @oninput="OnInputChanged"
+           placeholder="@Placeholder"
+           step="@Step"
+           min="@Min"
+           max="@Max" 
+           readonly="@ReadOnly"
+           disabled="@ReadOnly"
+           style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
+           maxlength="@(MaxLength > 0 && MaxLength < int.MaxValue ? MaxLength.ToString() : null)"
+           />
+}
 
 <style>
     .readonly-input {
@@ -119,6 +135,7 @@ else if(Layout == 2){
 
     //EventCallbacks and RenderFragments
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public EventCallback<string> ChangeFunction{get; set;}
     [Parameter] public RenderFragment? DisplayContent { get; set; }
 
 
@@ -137,6 +154,9 @@ else if(Layout == 2){
         {
             _internalValue = e.Value?.ToString() ?? string.Empty;
             await ValueChanged.InvokeAsync(_internalValue);
+            if(ChangeFunction.HasDelegate){
+                await ChangeFunction.InvokeAsync(_internalValue);
+            }
         }
         Validate();
     }

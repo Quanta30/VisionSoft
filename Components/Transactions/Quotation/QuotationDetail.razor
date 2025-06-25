@@ -1,0 +1,193 @@
+@* T_DetailRow.razor *@
+@using System.Data
+@namespace VisionSoft.Components.Transactions.Quotation
+@rendermode InteractiveServer
+<tr>
+    <td>
+        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
+    </td>
+    <td>
+        @SerialNo
+    </td>
+    <td>
+        <T_RInput Title="" Layout="3" TableName="ProductMaster" PrimaryColumn="ProductCode" DisplayColumn="ProductName" Value="@model.dict["ProductCode"]" ValueChanged="OnProductCodeChanged"/>
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>     
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>  
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>  
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Free"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>  
+    </td>
+    <td>
+        <div style="width:70px">
+            <select class="form-control form-control-sm" @bind="@GstCategoryCode">
+                <option value="1">0% GST</option>
+                <option value="2">5% GST</option>
+                <option value="3">12% GST</option>
+                <option value="4">18% GST</option>
+                <option value="5">28% GST</option>
+            </select>
+      </div>
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" Placeholder="" Type="number" Value="@taxableAmount.ToString()" ChangeFunction="OnChange"/>
+      </div>  
+    </td>
+    <td>
+        @(gst/2)
+    </td>
+    <td>
+        @gst
+    </td>
+    <td>
+        @netAmount
+    </td>
+    
+
+    
+</tr>
+
+@* QuotationDetails	QuotationNo
+QuotationDetails	SrNo
+QuotationDetails	ProductCode
+QuotationDetails	Rate
+QuotationDetails	Quantity
+QuotationDetails	Discount
+QuotationDetails	Free *@
+
+@code {
+    [Parameter] public EventCallback OnRemove{get; set;}
+    [Parameter] public Model model{get; set;}//this is reference to the object
+
+    [Parameter] public int SerialNo {get; set;}
+    [Parameter] public int QuotationNo {get; set;}
+    
+
+    public float gst=21;
+    public float taxableAmount=10;
+    public float netAmount=0;
+
+    public int GstCategoryCode = 2;
+    public float gstPercent = 0;
+
+    private ClsDatabase db = new ClsDatabase(); // Add database instance
+
+    // Add this method to handle product changes
+    private void OnProductCodeChanged(string pcode)
+    {   
+        model.dict["ProductCode"] = pcode;
+        UpdateGstCategoryFromProduct();
+        Calculate();
+        StateHasChanged();
+    }
+
+    // Method to get GST category from database
+    private void UpdateGstCategoryFromProduct()
+    {
+        if (!string.IsNullOrEmpty(model.dict["ProductCode"]))
+        {
+            try
+            {
+                string query = $"SELECT GstCategoryCode FROM ProductMaster WHERE ProductCode = '{model.dict["ProductCode"]}'";
+                object result = db.GetScalar(query);
+                
+                if (result != null && int.TryParse(result.ToString(), out int gstCode))
+                {
+                    GstCategoryCode = gstCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting GST category: {ex.Message}");
+                // Keep default GST category if error occurs
+            }
+        }
+    }
+
+    //Handle Functions
+    public async Task HandleRemove(){
+        await OnRemove.InvokeAsync(model);
+        //In the parent function It should be handled like this:
+        //models.Remove(model);
+    }
+
+    public void HandleSave(){
+        model.dict["QuotationNo"] = QuotationNo.ToString();
+        model.dict["SrNo"] = SerialNo.ToString();
+        string percent = gstPercent.ToString();
+        model.dict[$"GSTAPP{percent}AMOUNT"] = taxableAmount.ToString();
+        model.dict[$"CGST{percent}AMOUNT"] = (gst/2).ToString();
+        model.dict[$"SGST{percent}AMOUNT"] = (gst/2).ToString();
+        model.Save();
+
+        model.Clear();
+    }
+
+    private void Calculate(){
+        // Get GST percentage
+        gstPercent = GstCategoryCode switch
+        {
+            1 => 0f,   // 0% GST
+            2 => 5f,   // 5% GST  
+            3 => 12f,  // 12% GST
+            4 => 18f,  // 18% GST
+            5 => 28f,  // 28% GST
+            _ => 0f
+        };
+
+        // Calculate taxable amount properly
+        if (float.TryParse(model.dict["Rate"], out float rate) &&
+            float.TryParse(model.dict["Quantity"], out float quantity))
+        {
+            float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0f;
+            float free = float.TryParse(model.dict["Free"], out float f) ? f : 0f;
+            
+            // Calculate taxable amount: (Rate × Quantity) - Discount - Free
+            taxableAmount = (rate * quantity) - discount - free;
+            
+            // Calculate GST
+            gst = (taxableAmount * gstPercent) / 100f;
+            
+            // Calculate net amount
+            netAmount = taxableAmount + gst;
+        }
+        else
+        {
+            taxableAmount = 0f;
+            gst = 0f;
+            netAmount = 0f;
+        }
+    }
+
+    public void OnChange(string value){
+        Calculate();
+    }
+
+    // Initialize calculations when component loads
+    protected override void OnInitialized()
+    {
+        // Initialize default values if empty
+        if (string.IsNullOrEmpty(model.dict["Rate"])) model.dict["Rate"] = "0";
+        if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
+        if (string.IsNullOrEmpty(model.dict["Discount"])) model.dict["Discount"] = "0";
+        if (string.IsNullOrEmpty(model.dict["Free"])) model.dict["Free"] = "0";
+        
+        UpdateGstCategoryFromProduct(); // Get GST category from existing product
+        Calculate(); // Calculate initial values
+    }
+}

@@ -1,8 +1,16 @@
 @page "/Quotations"
 @inject IJSRuntime JS
 @using System.Data
+@using VisionSoft.Components.Transactions.Quotation
 @rendermode InteractiveServer 
 
+@* QuotationDetails	QuotationNo
+QuotationDetails	SrNo
+QuotationDetails	ProductCode
+QuotationDetails	Rate
+QuotationDetails	Quantity
+QuotationDetails	Discount
+QuotationDetails	Free *@
 
 <T_Msg @ref="Msg"/>
 @if(isViewing){
@@ -22,8 +30,28 @@
         <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
         <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-6"/>
     </T_Row>
-    <T_Button Text="Add +" btnType="Save" Style=""/>
-    <T_TableView />
+    <TableView TableName="Quotation Details">
+        <TableHeads>
+            <th>Action</th>
+            <th>Sr. No.</th>
+            <th>Product</th>
+            <th>Rate</th>
+            <th>Quantity</th>
+            <th>Discount</th>
+            <th>Free</th>
+            <th>GST%</th>
+            <th>Taxable Amount</th>
+            <th>CGST/SGST</th>
+            <th>Total GST</th>
+            <th>Net Amount</th>
+        </TableHeads>
+        <TableRows>
+            <QuotationDetail model=@model2/>
+        </TableRows>
+        <TableFooter>
+            
+        </TableFooter>
+    </TableView>
     <T_SummaryCard >
         <T_Input Title="Total Amount" Layout=2 ReadOnly @bind-Value="@model.dict["TotalAmount"]" Placeholder="-"/>
         <T_Input Title="GST" Layout=2 ReadOnly @bind-Value="@model.dict["GstAmount"]" Placeholder="-"/>
@@ -51,6 +79,7 @@
 
     //Models
     Model model = new Model("QuotationHead", "QuotationNo");
+    Model model2 = new Model("QuotationDetails", "");
     List<Model> details = new List<Model>();
 
     //BooleanValues
@@ -95,5 +124,53 @@
 
     }
 
+
+    // Add calculation method
+    private void CalculateTotals()
+    {
+        decimal totalAmount = 0;
+        decimal gstAmount = 0;
+
+        foreach (var detail in details)
+        {
+            if (decimal.TryParse(detail.dict["Rate"], out decimal rate) &&
+                decimal.TryParse(detail.dict["Quantity"], out decimal qty))
+            {
+                decimal amount = rate * qty;
+                if (decimal.TryParse(detail.dict["Discount"], out decimal discount))
+                    amount -= discount;
+
+                totalAmount += amount;
+
+                // Calculate GST based on GstCode
+                if (int.TryParse(detail.dict["GstCode"], out int gstCode))
+                {
+                    decimal gstPercentage = gstCode switch
+                    {
+                        1 => 0,
+                        2 => 5,
+                        3 => 12,
+                        4 => 18,
+                        5 => 28,
+                        _ => 0
+                    };
+                    gstAmount += amount * (gstPercentage / 100);
+                }
+            }
+        }
+
+        model.dict["TotalAmount"] = totalAmount.ToString("F2");
+        model.dict["GstAmount"] = gstAmount.ToString("F2");
+        
+        // Calculate net amount
+        decimal additionalDiscount = decimal.TryParse(model.dict["Discount"], out decimal d) ? d : 0;
+        decimal addLess = decimal.TryParse(model.dict["AddLess"], out decimal al) ? al : 0;
+        decimal rounding = decimal.TryParse(model.dict["Rounding"], out decimal r) ? r : 0;
+        
+        decimal netAmount = totalAmount + gstAmount - additionalDiscount + addLess + rounding;
+        model.dict["NetAmount"] = netAmount.ToString("F2");
+
+        StateHasChanged();
+    }
 
 }

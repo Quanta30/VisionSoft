@@ -1,0 +1,53 @@
+@using System.Data
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">@TableName</h6>
+        <button class="btn btn-sm btn-primary" @onclick="HandleAdd">
+            <i class="bi bi-plus"></i> Add Item
+        </button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 400px;">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        @* <th style="width: 50px;">Action</th>
+                        <th style="width: 60px;">Sr No</th>
+                        <th style="width: 200px;">Product</th>
+                        <th style="width: 100px;">Rate</th>
+                        <th style="width: 100px;">Qty</th>
+                        <th style="width: 100px;">Discount</th>
+                        <th style="width: 120px;">GST Category</th>
+                        <th style="width: 100px;" class="text-end">Amount</th>
+                        <th style="width: 100px;" class="text-end">GST Amt</th>
+                        <th style="width: 100px;" class="text-end">Net Amt</th> *@
+                        @TableHeads
+                    </tr>
+                </thead>
+                <tbody>
+                        @TableRows
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        <div class="row">
+            <div class="col-md-8"></div>
+            <div class="col-md-4">
+                <small class="text-muted">
+                    @TableFooter
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code{
+    [Parameter] public string? TableName{get; set;}
+    [Parameter] public EventCallback HandleAdd {get; set;}
+    [Parameter] public RenderFragment? TableHeads{get; set;}
+    [Parameter] public RenderFragment? TableRows{get; set;}
+    [Parameter] public RenderFragment? TableFooter{get; set;}
+}

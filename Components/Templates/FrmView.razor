@@ -265,24 +265,24 @@
             //Console.WriteLine("Current Page " + currentPage);
 
             // Print column headers first
-            Console.WriteLine("=== Column Headers ===");
-            foreach(DataColumn column in TableData.Columns)
-            {
-                Console.Write(column.ColumnName + " | ");
-            }
-            Console.WriteLine(); // New line after headers
-            Console.WriteLine(new string('-', 80)); // Separator line
+            // Console.WriteLine("=== Column Headers ===");
+            // foreach(DataColumn column in TableData.Columns)
+            // {
+            //     Console.Write(column.ColumnName + " | ");
+            // }
+            // Console.WriteLine(); New line after headers
+            // Console.WriteLine(new string('-', 80)); Separator line
 
             // Print all row values
-            Console.WriteLine("=== Row Data ===");
-            foreach(DataRow row in TableData.Rows)
-            {
-                foreach(DataColumn column in TableData.Columns)
-                {
-                    Console.Write((row[column]?.ToString() ?? "NULL") + " | ");
-                }
-                Console.WriteLine(); // New line after each row
-            }
+            // Console.WriteLine("=== Row Data ===");
+            // foreach(DataRow row in TableData.Rows)
+            // {
+            //     foreach(DataColumn column in TableData.Columns)
+            //     {
+            //         Console.Write((row[column]?.ToString() ?? "NULL") + " | ");
+            //     }
+            //     Console.WriteLine(); New line after each row
+            // }
         }
         catch (Exception ex)
         {

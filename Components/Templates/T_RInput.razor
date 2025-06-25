@@ -1,18 +1,31 @@
 @using System.Data
-<div class="@ColSize">
-    <div class="mb-3">
-        <label class="form-label">@Title</label>
-        
-        <div class="input-group">
-            <input class="form-control"
-                placeholder="@Placeholder"
-                value="@_displayValue"
-                @oninput="OnInputChanged"
-                readonly="@ReadOnly" />
-            <button class="btn btn-outline-secondary" @onclick="OpenFrmViewHelper" @onclick:stopPropagation="true">?</button>
+@if(Layout == 3){
+    // Inline layout for table cells
+    <div class="input-group input-group-sm" style="width:">
+        <input class="form-control"
+            placeholder="@Placeholder"
+            value="@_displayValue"
+            @oninput="OnInputChanged"
+            readonly="@ReadOnly" />
+        <button class="btn btn-outline-secondary" @onclick="OpenFrmViewHelper" @onclick:stopPropagation="true">?</button>
+    </div>
+}
+else if(Layout == 1){
+    <div class="@ColSize">
+        <div class="mb-3">
+            <label class="form-label">@Title</label>
+            
+            <div class="input-group">
+                <input class="form-control"
+                    placeholder="@Placeholder"
+                    value="@_displayValue"
+                    @oninput="OnInputChanged"
+                    readonly="@ReadOnly" />
+                <button class="btn btn-outline-secondary" @onclick="OpenFrmViewHelper" @onclick:stopPropagation="true">?</button>
+            </div>
         </div>
     </div>
-</div>
+}
 
 @if(isViewing){
 <FrmView TableName="@TableName" SelectClicked="HandleRowSelected" 
@@ -23,7 +36,7 @@
     private string _displayValue = string.Empty; // What user sees in the input
     [Parameter] public string Value { get; set; } = string.Empty; // What gets bound (Primary Key)
     private bool isViewing = false;
-
+    [Parameter] public int Layout { get; set; } = 1;
     //String Parameters
     [Parameter] public string Title { get; set; } = string.Empty;
     [Parameter] public string TableName { get; set; } = string.Empty;
@@ -88,7 +101,8 @@
 
     //Handle Button Click: Open FrmView
     private void OpenFrmViewHelper()
-    {
+    {   
+        Console.WriteLine("Opening Frm View Helper");
         isViewing = true;
         StateHasChanged();
     }
