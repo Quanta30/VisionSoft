@@ -11,6 +11,7 @@ public class Model
     string PrimaryKeyColumn = "";
     string PrimaryKeyPrefix = "";
     public Dictionary<string, string> dict = new Dictionary<string, string>();
+    public Dictionary<string, string> dict2 = new Dictionary<string, string>();
 
 
     public Model(String TableNamePara, String PrimaryKeyPara)
@@ -18,7 +19,7 @@ public class Model
         TableName = TableNamePara;
         PrimaryKeyColumn = PrimaryKeyPara;
         InitiateKeys();
-        if(PrimaryKeyColumn != "")SetPrimaryKey();
+        if (PrimaryKeyColumn != "") SetPrimaryKey();
     }
     public Model(String TableNamePara, String PrimaryKeyPara, String PrimaryKeyPrefixPara)
     {
@@ -26,7 +27,7 @@ public class Model
         PrimaryKeyColumn = PrimaryKeyPara;
         PrimaryKeyPrefix = PrimaryKeyPrefixPara;
         InitiateKeys();
-        if(PrimaryKeyColumn != "")SetPrimaryKey(PrimaryKeyPrefix);
+        if (PrimaryKeyColumn != "") SetPrimaryKey(PrimaryKeyPrefix);
     }
 
 
@@ -97,7 +98,7 @@ public class Model
                 case "bigint":
                 case "smallint":
                 case "tinyint":
-                    dict[columnName] = "1";
+                    dict[columnName] = "0";
                     break;
                 case "float":
                 case "real":
@@ -105,7 +106,7 @@ public class Model
                 case "numeric":
                 case "money":
                 case "smallmoney":
-                    dict[columnName] = "1.1";
+                    dict[columnName] = "0.0";
                     break;
                 case "bit":
                     dict[columnName] = "false";
@@ -133,7 +134,7 @@ public class Model
             {
                 dict[column.ColumnName] = row[column.ColumnName]?.ToString() ?? "";
             }
-            else throw new Exception($"Column '{column.ColumnName}' does not exist. Populate Error");        
+            else throw new Exception($"Column '{column.ColumnName}' does not exist. Populate Error");
         }
     }
 
@@ -155,7 +156,8 @@ public class Model
     }
 
     //AutoGenerate The Primary Key Code Having Prefix
-    public void SetPrimaryKey(string prefix){
+    public void SetPrimaryKey(string prefix)
+    {
         string query = $@"
             SELECT MAX(CAST(SUBSTRING({PrimaryKeyColumn}, {PrimaryKeyPrefix.Length + 1}, LEN({PrimaryKeyColumn})) AS INT))
             FROM {TableName}
@@ -174,8 +176,9 @@ public class Model
         {
             dict[key] = "";
         }
-        if(PrimaryKeyColumn != ""){
-            if(PrimaryKeyPrefix == "")SetPrimaryKey(); // Reset primary key
+        if (PrimaryKeyColumn != "")
+        {
+            if (PrimaryKeyPrefix == "") SetPrimaryKey(); // Reset primary key
             else SetPrimaryKey(PrimaryKeyPrefix);
         }
     }
@@ -213,6 +216,8 @@ public class Model
         }
         return column.ToString();
     }
+    
+    
 
 
 }

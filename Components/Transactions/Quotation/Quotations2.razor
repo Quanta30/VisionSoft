@@ -30,7 +30,7 @@ QuotationDetails	Free *@
         <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
         <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-6"/>
     </T_Row>
-    <TableView TableName="Quotation Details">
+    <TableView TableName="Quotation Details" HandleAdd="HandleAdd">
         <TableHeads>
             <th>Action</th>
             <th>Sr. No.</th>
@@ -46,7 +46,11 @@ QuotationDetails	Free *@
             <th>Net Amount</th>
         </TableHeads>
         <TableRows>
-            <QuotationDetail model=@model2/>
+            @for(int i = 0; i<details.Count; i++){
+                <QuotationDetail SerialNo=@(i+1) 
+                                QuotationNo=@Convert.ToInt32(model.dict["QuotationNo"]) 
+                                OnRemove="HandleRemove" model="@details[i]" /> 
+            }
         </TableRows>
         <TableFooter>
             
@@ -63,7 +67,7 @@ QuotationDetails	Free *@
 </ChildContent>
 
 <CardFooterContent>
-    <T_Button Text="Save" Style=""/>
+    <T_Button Text="Save" Style="" OnClick="HandleSave"/>
     <T_Button Text="Clear" Style=""/>
     <T_Button Text="View" Style=""/>
     <T_Button Text="Print" Style=""/>
@@ -76,11 +80,16 @@ QuotationDetails	Free *@
     //ELEMENT REFERENCES
     private T_Msg Msg;
     public DotNetObjectReference<Quotations2> dotNetRef;
-
+    
+   
     //Models
     Model model = new Model("QuotationHead", "QuotationNo");
-    Model model2 = new Model("QuotationDetails", "");
     List<Model> details = new List<Model>();
+   
+
+    //Count
+
+    public List<float> gsts = new List<float>();
 
     //BooleanValues
     private bool isViewing = false;
@@ -105,14 +114,27 @@ QuotationDetails	Free *@
     }
 
     [JSInvokable]
-    public void HanldleAdd(){
-        isAddClicked = !isAddClicked;
+    public void HandleAdd(){
+        Model detail = new Model("QuotationDetails", "");
+        details.Add(detail);
         StateHasChanged();
     }
 
     public void HandleEdit(DataRow row){
         isEditing = true;
         //Fetch
+    }
+
+    public void HandleSave(){
+        Console.WriteLine("Saving");
+        try{
+            model.Save();
+            foreach(Model detail in details)detail.Save();
+            Msg.Success();
+        }
+        catch(Exception e){
+            Msg.SaveError();
+        }
     }
 
     public void HandleClose(){
@@ -124,53 +146,49 @@ QuotationDetails	Free *@
 
     }
 
+    public void HandleRemove(int i){
+        Console.WriteLine($"Removing Row in Parent {i}");
+        if (i >= 0 && i < details.Count)
+        {
+            details.RemoveAt(i);  // ✅ Correct - RemoveAt() for index
+            Console.WriteLine($"Count At {i}");
+            StateHasChanged();
+        }
+    }
+
 
     // Add calculation method
     private void CalculateTotals()
     {
-        decimal totalAmount = 0;
-        decimal gstAmount = 0;
+        float totalAmount = 0;
+        float gstAmount = 0;
+        float discount = 0;
 
-        foreach (var detail in details)
-        {
-            if (decimal.TryParse(detail.dict["Rate"], out decimal rate) &&
-                decimal.TryParse(detail.dict["Quantity"], out decimal qty))
-            {
-                decimal amount = rate * qty;
-                if (decimal.TryParse(detail.dict["Discount"], out decimal discount))
-                    amount -= discount;
-
-                totalAmount += amount;
-
-                // Calculate GST based on GstCode
-                if (int.TryParse(detail.dict["GstCode"], out int gstCode))
-                {
-                    decimal gstPercentage = gstCode switch
-                    {
-                        1 => 0,
-                        2 => 5,
-                        3 => 12,
-                        4 => 18,
-                        5 => 28,
-                        _ => 0
-                    };
-                    gstAmount += amount * (gstPercentage / 100);
-                }
-            }
+        foreach(Model detail in details){
+            totalAmount += float.TryParse(detail.dict2["TotalAmount"], out float ta)?ta:0;
+            gstAmount += float.TryParse(detail.dict2["Gst"], out float gt)?gt:0;
+            discount += float.TryParse(detail.dict2["Discount"], out float dt)?dt:0;
         }
 
         model.dict["TotalAmount"] = totalAmount.ToString("F2");
         model.dict["GstAmount"] = gstAmount.ToString("F2");
+        model.dict["Discount"] = discount.ToString("F2");
         
         // Calculate net amount
-        decimal additionalDiscount = decimal.TryParse(model.dict["Discount"], out decimal d) ? d : 0;
-        decimal addLess = decimal.TryParse(model.dict["AddLess"], out decimal al) ? al : 0;
-        decimal rounding = decimal.TryParse(model.dict["Rounding"], out decimal r) ? r : 0;
+        float additionalDiscount = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
+        float addLess = float.TryParse(model.dict["AddLess"], out float al) ? al : 0;
+        float rounding = float.TryParse(model.dict["Rounding"], out float r) ? r : 0;
         
-        decimal netAmount = totalAmount + gstAmount - additionalDiscount + addLess + rounding;
+        float netAmount = totalAmount + gstAmount - additionalDiscount + addLess + rounding;
         model.dict["NetAmount"] = netAmount.ToString("F2");
 
         StateHasChanged();
+    }
+
+
+    //Update Calculations
+    public void UpdateCalculations(int Serial){
+
     }
 
 }

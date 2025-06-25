@@ -71,14 +71,16 @@ QuotationDetails	Discount
 QuotationDetails	Free *@
 
 @code {
-    [Parameter] public EventCallback OnRemove{get; set;}
-    [Parameter] public Model model{get; set;}//this is reference to the object
-
+    [Parameter] public EventCallback<int> OnRemove{get; set;}
     [Parameter] public int SerialNo {get; set;}
     [Parameter] public int QuotationNo {get; set;}
+    [Parameter] public EventCallback<int> OnCalculationChanged{get; set;}
+
+
+    [Parameter] public Model model{get; set;}
     
 
-    public float gst=21;
+    public float gst{get; set;}=21;
     public float taxableAmount=10;
     public float netAmount=0;
 
@@ -121,16 +123,19 @@ QuotationDetails	Free *@
 
     //Handle Functions
     public async Task HandleRemove(){
-        await OnRemove.InvokeAsync(model);
+        Console.WriteLine("Removing the row");
+        Console.WriteLine(SerialNo);
+        await OnRemove.InvokeAsync(SerialNo-1);
         //In the parent function It should be handled like this:
         //models.Remove(model);
     }
 
     public void HandleSave(){
+        Console.WriteLine("Saving the Detail");
         model.dict["QuotationNo"] = QuotationNo.ToString();
         model.dict["SrNo"] = SerialNo.ToString();
         string percent = gstPercent.ToString();
-        model.dict[$"GSTAPP{percent}AMOUNT"] = taxableAmount.ToString();
+        model.dict[$"GST{percent}APPAMOUNT"] = taxableAmount.ToString();
         model.dict[$"CGST{percent}AMOUNT"] = (gst/2).ToString();
         model.dict[$"SGST{percent}AMOUNT"] = (gst/2).ToString();
         model.Save();
@@ -158,13 +163,16 @@ QuotationDetails	Free *@
             float free = float.TryParse(model.dict["Free"], out float f) ? f : 0f;
             
             // Calculate taxable amount: (Rate × Quantity) - Discount - Free
-            taxableAmount = (rate * quantity) - discount - free;
+            taxableAmount = (rate-discount) * (quantity-free);
             
             // Calculate GST
             gst = (taxableAmount * gstPercent) / 100f;
             
             // Calculate net amount
             netAmount = taxableAmount + gst;
+            model.dict2["TotalAmount"] = (rate*quantity).ToString();
+            model.dict2["Gst"] = gst.ToString();
+            model.dict2["Discount"] = discount.ToString();
         }
         else
         {
@@ -175,7 +183,17 @@ QuotationDetails	Free *@
     }
 
     public void OnChange(string value){
+        Console.WriteLine("Change In Details");
         Calculate();
+        OnCalculationChanged.InvokeAsync(SerialNo);
+    }
+
+
+    public string GetCalculations(){
+        float.TryParse(model.dict["Rate"], out float rt);
+        float.TryParse(model.dict["Quantity"], out float qt);
+        float.TryParse(model.dict["Discount"], out float dt);
+        return $"{rt*qt};{dt};{gst}";
     }
 
     // Initialize calculations when component loads
