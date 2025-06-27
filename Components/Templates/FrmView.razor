@@ -135,7 +135,7 @@
 
     [Parameter] public string TableName { get; set; } = "";
     [Parameter] public string searchText{get; set;} = "";//Search Text is automatically inserted at the search input
-
+    [Parameter] public string TableQuery{get; set;} = "";
 
     //EventCallback for Buttons Clicked
     [Parameter] public EventCallback OnClosed { get; set; }
@@ -169,7 +169,8 @@
     protected override async Task OnParametersSetAsync()
     {
         if (!string.IsNullOrEmpty(TableName))
-        {
+        {   
+            Console.WriteLine("Running ParameterAsync");
             await InitializeColumns();
             await LoadData();
         }
@@ -185,7 +186,8 @@
 
     //Getting List of Column Heads/Names so that It can be later used in LoadData
     private async Task InitializeColumns()
-    {
+    {   
+        Console.WriteLine("Initializing Columns");
         if (Columns.Count == 0)
         {
             try
@@ -215,7 +217,8 @@
     //And matching the pattern in the Search Box for all column entries Pattern : {%patter%} For all columns
     //Uses ROW_NUMBER() sql window Function to add serial no. to the dataTable, So that it can be divided into pages
     private async Task LoadData()
-    {
+    {   
+        Console.WriteLine("Loading Data In FrmViewHelper");
         selectedRowIndex = 0;
         IsLoading = true;
         StateHasChanged();

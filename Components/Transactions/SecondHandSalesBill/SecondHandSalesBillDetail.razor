@@ -1,0 +1,236 @@
+@using System.Data
+@namespace VisionSoft.Components.Transactions.SecondHandSalesBill
+@rendermode InteractiveServer
+<tr>
+    <td>
+        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
+    </td>
+    <td>
+        @SerialNo
+    </td>
+    <td>
+        <T_RInput Title="" Layout="3" TableName="SecondHandStock" PrimaryColumn="SecondHandStockId" DisplayColumn="ItemName" Value="@model.dict["SecondHandStockId"]" ValueChanged="OnStockChanged"/>
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>     
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>  
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>  
+    </td>
+    <td>
+        <div style="width:70px">
+            <select class="form-control form-control-sm" value="@GstCategoryCode" @onchange="OnGstChange">
+                <option value="1">0% GST</option>
+                <option value="2">5% GST</option>
+                <option value="3">12% GST</option>
+                <option value="4">18% GST</option>
+                <option value="5">28% GST</option>
+            </select>
+      </div>
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" Placeholder="" Type="number" Value="@taxableAmount.ToString("F2")" ReadOnly="true"/>
+      </div>  
+    </td>
+    <td>
+        @(gst/2).ToString("F2")
+    </td>
+    <td>
+        @gst.ToString("F2")
+    </td>
+    <td>
+        @netAmount.ToString("F2")
+    </td>
+    <td>
+      <div style="width:100px">
+            <T_Input Title="" Layout="3" Type="date" @bind-Value="@model.dict["WarrantyTillDate"]" Placeholder=""/>
+      </div>     
+    </td>
+</tr>
+
+@code {
+    [Parameter] public EventCallback<int> OnRemove{get; set;}
+    [Parameter] public int SerialNo {get; set;}
+    [Parameter] public string SecondHandSalesBillNo {get; set;}
+    [Parameter] public EventCallback<int> OnCalculationChanged{get; set;}
+    [Parameter] public Model model{get; set;}
+    
+    public float gst = 0;
+    public float taxableAmount = 0;
+    public float netAmount = 0;
+    public int GstCategoryCode = 2;
+    public float gstPercent = 0;
+    private ClsDatabase db = new ClsDatabase();
+
+    protected override void OnParametersSet(){
+        model.dict["SecondHandSalesBillNo"] = SecondHandSalesBillNo;
+        model.dict["SrNo"] = SerialNo.ToString();
+        Calculate();
+    }
+
+    private void OnStockChanged(string stockId)
+    {   
+        model.dict["SecondHandStockId"] = stockId;
+        UpdateStockDetails();
+        Calculate();
+        StateHasChanged();
+    }
+
+    private void OnGstChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int gstCode))
+        {
+            GstCategoryCode = gstCode;
+            Calculate();
+            OnCalculationChanged.InvokeAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void UpdateStockDetails()
+    {
+        if (!string.IsNullOrEmpty(model.dict["SecondHandStockId"]))
+        {
+            try
+            {
+                string query = $"SELECT SalesRate, GstCategoryCode FROM SecondHandStock WHERE SecondHandStockId = '{model.dict["SecondHandStockId"]}'";
+                DataTable result = db.GetDataTable(query);
+                
+                if (result.Rows.Count > 0)
+                {
+                    DataRow row = result.Rows[0];
+                    
+                    if (row["SalesRate"] != DBNull.Value)
+                    {
+                        model.dict["Rate"] = row["SalesRate"].ToString();
+                    }
+                    
+                    if (row["GstCategoryCode"] != DBNull.Value && int.TryParse(row["GstCategoryCode"].ToString(), out int gstCode))
+                    {
+                        GstCategoryCode = gstCode;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting second hand stock details: {ex.Message}");
+                model.dict["Rate"] = "0";
+            }
+        }
+    }
+
+    public async Task HandleRemove(){
+        Console.WriteLine("Removing the row");
+        Console.WriteLine(SerialNo);
+        await OnRemove.InvokeAsync(SerialNo-1);
+    }
+
+    public void HandleSave(){
+        Console.WriteLine("Saving the Detail");
+        model.dict["SecondHandSalesBillNo"] = SecondHandSalesBillNo;
+        model.dict["SrNo"] = SerialNo.ToString();
+        
+        // Save GST details based on percentage
+        string percent = gstPercent.ToString("F0");
+        model.dict[$"GST{percent}APPAMOUNT"] = taxableAmount.ToString();
+        model.dict[$"CGST{percent}AMOUNT"] = (gst/2).ToString();
+        model.dict[$"SGST{percent}AMOUNT"] = (gst/2).ToString();
+        
+        // Update second hand stock quantity (subtract from available stock)
+        UpdateSecondHandStock();
+        
+        model.Save();
+        model.Clear();
+    }
+
+    private void UpdateSecondHandStock()
+    {
+        if (!string.IsNullOrEmpty(model.dict["SecondHandStockId"]) && 
+            !string.IsNullOrEmpty(model.dict["Quantity"]))
+        {
+            try
+            {
+                float quantity = float.Parse(model.dict["Quantity"]);
+                
+                // Subtract quantity from second hand stock since it's sold
+                string updateQuery = $@"
+                    UPDATE SecondHandStock 
+                    SET CurrentQuantity = CurrentQuantity - {quantity}
+                    WHERE SecondHandStockId = {model.dict["SecondHandStockId"]}";
+                
+                db.ExecuteQuery(updateQuery);
+                Console.WriteLine($"Updated SecondHandStock for StockId: {model.dict["SecondHandStockId"]}, Reduced Quantity: {quantity}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating second hand stock: {ex.Message}");
+            }
+        }
+    }
+
+    private void Calculate(){
+        // Get GST percentage
+        gstPercent = GstCategoryCode switch
+        {
+            1 => 0f,   // 0% GST
+            2 => 5f,   // 5% GST  
+            3 => 12f,  // 12% GST
+            4 => 18f,  // 18% GST
+            5 => 28f,  // 28% GST
+            _ => 0f
+        };
+
+        if (float.TryParse(model.dict["Rate"], out float rate) &&
+            float.TryParse(model.dict["Quantity"], out float quantity))
+        {
+            float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0f;
+            
+            // Calculate taxable amount: (Rate × Quantity) - Discount
+            taxableAmount = (rate * quantity) - discount;
+            
+            // Calculate GST
+            gst = (taxableAmount * gstPercent) / 100f;
+            
+            // Calculate net amount
+            netAmount = taxableAmount + gst;
+            
+            // Store for parent calculations
+            model.dict2["TotalAmount"] = (rate * quantity).ToString();
+            model.dict2["Gst"] = gst.ToString();
+            model.dict2["Discount"] = discount.ToString();
+        }
+        else
+        {
+            taxableAmount = 0f;
+            gst = 0f;
+            netAmount = 0f;
+        }
+    }
+
+    public void OnChange(string value){
+        Console.WriteLine("Change In Details");
+        Calculate();
+        OnCalculationChanged.InvokeAsync();
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize default values if empty
+        if (string.IsNullOrEmpty(model.dict["Rate"])) model.dict["Rate"] = "0";
+        if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
+        if (string.IsNullOrEmpty(model.dict["Discount"])) model.dict["Discount"] = "0";
+        
+        UpdateStockDetails();
+        Calculate();
+    }
+}

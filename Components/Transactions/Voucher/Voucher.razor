@@ -1,0 +1,251 @@
+@page "/Voucher"
+@inject IJSRuntime JS
+@using System.Data
+@using VisionSoft.Components.Transactions.Voucher
+@rendermode InteractiveServer 
+
+<T_Msg @ref="Msg"/>
+@if(isViewing){
+    <FrmView TableName="VoucherHEad" OnClosed="HandleClose" EditClicked="HandleEdit"
+        DeleteClicked="HandleDelete"/>
+}
+<T_Frm FormName="Account Voucher">
+<ChildContent>
+    <T_Row>
+        <T_Input Title="Voucher No *" ReadOnly=true @bind-Value="@model.dict["VoucherNo"]" ColSize="col-md-3"/>
+        <div class="col-md-3">
+            <label class="form-label">Voucher Type *</label>
+            <select class="form-control" @bind="@model.dict["VoucherType"]">
+                <option value="">Select Type</option>
+                <option value="JOURNAL">Journal Entry</option>
+                <option value="PAYMENT">Payment Voucher</option>
+                <option value="RECEIPT">Receipt Voucher</option>
+                <option value="CONTRA">Contra Voucher</option>
+                <option value="SALES">Sales Voucher</option>
+                <option value="PURCHASE">Purchase Voucher</option>
+            </select>
+        </div>
+        <T_Input Title="Voucher Date" Type="date" @bind-Value="@model.dict["VoucherDate"]" ColSize="col-md-3"/>
+        <T_Input Title="Login Code" @bind-Value="@model.dict["LoginCode"]" ColSize="col-md-3"/>
+    </T_Row>
+    <T_Row>
+        <T_Input Title="Cheque No" @bind-Value="@model.dict["ChequeNo"]" ColSize="col-md-3"/>
+        <T_Input Title="Cheque Date" Type="date" @bind-Value="@model.dict["ChequeDate"]" ColSize="col-md-3"/>
+        <div class="col-md-3">
+            <label class="form-label">Mode of Pay</label>
+            <select class="form-control" @bind="@model.dict["ModeOfPay"]">
+                <option value="CASH">Cash</option>
+                <option value="CHEQUE">Cheque</option>
+                <option value="CARD">Card</option>
+                <option value="UPI">UPI</option>
+                <option value="NEFT">NEFT</option>
+                <option value="RTGS">RTGS</option>
+                <option value="ONLINE">Online Transfer</option>
+            </select>
+        </div>
+        <T_Input Title="Recon Date" Type="date" @bind-Value="@model.dict["ReconDate"]" ColSize="col-md-3"/>
+    </T_Row>
+    <T_Row>
+        <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
+        <T_Checkbox Title="Show" @bind-Value="@model.dict["Show"]" ColSize="col-md-3"/>
+        <T_Checkbox Title="Consider in Accounts" @bind-Value="@model.dict["ConsiderinAccounts"]" ColSize="col-md-3"/>
+    </T_Row>
+    <T_Row>
+        <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-12"/>
+    </T_Row>
+    <TableView TableName="Voucher Details" HandleAdd="HandleAdd">
+        <TableHeads>
+            <th>Action</th>
+            <th>Seq</th>
+            <th>Ledger Account</th>
+            <th>Opposite Ledger</th>
+            <th>Debit Amount</th>
+            <th>Credit Amount</th>
+        </TableHeads>
+        <TableRows>
+            @for(int i = 0; i<details.Count; i++){
+                <VoucherDetail SerialNo=@(i+1) 
+                                VoucherNo=@model.dict["VoucherNo"]
+                                VoucherType=@model.dict["VoucherType"]
+                                OnRemove="HandleRemove" model="@details[i]" OnCalculationChanged="CalculateTotals"/> 
+            }
+        </TableRows>
+        <TableFooter>
+            Total Entries: @details.Count | Total Debit: @totalDebit.ToString("F2") | Total Credit: @totalCredit.ToString("F2") | Difference: @difference.ToString("F2")
+        </TableFooter>
+    </TableView>
+    @if (Math.Abs(difference) > 0.01m)
+    {
+        <div class="alert alert-warning">
+            <strong>Warning:</strong> Voucher is not balanced. Debit and Credit amounts must be equal.
+        </div>
+    }
+    else if (details.Count > 0)
+    {
+        <div class="alert alert-success">
+            <strong>Balanced:</strong> Voucher is properly balanced.
+        </div>
+    }
+</ChildContent>
+
+<CardFooterContent>
+    <T_Button Text="Save" Style="" OnClick="HandleSave" Disabled="@(Math.Abs(difference) > 0.01m)"/>
+    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
+    <T_Button Text="View" Style="" OnClick="HandleView"/>
+    <T_Button Text="Print" Style=""/>
+</CardFooterContent>
+
+</T_Frm>
+
+@code{
+    //ELEMENT REFERENCES
+    private T_Msg Msg;
+    public DotNetObjectReference<Voucher> dotNetRef;
+    
+    //Models and Class Objects
+    Model model = new Model("VoucherHEad", "VoucherNo");
+    List<Model> details = new List<Model>();
+    ClsDatabase db = new ClsDatabase();
+   
+    //BooleanValues
+    private bool isViewing = false;
+    private bool isAddClicked = false;
+    private bool isEditing = false;
+
+    //Calculation Variables
+    private decimal totalDebit = 0;
+    private decimal totalCredit = 0;
+    private decimal difference = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(firstRender){
+            Console.WriteLine("First Render");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public void HandleView(){
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleAdd(){
+        Model detail = new Model("VoucherDetails", "");
+        details.Add(detail);
+        StateHasChanged();
+    }
+
+    public void HandleEdit(DataRow row){
+        HandleClear();
+        isEditing = true;
+        model.Populate(row);
+        Console.WriteLine(model.dict["VoucherNo"]);
+        DataTable dataTable = db.GetDataTable($"Select * from VoucherDetails where VoucherNo='{model.dict["VoucherNo"]}' ORDER BY Sequence");
+        Console.WriteLine(dataTable.Rows.Count);
+        foreach(DataRow row1 in dataTable.Rows){
+            Model detail = new Model("VoucherDetails", "");
+            Console.WriteLine("Adding Detail");
+            detail.Populate(row1);
+            details.Add(detail);
+        }
+        CalculateTotals();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task HandleSave(){
+        Console.WriteLine("Saving");
+        
+        // Check if voucher is balanced
+        if (Math.Abs(difference) > 0.01m)
+        {
+            await Msg.Error("Voucher is not balanced. Debit and Credit amounts must be equal.");
+            return;
+        }
+
+        if (details.Count == 0)
+        {
+            await Msg.Error("Please add at least one voucher entry.");
+            return;
+        }
+
+        try{
+            // Set modified date
+            model.dict["ModifiedDate"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            
+            bool er = model.Save();
+            foreach(Model detail in details){
+                if(!er)throw new Exception();
+                er = detail.Save();
+            }
+            if(!er)throw new Exception();
+            await Msg.Success();
+        }
+        catch(Exception e){
+            await Msg.SaveError();
+        }
+    }
+
+    [JSInvokable]
+    public void HandleClear(){
+        Console.WriteLine("Clear Form");
+        model.Clear();
+        details.Clear();    
+        isEditing=false;
+        isAddClicked=false;
+        isViewing=false;  
+        totalDebit = 0;
+        totalCredit = 0;
+        difference = 0;
+        StateHasChanged();
+    }
+
+    public void HandleClose(){
+        isAddClicked = false;
+        isViewing = false;
+    }
+
+    public void HandleDelete(DataRow row){
+        string pk = row["VoucherNo"].ToString();
+        db.ExecuteQuery($"Delete From VoucherHEad where VoucherNo='{pk}'");
+        db.ExecuteQuery($"Delete From VoucherDetails where VoucherNo='{pk}'");
+    }
+
+    public void HandleRemove(int i){
+        Console.WriteLine($"Removing Row in Parent {i}");
+        if (i >= 0 && i < details.Count)
+        {
+            details.RemoveAt(i);
+            Console.WriteLine($"Count At {i}");
+            CalculateTotals();
+            StateHasChanged();
+        }
+    }
+
+    // Calculate totals method
+    private void CalculateTotals()
+    {
+        totalDebit = 0;
+        totalCredit = 0;
+
+        foreach(Model detail in details){
+            totalDebit += decimal.TryParse(detail.dict["DebitAmount"], out decimal debit) ? debit : 0;
+            totalCredit += decimal.TryParse(detail.dict["CreditAmount"], out decimal credit) ? credit : 0;
+        }
+
+        difference = totalDebit - totalCredit;
+        StateHasChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize default values
+        if (string.IsNullOrEmpty(model.dict["ModeOfPay"])) model.dict["ModeOfPay"] = "CASH";
+        if (string.IsNullOrEmpty(model.dict["ConsiderinAccounts"])) model.dict["ConsiderinAccounts"] = "1";
+        if (string.IsNullOrEmpty(model.dict["Show"])) model.dict["Show"] = "true";
+        if (string.IsNullOrEmpty(model.dict["VoucherDate"])) model.dict["VoucherDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+    }
+}

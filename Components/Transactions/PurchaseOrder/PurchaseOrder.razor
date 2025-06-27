@@ -1,0 +1,201 @@
+@page "/PurchaseOrder"
+@inject IJSRuntime JS
+@using System.Data
+@using VisionSoft.Components.Transactions.PurchaseOrder
+@rendermode InteractiveServer 
+
+<T_Msg @ref="Msg"/>
+@if(isViewing){
+    <FrmView TableName="PurchaseOrderHead" OnClosed="HandleClose" EditClicked="HandleEdit"
+        DeleteClicked="HandleDelete"/>
+}
+<T_Frm FormName="Purchase Order">
+<ChildContent>
+    <T_Row>
+        <T_Input Title="PO Number *" ReadOnly=true @bind-Value="@model.dict["PONumber"]" ColSize="col-md-3"/>
+        <T_Input Title="PO Date" Type="date" @bind-Value="@model.dict["PODate"]" ColSize="col-md-3"/>
+        <T_Input Title="PO Time" Type="time" @bind-Value="@model.dict["POTime"]" ColSize="col-md-3"/>
+        <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
+    </T_Row>
+    <T_Row>
+        <T_RInput Title="Supplier *" Layout="1" TableName="SupplierMaster" PrimaryColumn="SupplierCode" DisplayColumn="SupplierName" Value="@model.dict["SupplierCode"]" ValueChanged="OnSupplierChanged" ColSize="col-md-4"/>
+        <T_RInput Title="Person In-charge" Layout="1" TableName="EmployeeMaster" PrimaryColumn="PersonInchargeCode" DisplayColumn="EmployeeName" Value="@model.dict["PersonInchargeCode"]" ValueChanged="OnPersonInchargeChanged" ColSize="col-md-4"/>
+        <T_RInput Title="Approved By" Layout="1" TableName="EmployeeMaster" PrimaryColumn="ApprovedByCode" DisplayColumn="EmployeeName" Value="@model.dict["ApprovedByCode"]" ValueChanged="OnApprovedByChanged" ColSize="col-md-4"/>
+    </T_Row>
+    <T_Row>
+        <T_Checkbox Title="Approved" @bind-Value="@model.dict["Approved"]" ColSize="col-md-3"/>
+        <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-9"/>
+    </T_Row>
+    <TableView TableName="Purchase Order Details" HandleAdd="HandleAdd">
+        <TableHeads>
+            <th>Action</th>
+            <th>Sr. No.</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Rate</th>
+            <th>Amount</th>
+        </TableHeads>
+        <TableRows>
+            @for(int i = 0; i<details.Count; i++){
+                <PurchaseOrderDetail SerialNo=@(i+1) 
+                                PONumber=@model.dict["PONumber"] 
+                                OnRemove="HandleRemove" model="@details[i]" OnCalculationChanged="CalculateTotals"/> 
+            }
+        </TableRows>
+        <TableFooter>
+            Total Count : @details.Count
+        </TableFooter>
+    </TableView>
+    <T_SummaryCard >
+        <T_Input Title="Total Amount" Layout=2 ReadOnly @bind-Value="@model.dict["TotalAmount"]" Placeholder="-"/>
+    </T_SummaryCard>
+</ChildContent>
+
+<CardFooterContent>
+    <T_Button Text="Save" Style="" OnClick="HandleSave"/>
+    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
+    <T_Button Text="View" Style="" OnClick="HandleView"/>
+    <T_Button Text="Print" Style=""/>
+</CardFooterContent>
+
+</T_Frm>
+
+@code{
+    //ELEMENT REFERENCES
+    private T_Msg Msg;
+    public DotNetObjectReference<PurchaseOrder> dotNetRef;
+    
+    //Models and Class Objects
+    Model model = new Model("PurchaseOrderHead", "PONumber");
+    List<Model> details = new List<Model>();
+    ClsDatabase db = new ClsDatabase();
+   
+    //BooleanValues
+    private bool isViewing = false;
+    private bool isAddClicked = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(firstRender){
+            Console.WriteLine("First Render");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    private void OnSupplierChanged(string supplierCode)
+    {
+        model.dict["SupplierCode"] = supplierCode;
+        StateHasChanged();
+    }
+
+    private void OnPersonInchargeChanged(string personInchargeCode)
+    {
+        model.dict["PersonInchargeCode"] = personInchargeCode;
+        StateHasChanged();
+    }
+
+    private void OnApprovedByChanged(string approvedByCode)
+    {
+        model.dict["ApprovedByCode"] = approvedByCode;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView(){
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleAdd(){
+        Model detail = new Model("PurchaseOrderDetails", "");
+        details.Add(detail);
+        StateHasChanged();
+    }
+
+    public void HandleEdit(DataRow row){
+        HandleClear();
+        isEditing = true;
+        model.Populate(row);
+        Console.WriteLine(model.dict["PONumber"]);
+        DataTable dataTable = db.GetDataTable($"Select * from PurchaseOrderDetails where PONumber='{model.dict["PONumber"]}'");
+        Console.WriteLine(dataTable.Rows.Count);
+        foreach(DataRow row1 in dataTable.Rows){
+            Model detail = new Model("PurchaseOrderDetails", "");
+            Console.WriteLine("Adding Detail");
+            detail.Populate(row1);
+            details.Add(detail);
+        }
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleSave(){
+        Console.WriteLine("Saving");
+        try{
+            bool er = model.Save();
+            foreach(Model detail in details){
+                if(!er)throw new Exception();
+                er = detail.Save();
+            }
+            if(!er)throw new Exception();
+            Msg.Success();
+        }
+        catch(Exception e){
+            Msg.SaveError();
+        }
+    }
+
+    [JSInvokable]
+    public void HandleClear(){
+        Console.WriteLine("Clear Form");
+        model.Clear();
+        details.Clear();    
+        isEditing=false;
+        isAddClicked=false;
+        isViewing=false;  
+        StateHasChanged();
+    }
+
+    public void HandleClose(){
+        isAddClicked = false;
+        isViewing = false;
+    }
+
+    public void HandleDelete(DataRow row){
+        string pk = row["PONumber"].ToString();
+        db.ExecuteQuery($"Delete From PurchaseOrderHead where PONumber='{pk}'");
+        db.ExecuteQuery($"Delete From PurchaseOrderDetails where PONumber='{pk}'");
+    }
+
+    public void HandleRemove(int i){
+        Console.WriteLine($"Removing Row in Parent {i}");
+        if (i >= 0 && i < details.Count)
+        {
+            details.RemoveAt(i);
+            Console.WriteLine($"Count At {i}");
+            CalculateTotals();
+            StateHasChanged();
+        }
+    }
+
+    // Calculate totals method
+    private void CalculateTotals()
+    {
+        float totalAmount = 0;
+
+        foreach(Model detail in details){
+            totalAmount += float.TryParse(detail.dict["Amount"], out float amount) ? amount : 0;
+        }
+
+        model.dict["TotalAmount"] = totalAmount.ToString("F2");
+        StateHasChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize default values
+        if (string.IsNullOrEmpty(model.dict["Approved"])) model.dict["Approved"] = "false";
+    }
+}

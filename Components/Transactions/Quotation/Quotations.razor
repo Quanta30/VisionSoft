@@ -14,7 +14,7 @@ QuotationDetails	Free *@
 
 <T_Msg @ref="Msg"/>
 @if(isViewing){
-    <FrmView TableName="AdjustmentHead" OnClosed="HandleClose" EditClicked="HandleEdit"
+    <FrmView TableName="QuotationHead" OnClosed="HandleClose" EditClicked="HandleEdit"
         DeleteClicked="HandleDelete"/>
 }
 <T_Frm FormName="Quotation">
@@ -49,11 +49,11 @@ QuotationDetails	Free *@
             @for(int i = 0; i<details.Count; i++){
                 <QuotationDetail SerialNo=@(i+1) 
                                 QuotationNo=@Convert.ToInt32(model.dict["QuotationNo"]) 
-                                OnRemove="HandleRemove" model="@details[i]" /> 
+                                OnRemove="HandleRemove" model="@details[i]" OnCalculationChanged="CalculateTotals"/> 
             }
         </TableRows>
         <TableFooter>
-            
+            Total Count : @details.Count
         </TableFooter>
     </TableView>
     <T_SummaryCard >
@@ -79,17 +79,14 @@ QuotationDetails	Free *@
 @code{
     //ELEMENT REFERENCES
     private T_Msg Msg;
-    public DotNetObjectReference<Quotations2> dotNetRef;
+    public DotNetObjectReference<Quotations> dotNetRef;
     
    
-    //Models
+    //Models and Class Objects
     Model model = new Model("QuotationHead", "QuotationNo");
     List<Model> details = new List<Model>();
+    ClsDatabase db = new ClsDatabase();
    
-
-    //Count
-
-    public List<float> gsts = new List<float>();
 
     //BooleanValues
     private bool isViewing = false;
@@ -97,14 +94,12 @@ QuotationDetails	Free *@
     private bool isEditing = false;
 
 
-
-
-
-
-
-    //Handle Methods
-    public void HandleSelect(DataRow row){
-
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(firstRender){
+            Console.WriteLine("First Render");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
     }
 
     [JSInvokable]
@@ -121,10 +116,22 @@ QuotationDetails	Free *@
     }
 
     public void HandleEdit(DataRow row){
+        HandleClear();
         isEditing = true;
-        //Fetch
+        model.Populate(row);
+        Console.WriteLine(model.dict["QuotationNo"]);
+        DataTable dataTable = db.GetDataTable($"Select * from QuotationDetails where QuotationNo={model.dict["QuotationNo"]}");
+        Console.WriteLine(dataTable.Rows.Count);
+        foreach(DataRow row1 in dataTable.Rows){
+            Model detail = new Model("QuotationDetails", "");
+            Console.WriteLine("Adding Detail");
+            detail.Populate(row1);
+            details.Add(detail);
+        }
+        StateHasChanged();
     }
 
+    [JSInvokable]
     public void HandleSave(){
         Console.WriteLine("Saving");
         try{
@@ -137,13 +144,26 @@ QuotationDetails	Free *@
         }
     }
 
+    [JSInvokable]
+    public void HandleClear(){
+        Console.WriteLine("Clear Form");
+        model.Clear();
+        details.Clear();    
+        isEditing=false;
+        isAddClicked=false;
+        isViewing=false;  
+        StateHasChanged();
+    }
+
     public void HandleClose(){
         isAddClicked = false;
         isViewing = false;
     }
 
     public void HandleDelete(DataRow row){
-
+        int pk = Convert.ToInt32(row["QuotationNo"]);
+        db.ExecuteQuery($"Delete From QuotationHead where QuotationNo={pk}");
+        db.ExecuteQuery($"Delete From QuotationDetails where QuotationNo={pk}");
     }
 
     public void HandleRemove(int i){
@@ -183,12 +203,6 @@ QuotationDetails	Free *@
         model.dict["NetAmount"] = netAmount.ToString("F2");
 
         StateHasChanged();
-    }
-
-
-    //Update Calculations
-    public void UpdateCalculations(int Serial){
-
     }
 
 }

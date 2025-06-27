@@ -75,4 +75,10 @@
         Clear();
     }
 
+    public async Task Error(string message){
+        Show(message, "danger", "bi-exclamation-triangle");
+        await Task.Delay(5000);  // Show longer for errors
+        Clear();
+    }
+
 }

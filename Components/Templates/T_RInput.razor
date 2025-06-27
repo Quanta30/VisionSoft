@@ -109,7 +109,8 @@ else if(Layout == 1){
 
     //Handle row selection from FrmView
     private async Task HandleRowSelected(DataRow selectedRow)
-    {
+    {   
+        Console.WriteLine("Handling Selected Row in RInput");
         isViewing = false;
         
         // Set display value (what user sees)

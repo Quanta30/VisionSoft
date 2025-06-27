@@ -90,6 +90,11 @@ QuotationDetails	Free *@
     private ClsDatabase db = new ClsDatabase(); // Add database instance
 
     // Add this method to handle product changes
+    protected override void OnParametersSet(){
+        model.dict["QuotationNo"] = QuotationNo.ToString();
+        model.dict["SrNo"] = SerialNo.ToString();
+        Calculate();
+    }
     private void OnProductCodeChanged(string pcode)
     {   
         model.dict["ProductCode"] = pcode;
@@ -185,15 +190,7 @@ QuotationDetails	Free *@
     public void OnChange(string value){
         Console.WriteLine("Change In Details");
         Calculate();
-        OnCalculationChanged.InvokeAsync(SerialNo);
-    }
-
-
-    public string GetCalculations(){
-        float.TryParse(model.dict["Rate"], out float rt);
-        float.TryParse(model.dict["Quantity"], out float qt);
-        float.TryParse(model.dict["Discount"], out float dt);
-        return $"{rt*qt};{dt};{gst}";
+        OnCalculationChanged.InvokeAsync();
     }
 
     // Initialize calculations when component loads

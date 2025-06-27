@@ -84,12 +84,12 @@ public class Model
 
         DataTable dt = db.GetDataTable(Query);
         foreach (DataRow row in dt.Rows)
-        {
-            //Console.WriteLine(row["COLUMN_NAME"]);
-            dict[row["COLUMN_NAME"].ToString()] = "";
+        {   
             string columnName = row["COLUMN_NAME"].ToString();
             string dataType = row["DATA_TYPE"].ToString().ToLower();
-
+            //Console.WriteLine(row["COLUMN_NAME"]);
+            dict[row["COLUMN_NAME"].ToString()] = "";
+            
             // INITIALIZE WITH APPROPRIATE VALUE FOR TESTING PURPOSE : TO BE REMOVED
             //TO BE REMOVED : DATA_TYPE FROM THE QUERY, string dataType, SwitchCase
             switch (dataType)
@@ -132,7 +132,11 @@ public class Model
         {
             if (dict.ContainsKey(column.ColumnName))
             {
-                dict[column.ColumnName] = row[column.ColumnName]?.ToString() ?? "";
+                if (column.DataType == typeof(DateTime))
+                {
+                    dict[column.ColumnName] = ((DateTime)row[column.ColumnName]).ToString("yyyy-MM-dd");
+                }
+                else dict[column.ColumnName] = row[column.ColumnName]?.ToString() ?? "";
             }
             else throw new Exception($"Column '{column.ColumnName}' does not exist. Populate Error");
         }

@@ -1,0 +1,193 @@
+@using System.Data
+@namespace VisionSoft.Components.Transactions.AssetInward
+@rendermode InteractiveServer
+<tr>
+    <td>
+        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
+    </td>
+    <td>
+        @SerialNo
+    </td>
+    <td>
+        <div style="width:200px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["ItemName"]" Placeholder="Enter item name"/>
+        </div>
+    </td>
+    <td>
+        <T_RInput Title="" Layout="3" TableName="PhysicalStock" PrimaryColumn="StockId" DisplayColumn="ProductName" Value="@model.dict["StockId"]" ValueChanged="OnStockChanged"/>
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Pack"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>     
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>  
+    </td>
+    <td>
+      <div style="width:80px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>     
+    </td>
+    <td>
+        @amount.ToString("F2")
+    </td>
+</tr>
+
+@code {
+    [Parameter] public EventCallback<int> OnRemove{get; set;}
+    [Parameter] public int SerialNo {get; set;}
+    [Parameter] public string EntryNo {get; set;}
+    [Parameter] public EventCallback<int> OnCalculationChanged{get; set;}
+    [Parameter] public Model model{get; set;}
+    [Parameter]public bool ToSave{get; set;} = false;
+    
+    public float amount = 0;
+    private ClsDatabase db = new ClsDatabase();
+    private bool isSaved = false;
+
+    protected override void OnParametersSet(){
+        model.dict["EntryNo"] = EntryNo;
+        model.dict["SrNo"] = SerialNo.ToString();
+        Calculate();
+
+        if(!isSaved && ToSave){
+            HandleSave();
+            isSaved = true;
+        }
+    }
+
+    private void OnStockChanged(string stockId)
+    {   
+        model.dict["StockId"] = stockId;
+        UpdateStockDetails();
+        Calculate();
+        StateHasChanged();
+    }
+
+    private void UpdateStockDetails()
+    {
+        if (!string.IsNullOrEmpty(model.dict["StockId"]) && model.dict["StockId"] != "0")
+        {
+            try
+            {
+                string query = $"SELECT ProductName, PurchaseRate FROM PhysicalStock WHERE StockId = '{model.dict["StockId"]}'";
+                DataTable result = db.GetDataTable(query);
+                
+                if (result.Rows.Count > 0)
+                {
+                    DataRow row = result.Rows[0];
+                    
+                    // Auto-populate item name from stock
+                    if (row["ProductName"] != DBNull.Value)
+                    {
+                        model.dict["ItemName"] = row["ProductName"].ToString();
+                    }
+                    
+                    // Auto-populate rate from stock
+                    if (row["PurchaseRate"] != DBNull.Value)
+                    {
+                        model.dict["Rate"] = row["PurchaseRate"].ToString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting stock details: {ex.Message}");
+                model.dict["Rate"] = "0";
+            }
+        }
+    }
+
+    public async Task HandleRemove(){
+        Console.WriteLine("Removing the row");
+        Console.WriteLine(SerialNo);
+        await OnRemove.InvokeAsync(SerialNo-1);
+    }
+
+    public void HandleSave(){
+        Console.WriteLine("Saving the Detail");
+        model.dict["EntryNo"] = EntryNo;
+        model.dict["SrNo"] = SerialNo.ToString();
+        
+        Calculate();
+        
+        // Update asset tracking
+        UpdateAssetTracking();
+        
+        model.Save();
+        model.Clear();
+    }
+
+    private void UpdateAssetTracking()
+    {
+        if (!string.IsNullOrEmpty(model.dict["StockId"]) && 
+            !string.IsNullOrEmpty(model.dict["Quantity"]) &&
+            !string.IsNullOrEmpty(EntryNo))
+        {
+            try
+            {
+                float quantity = float.Parse(model.dict["Quantity"]);
+                
+                // You might want to create an AssetTracking table to track department-wise asset allocation
+                // For now, we'll just log the asset movement
+                Console.WriteLine($"Asset Inward: StockId {model.dict["StockId"]}, Quantity: {quantity}, Department: Moving to department");
+                
+                // Optional: Update a separate AssetAllocation table
+                /*
+                string insertQuery = $@"
+                    INSERT INTO AssetAllocation (StockId, DepartmentCode, Quantity, AllocationDate, EntryNo)
+                    VALUES ({model.dict["StockId"]}, {model.dict["DepartmentCode"]}, {quantity}, GETDATE(), {EntryNo})";
+                
+                db.ExecuteQuery(insertQuery);
+                */
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating asset tracking: {ex.Message}");
+            }
+        }
+    }
+
+    private void Calculate(){
+        if (float.TryParse(model.dict["Rate"], out float rate) &&
+            float.TryParse(model.dict["Quantity"], out float quantity) &&
+            float.TryParse(model.dict["Pack"], out float pack))
+        {
+            // Calculate amount: Rate × Quantity × Pack
+            amount = rate * quantity * (pack > 0 ? pack : 1);
+            model.dict["Amount"] = amount.ToString("F2");
+        }
+        else if (float.TryParse(model.dict["Rate"], out rate) &&
+                 float.TryParse(model.dict["Quantity"], out quantity))
+        {
+            // Calculate amount without pack: Rate × Quantity
+            amount = rate * quantity;
+            model.dict["Amount"] = amount.ToString("F2");
+        }
+        else
+        {
+            amount = 0f;
+            model.dict["Amount"] = "0";
+        }
+    }
+
+    public void OnChange(string value){
+        Console.WriteLine("Change In Details");
+        Calculate();
+        OnCalculationChanged.InvokeAsync();
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize default values if empty
+        if (string.IsNullOrEmpty(model.dict["Rate"])) model.dict["Rate"] = "0";
+        if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
+        if (string.IsNullOrEmpty(model.dict["Pack"])) model.dict["Pack"] = "1";
+        
+        UpdateStockDetails();
+        Calculate();
+    }
+}

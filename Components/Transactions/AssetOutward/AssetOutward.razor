@@ -1,0 +1,185 @@
+@page "/AssetOutward"
+@inject IJSRuntime JS
+@using System.Data
+@using VisionSoft.Components.Transactions.AssetOutward
+@rendermode InteractiveServer 
+
+<T_Msg @ref="Msg"/>
+@if(isViewing){
+    <FrmView TableName="AssetOutwardHead" OnClosed="HandleClose" EditClicked="HandleEdit"
+        DeleteClicked="HandleDelete"/>
+}
+<T_Frm FormName="Asset Outward">
+<ChildContent>
+    <T_Row>
+        <T_Input Title="Entry No *" ReadOnly=true @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-6"/>
+        <T_Input Title="Entry Date" Type="date" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-6"/>
+    </T_Row>
+    <T_Row>
+        <T_RInput Title="Department *" Layout="1" TableName="DepartmentMaster" PrimaryColumn="DepartmentCode" DisplayColumn="DepartmentName" Value="@model.dict["DepartmentCode"]" ValueChanged="OnDepartmentChanged" ColSize="col-md-12"/>
+    </T_Row>
+    <TableView TableName="Asset Outward Details" HandleAdd="HandleAdd">
+        <TableHeads>
+            <th>Action</th>
+            <th>Sr. No.</th>
+            <th>Item Name</th>
+            <th>Stock Item</th>
+            <th>Quantity</th>
+        </TableHeads>
+        <TableRows>
+            @for(int i = 0; i<details.Count; i++){
+                <AssetOutwardDetail SerialNo=@(i+1) 
+                                EntryNo=@model.dict["EntryNo"] 
+                                OnRemove="HandleRemove" model="@details[i]" ToSave=@ToSave/> 
+            }
+        </TableRows>
+        <TableFooter>
+            Total Items: @details.Count
+        </TableFooter>
+    </TableView>
+</ChildContent>
+
+<CardFooterContent>
+    <T_Button Text="Save" Style="" OnClick="HandleSave"/>
+    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
+    <T_Button Text="View" Style="" OnClick="HandleView"/>
+    <T_Button Text="Print" Style=""/>
+</CardFooterContent>
+
+</T_Frm>
+
+@code{
+    //ELEMENT REFERENCES
+    private T_Msg Msg;
+    public DotNetObjectReference<AssetOutward> dotNetRef;
+    
+    //Models and Class Objects
+    Model model = new Model("AssetOutwardHead", "EntryNo");
+    List<Model> details = new List<Model>();
+    ClsDatabase db = new ClsDatabase();
+   
+    //BooleanValues
+    private bool isViewing = false;
+    private bool isAddClicked = false;
+    private bool isEditing = false;
+    public bool ToSave = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(firstRender){
+            Console.WriteLine("First Render");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    private void OnDepartmentChanged(string departmentCode)
+    {
+        model.dict["DepartmentCode"] = departmentCode;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView(){
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleAdd(){
+        Model detail = new Model("AssetOutwardDetails", "");
+        details.Add(detail);
+        StateHasChanged();
+    }
+
+    public void HandleEdit(DataRow row){
+        HandleClear();
+        isEditing = true;
+        model.Populate(row);
+        Console.WriteLine(model.dict["EntryNo"]);
+        DataTable dataTable = db.GetDataTable($"Select * from AssetOutwardDetails where EntryNo='{model.dict["EntryNo"]}' ORDER BY SrNo");
+        Console.WriteLine(dataTable.Rows.Count);
+        foreach(DataRow row1 in dataTable.Rows){
+            Model detail = new Model("AssetOutwardDetails", "");
+            Console.WriteLine("Adding Detail");
+            detail.Populate(row1);
+            details.Add(detail);
+        }
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task HandleSave(){
+        Console.WriteLine("Saving");
+        
+        // Validation
+        if (string.IsNullOrEmpty(model.dict["DepartmentCode"]) || model.dict["DepartmentCode"] == "0")
+        {
+            await Msg.Error("Please select a department.");
+            return;
+        }
+
+        if (details.Count == 0)
+        {
+            await Msg.Error("Please add at least one asset item.");
+            return;
+        }
+
+        try{
+            ToSave = true;
+            bool er = model.Save();
+            if(!er)throw new Exception();
+            
+            // The details will save themselves via the ToSave parameter
+            // No need to loop through details here
+            
+            await Msg.Success();
+        }
+        catch(Exception e){
+            await Msg.SaveError();
+        }
+        finally{
+            ToSave = false;
+        }
+    }
+
+    [JSInvokable]
+    public void HandleClear(){
+        Console.WriteLine("Clear Form");
+        model.Clear();
+        details.Clear();    
+        isEditing=false;
+        isAddClicked=false;
+        isViewing=false;  
+        StateHasChanged();
+    }
+
+    public void HandleClose(){
+        isAddClicked = false;
+        isViewing = false;
+    }
+
+    public void HandleDelete(DataRow row){
+        string pk = row["EntryNo"].ToString();
+        db.ExecuteQuery($"Delete From AssetOutwardHead where EntryNo='{pk}'");
+        db.ExecuteQuery($"Delete From AssetOutwardDetails where EntryNo='{pk}'");
+    }
+
+    public void HandleRemove(int i){
+        Console.WriteLine($"Removing Row in Parent {i}");
+        if (i >= 0 && i < details.Count)
+        {
+            details.RemoveAt(i);
+            Console.WriteLine($"Count At {i}");
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize default values
+        if (string.IsNullOrEmpty(model.dict["EntryDate"])) 
+        {
+            model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        }
+    }
+}

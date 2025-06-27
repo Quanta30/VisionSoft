@@ -1,0 +1,126 @@
+@using System.Data
+@namespace VisionSoft.Components.Transactions.PurchaseOrder
+@rendermode InteractiveServer
+<tr>
+    <td>
+        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
+    </td>
+    <td>
+        @SerialNo
+    </td>
+    <td>
+        <T_RInput Title="" Layout="3" TableName="ProductMaster" PrimaryColumn="ProductCode" DisplayColumn="ProductName" Value="@model.dict["ProductCode"]" ValueChanged="OnProductChanged"/>
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>  
+    </td>
+    <td>
+      <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
+      </div>     
+    </td>
+    <td>
+        @amount.ToString("F2")
+    </td>
+</tr>
+
+@code {
+    [Parameter] public EventCallback<int> OnRemove{get; set;}
+    [Parameter] public int SerialNo {get; set;}
+    [Parameter] public string PONumber {get; set;}
+    [Parameter] public EventCallback<int> OnCalculationChanged{get; set;}
+    [Parameter] public Model model{get; set;}
+    
+    public float amount = 0;
+    private ClsDatabase db = new ClsDatabase();
+
+    protected override void OnParametersSet(){
+        model.dict["PONumber"] = PONumber;
+        model.dict["POSrNo"] = SerialNo.ToString();
+        Calculate();
+    }
+
+    private void OnProductChanged(string productCode)
+    {   
+        model.dict["ProductCode"] = productCode;
+        UpdateProductDetails();
+        Calculate();
+        StateHasChanged();
+    }
+
+    private void UpdateProductDetails()
+    {
+        if (!string.IsNullOrEmpty(model.dict["ProductCode"]))
+        {
+            try
+            {
+                string query = $"SELECT PurchaseRate FROM ProductMaster WHERE ProductCode = '{model.dict["ProductCode"]}'";
+                DataTable result = db.GetDataTable(query);
+                
+                if (result.Rows.Count > 0)
+                {
+                    DataRow row = result.Rows[0];
+                    
+                    if (row["PurchaseRate"] != DBNull.Value)
+                    {
+                        model.dict["Rate"] = row["PurchaseRate"].ToString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting product details: {ex.Message}");
+                model.dict["Rate"] = "0";
+            }
+        }
+    }
+
+    public async Task HandleRemove(){
+        Console.WriteLine("Removing the row");
+        Console.WriteLine(SerialNo);
+        await OnRemove.InvokeAsync(SerialNo-1);
+    }
+
+    public void HandleSave(){
+        Console.WriteLine("Saving the Detail");
+        model.dict["PONumber"] = PONumber;
+        model.dict["POSrNo"] = SerialNo.ToString();
+        
+        Calculate();
+        
+        model.Save();
+        model.Clear();
+    }
+
+    private void Calculate(){
+        if (float.TryParse(model.dict["Rate"], out float rate) &&
+            float.TryParse(model.dict["Quantity"], out float quantity))
+        {
+            amount = rate * quantity;
+            model.dict["Amount"] = amount.ToString("F2");
+        }
+        else
+        {
+            amount = 0f;
+            model.dict["Amount"] = "0";
+        }
+    }
+
+    public void OnChange(string value){
+        Console.WriteLine("Change In Details");
+        Calculate();
+        OnCalculationChanged.InvokeAsync();
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize default values if empty
+        if (string.IsNullOrEmpty(model.dict["Rate"])) model.dict["Rate"] = "0";
+        if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
+        
+        UpdateProductDetails();
+        Calculate();
+    }
+}

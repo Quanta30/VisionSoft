@@ -1,0 +1,84 @@
+@using System.Data
+@namespace VisionSoft.Components.Transactions.NewEnquiry
+
+
+<tr>
+    <td>
+        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
+    </td>
+    <td>
+        @SerialNo
+    </td>
+    <td>
+        <div style="width:300px">
+            <select class="form-control form-control-sm" @bind="@model.dict["CurrentStatus"]">
+                <option value="">Select Status</option>
+                <option value="Initial Contact">Initial Contact</option>
+                <option value="Requirement Discussion">Requirement Discussion</option>
+                <option value="Demo Scheduled">Demo Scheduled</option>
+                <option value="Demo Completed">Demo Completed</option>
+                <option value="Quotation Sent">Quotation Sent</option>
+                <option value="Negotiation">Negotiation</option>
+                <option value="Follow Up Required">Follow Up Required</option>
+                <option value="Customer Thinking">Customer Thinking</option>
+                <option value="Price Discussion">Price Discussion</option>
+                <option value="Technical Discussion">Technical Discussion</option>
+                <option value="Management Approval Pending">Management Approval Pending</option>
+                <option value="Budget Approval Pending">Budget Approval Pending</option>
+                <option value="Order Confirmed">Order Confirmed</option>
+                <option value="Order Lost">Order Lost</option>
+                <option value="Not Interested">Not Interested</option>
+                <option value="Postponed">Postponed</option>
+                <option value="Closed - Won">Closed - Won</option>
+                <option value="Closed - Lost">Closed - Lost</option>
+            </select>
+        </div>
+    </td>
+    <td>
+      <div style="width:120px">
+            <T_Input Title="" Layout="3" Type="datetime-local" @bind-Value="@model.dict["StatusDate"]" Placeholder=""/>
+      </div>     
+    </td>
+</tr>
+
+@code {
+    [Parameter] public EventCallback<int> OnRemove{get; set;}
+    [Parameter] public int SerialNo {get; set;}
+    [Parameter] public string EnquiryNo {get; set;}
+    [Parameter] public Model model{get; set;}
+    
+    private ClsDatabase db = new ClsDatabase();
+
+    protected override void OnParametersSet(){
+        model.dict["EnquiryNo"] = EnquiryNo;
+        model.dict["SrNo"] = SerialNo.ToString();
+    }
+
+    public async Task HandleRemove(){
+        Console.WriteLine("Removing the row");
+        Console.WriteLine(SerialNo);
+        await OnRemove.InvokeAsync(SerialNo-1);
+    }
+
+    public void HandleSave(){
+        Console.WriteLine("Saving the Detail");
+        model.dict["EnquiryNo"] = EnquiryNo;
+        model.dict["SrNo"] = SerialNo.ToString();
+        
+        model.Save();
+        model.Clear();
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize default values if empty
+        if (string.IsNullOrEmpty(model.dict["StatusDate"])) 
+        {
+            model.dict["StatusDate"] = DateTime.Now.ToString("yyyy-MM-ddTHH:mm");
+        }
+        if (string.IsNullOrEmpty(model.dict["CurrentStatus"])) 
+        {
+            model.dict["CurrentStatus"] = "Initial Contact";
+        }
+    }
+}

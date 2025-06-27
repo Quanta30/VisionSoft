@@ -1,5 +1,9 @@
 ﻿@rendermode InteractiveServer
 
+
+
+
+
 @if(Layout == 1){
     <div class="@ColSize">
         <div class="mb-3">
@@ -152,7 +156,18 @@ else if(Layout == 3){
     {
         if (!ReadOnly)
         {
-            _internalValue = e.Value?.ToString() ?? string.Empty;
+            string newValue = e.Value?.ToString() ?? string.Empty;
+            
+            // For date inputs, ensure ISO format
+            if (Type == "date" && !string.IsNullOrEmpty(newValue))
+            {
+                if (DateTime.TryParse(newValue, out DateTime date))
+                {
+                    newValue = date.ToString("yyyy-MM-dd");
+                }
+            }
+            
+            _internalValue = newValue;
             await ValueChanged.InvokeAsync(_internalValue);
             if(ChangeFunction.HasDelegate){
                 await ChangeFunction.InvokeAsync(_internalValue);
@@ -161,7 +176,6 @@ else if(Layout == 3){
         Validate();
     }
 
-
     //Validate the Input
     public void Validate(){
         isValid = true;
@@ -169,4 +183,6 @@ else if(Layout == 3){
             isValid = false;
         }
     }
+
+
 }
