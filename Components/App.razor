@@ -43,6 +43,15 @@
                 }
             })
         }
+
+        document.querySelectorAll('.nv-dropdown-menu a').forEach(link => {
+            link.addEventListener('click', function () {
+                // Close all dropdowns
+                document.querySelectorAll('.nv-dropdown-menu').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+            });
+        });
     </script>
 </body>
 

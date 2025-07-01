@@ -27,14 +27,18 @@
             <th>Quantity</th>
         </TableHeads>
         <TableRows>
-            @for(int i = 0; i<details.Count; i++){
-                <AssetOutwardDetail SerialNo=@(i+1) 
-                                EntryNo=@model.dict["EntryNo"] 
-                                OnRemove="HandleRemove" model="@details[i]" ToSave=@ToSave/> 
+            @for(int i = 0; i < detailComponents.Count; i++){
+                int index = i;
+                <AssetOutwardDetail 
+                    SerialNo="@(index+1)"
+                    EntryNo="@model.dict["EntryNo"]"
+                    OnRemove="HandleRemove"
+                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                    @ref="detailComponents[index]" />
             }
         </TableRows>
         <TableFooter>
-            Total Items: @details.Count
+            Total Items: @detailComponents.Count
         </TableFooter>
     </TableView>
 </ChildContent>
@@ -49,24 +53,23 @@
 </T_Frm>
 
 @code{
-    //ELEMENT REFERENCES
     private T_Msg Msg;
     public DotNetObjectReference<AssetOutward> dotNetRef;
-    
-    //Models and Class Objects
+
+    // Component references and data rows
+    private List<AssetOutwardDetail> detailComponents = new();
+    public List<DataRow> detailRows = new();
+
+    // Models and Class Objects
     Model model = new Model("AssetOutwardHead", "EntryNo");
-    List<Model> details = new List<Model>();
     ClsDatabase db = new ClsDatabase();
-   
-    //BooleanValues
+
+    // State
     private bool isViewing = false;
-    private bool isAddClicked = false;
     private bool isEditing = false;
-    public bool ToSave = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender){
         if(firstRender){
-            Console.WriteLine("First Render");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
@@ -86,8 +89,8 @@
 
     [JSInvokable]
     public void HandleAdd(){
-        Model detail = new Model("AssetOutwardDetails", "");
-        details.Add(detail);
+        detailComponents.Add(null); // Placeholder for @ref
+        detailRows.Add(null); // Placeholder for new row
         StateHasChanged();
     }
 
@@ -95,66 +98,71 @@
         HandleClear();
         isEditing = true;
         model.Populate(row);
-        Console.WriteLine(model.dict["EntryNo"]);
+
         DataTable dataTable = db.GetDataTable($"Select * from AssetOutwardDetails where EntryNo='{model.dict["EntryNo"]}' ORDER BY SrNo");
-        Console.WriteLine(dataTable.Rows.Count);
-        foreach(DataRow row1 in dataTable.Rows){
-            Model detail = new Model("AssetOutwardDetails", "");
-            Console.WriteLine("Adding Detail");
-            detail.Populate(row1);
-            details.Add(detail);
+        foreach(DataRow detailRow in dataTable.Rows){
+            detailRows.Add(detailRow);
+            detailComponents.Add(null); // @ref will be set after render
         }
         StateHasChanged();
     }
 
     [JSInvokable]
     public async Task HandleSave(){
-        Console.WriteLine("Saving");
-        
         // Validation
         if (string.IsNullOrEmpty(model.dict["DepartmentCode"]) || model.dict["DepartmentCode"] == "0")
         {
             await Msg.Error("Please select a department.");
             return;
         }
-
-        if (details.Count == 0)
+        if (detailComponents.Count == 0)
         {
             await Msg.Error("Please add at least one asset item.");
             return;
         }
 
         try{
-            ToSave = true;
-            bool er = model.Save();
-            if(!er)throw new Exception();
-            
-            // The details will save themselves via the ToSave parameter
-            // No need to loop through details here
-            
+            // Save all detail components
+            bool allDetailsSaved = true;
+            if(isEditing)
+                db.ExecuteQuery($"Delete From AssetOutwardDetails where EntryNo='{model.dict["EntryNo"]}'");
+            for(int i=0; i<detailComponents.Count; i++){
+                var detail = detailComponents[i];
+                if(detail != null){
+                    bool saved = detail.SaveDetail();
+                    if(!saved) allDetailsSaved = false;
+                }
+            }
+            if(!allDetailsSaved){
+                throw new Exception("Failed to save some details");
+            }
+
+            // Save the parent
+            bool er;
+            if(isEditing) er = model.Update();
+            else er = model.Save();
+
+            if(!er) throw new Exception("Failed to save header");
+
             await Msg.Success();
         }
         catch(Exception e){
+            Console.WriteLine($"Save error: {e.Message}");
             await Msg.SaveError();
-        }
-        finally{
-            ToSave = false;
         }
     }
 
     [JSInvokable]
     public void HandleClear(){
-        Console.WriteLine("Clear Form");
         model.Clear();
-        details.Clear();    
-        isEditing=false;
-        isAddClicked=false;
-        isViewing=false;  
+        detailComponents.Clear();
+        detailRows.Clear();
+        isEditing = false;
+        isViewing = false;
         StateHasChanged();
     }
 
     public void HandleClose(){
-        isAddClicked = false;
         isViewing = false;
     }
 
@@ -164,22 +172,19 @@
         db.ExecuteQuery($"Delete From AssetOutwardDetails where EntryNo='{pk}'");
     }
 
-    public void HandleRemove(int i){
-        Console.WriteLine($"Removing Row in Parent {i}");
-        if (i >= 0 && i < details.Count)
+    public void HandleRemove(int serialNo){
+        int index = serialNo - 1;
+        if (index >= 0 && index < detailComponents.Count)
         {
-            details.RemoveAt(i);
-            Console.WriteLine($"Count At {i}");
+            detailComponents.RemoveAt(index);
+            if(detailRows.Count > index)detailRows.RemoveAt(index);
             StateHasChanged();
         }
     }
 
     protected override void OnInitialized()
     {
-        // Initialize default values
         if (string.IsNullOrEmpty(model.dict["EntryDate"])) 
-        {
             model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
-        }
     }
 }

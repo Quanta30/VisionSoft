@@ -1,7 +1,7 @@
-@page "/Adjustment2"
+@page "/StockAdjustment"
 @inject IJSRuntime JS
 @using System.Data
-@using VisionSoft.Components.Transactions.SA2
+@using VisionSoft.Components.Transactions.StockAdjustment
 @rendermode InteractiveServer 
 
 <T_Msg @ref="Msg"/>
@@ -33,7 +33,7 @@
         <TableRows>
             @for(int i = 0; i < detailComponents.Count; i++){
                 int index = i; // Capture index for closure
-                <StockAdjustmentDetail2 
+                <StockAdjustmentDetail 
                         SerialNo=@(index+1)
                         AdjustmentNo=@Convert.ToInt32(model.dict["AdjustmentNo"]) 
                         OnRemove="@((idx) => HandleRemove(idx))" 
@@ -65,10 +65,10 @@
 @code{
     //ELEMENT REFERENCES
     private T_Msg Msg;
-    public DotNetObjectReference<StockAdjustment2> dotNetRef;
+    public DotNetObjectReference<StockAdjustment> dotNetRef;
     
     // Component references - let each child manage its own model
-    private List<StockAdjustmentDetail2> detailComponents = new List<StockAdjustmentDetail2>();
+    private List<StockAdjustmentDetail> detailComponents = new List<StockAdjustmentDetail>();
     public List<DataRow> detailRows = new List<DataRow>();
    
     //Models and Class Objects
@@ -108,7 +108,7 @@
         isEditing = true;
         model.Populate(row);
         AdjustmentNo = Convert.ToInt32(model.dict["AdjustmentNo"]);
-        
+
         DataTable dataTable = db.GetDataTable($"Select * from AdjustmentDetails where AdjustmentNo={model.dict["AdjustmentNo"]}");
         
         // Populate the data list and add component placeholders
@@ -185,8 +185,10 @@
         
         if (index >= 0 && index < detailComponents.Count)
         {
+            Console.WriteLine($"Here {index} {detailComponents.Count}");
             detailComponents.RemoveAt(index);
-            detailRows.RemoveAt(index);
+            Console.WriteLine("Success");
+            if(detailRows.Count > index)detailRows.RemoveAt(index);
             Console.WriteLine($"Removed item at index {index}. New count: {detailComponents.Count}");
             CalculateTotals();
             StateHasChanged();

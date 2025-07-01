@@ -1,0 +1,160 @@
+@using System.Data
+@namespace VisionSoft.Components.Transactions.Payment
+@using Microsoft.AspNetCore.Components
+
+<tr>
+    <td>
+        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
+    </td>
+    <td>
+        @SerialNo
+    </td>
+    <td>
+        <T_RInput Title="" Layout="3" TableName="VoucherHEad" PrimaryColumn="VoucherNo" DisplayColumn="VoucherNo" Value="@model.dict["VoucherNo"]" ValueChanged="OnVoucherChanged"/>
+    </td>
+    <td>
+        <div style="width:120px">
+            <select class="form-control form-control-sm" @bind="@model.dict["VoucherType"]">
+                <option value="PURCHASE">Purchase</option>
+                <option value="EXPENSE">Expense</option>
+                <option value="SALARY">Salary</option>
+                <option value="ADVANCE">Advance</option>
+                <option value="OTHER">Other</option>
+            </select>
+        </div>
+    </td>
+    <td>
+        <div style="width:100px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["AmountPaid"]" Placeholder="" ChangeFunction="OnChange"/>
+        </div>
+    </td>
+</tr>
+
+@code {
+    [Parameter] public EventCallback<int> OnRemove { get; set; }
+    [Parameter] public int SerialNo { get; set; }
+    [Parameter] public string PaymentNo { get; set; }
+    [Parameter] public EventCallback OnCalculationChanged { get; set; }
+    [Parameter] public DataRow InitialDataRow { get; set; }
+
+    public Model model = new Model("PaymentDetails", "");
+    private ClsDatabase db = new ClsDatabase();
+
+    protected override void OnParametersSet(){
+        if (InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
+        }
+        else
+        {
+            model.dict["PaymentNo"] = PaymentNo;
+            model.dict["SrNo"] = SerialNo.ToString();
+        }
+    }
+
+    public void OnVoucherChanged(string voucherNo)
+    {
+        try
+        {
+            model.dict["VoucherNo"] = voucherNo;
+            UpdateVoucherDetails();
+            OnChange("");
+            StateHasChanged();
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine($"Error in OnVoucherChanged: {ex.Message}");
+        }
+    }
+
+    private void UpdateVoucherDetails()
+    {
+        if (!string.IsNullOrEmpty(model.dict["VoucherNo"]))
+        {
+            try
+            {
+                string query = $"SELECT VoucherType FROM VoucherHead WHERE VoucherNo = '{model.dict["VoucherNo"]}'";
+                DataTable result = db.GetDataTable(query);
+                
+                if (result.Rows.Count > 0)
+                {
+                    DataRow row = result.Rows[0];
+                    model.dict["VoucherType"] = row["VoucherType"]?.ToString() ?? "OTHER";
+                }
+                else
+                {
+                    Console.WriteLine("No voucher found for the selected voucher number");
+                    model.dict["VoucherType"] = "OTHER";
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting voucher details: {ex.Message}");
+                model.dict["VoucherType"] = "OTHER";
+            }
+        }
+    }
+
+    public async Task HandleRemove()
+    {
+        Console.WriteLine($"Removing row with SerialNo: {SerialNo}");
+        await OnRemove.InvokeAsync(SerialNo);
+    }
+
+    public bool SaveDetail()
+    {
+        try
+        {
+            Console.WriteLine($"Saving detail {SerialNo}");
+            model.dict["PaymentNo"] = PaymentNo;
+            model.dict["SrNo"] = SerialNo.ToString();
+            
+            if (string.IsNullOrEmpty(model.dict["VoucherNo"]))
+            {
+                Console.WriteLine("Cannot save - no voucher selected");
+                return false;
+            }
+            
+            if (string.IsNullOrEmpty(model.dict["AmountPaid"]) || float.Parse(model.dict["AmountPaid"]) <= 0)
+            {
+                Console.WriteLine("Cannot save - invalid amount");
+                return false;
+            }
+            
+            bool saved = model.Save();
+            
+            if (saved)
+            {
+                Console.WriteLine($"Detail {SerialNo} saved successfully");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to save detail {SerialNo}");
+            }
+            
+            return saved;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
+            return false;
+        }
+    }
+
+    public void OnChange(string value)
+    {
+        Console.WriteLine("Change In Payment Details");
+        OnCalculationChanged.InvokeAsync();
+    }
+
+    public float GetAmountPaid() 
+    {
+        return float.TryParse(model.dict["AmountPaid"], out float amount) ? amount : 0;
+    }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(model.dict["VoucherType"])) model.dict["VoucherType"] = "OTHER";
+        if (string.IsNullOrEmpty(model.dict["AmountPaid"])) model.dict["AmountPaid"] = "0";
+    }
+}

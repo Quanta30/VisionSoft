@@ -31,67 +31,51 @@
     [Parameter] public int SerialNo {get; set;}
     [Parameter] public string PONumber {get; set;}
     [Parameter] public EventCallback<int> OnCalculationChanged{get; set;}
-    [Parameter] public Model model{get; set;}
-    
+    [Parameter] public DataRow InitialDataRow { get; set; }
+
+    private Model model = new Model("PurchaseOrderDetails", "");
     public float amount = 0;
     private ClsDatabase db = new ClsDatabase();
 
     protected override void OnParametersSet(){
-        model.dict["PONumber"] = PONumber;
-        model.dict["POSrNo"] = SerialNo.ToString();
+        if (InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
+        }
+        else
+        {
+            model.dict["PONumber"] = PONumber;
+            model.dict["POSrNo"] = SerialNo.ToString();
+        }
         Calculate();
     }
 
     private void OnProductChanged(string productCode)
     {   
         model.dict["ProductCode"] = productCode;
-        UpdateProductDetails();
         Calculate();
         StateHasChanged();
     }
 
-    private void UpdateProductDetails()
-    {
-        if (!string.IsNullOrEmpty(model.dict["ProductCode"]))
-        {
-            try
-            {
-                string query = $"SELECT PurchaseRate FROM ProductMaster WHERE ProductCode = '{model.dict["ProductCode"]}'";
-                DataTable result = db.GetDataTable(query);
-                
-                if (result.Rows.Count > 0)
-                {
-                    DataRow row = result.Rows[0];
-                    
-                    if (row["PurchaseRate"] != DBNull.Value)
-                    {
-                        model.dict["Rate"] = row["PurchaseRate"].ToString();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting product details: {ex.Message}");
-                model.dict["Rate"] = "0";
-            }
-        }
-    }
+
 
     public async Task HandleRemove(){
-        Console.WriteLine("Removing the row");
-        Console.WriteLine(SerialNo);
-        await OnRemove.InvokeAsync(SerialNo-1);
+        await OnRemove.InvokeAsync(SerialNo);
     }
 
-    public void HandleSave(){
-        Console.WriteLine("Saving the Detail");
-        model.dict["PONumber"] = PONumber;
-        model.dict["POSrNo"] = SerialNo.ToString();
-        
-        Calculate();
-        
-        model.Save();
-        model.Clear();
+    // Called by parent during save
+    public bool SaveDetail(){
+        try{
+            model.dict["PONumber"] = PONumber;
+            model.dict["POSrNo"] = SerialNo.ToString();
+            Calculate();
+            bool saved = model.Save();
+            return saved;
+        }
+        catch(Exception ex){
+            Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
+            return false;
+        }
     }
 
     private void Calculate(){
@@ -109,18 +93,16 @@
     }
 
     public void OnChange(string value){
-        Console.WriteLine("Change In Details");
         Calculate();
-        OnCalculationChanged.InvokeAsync();
+        OnCalculationChanged.InvokeAsync(SerialNo);
     }
+
+    public float GetAmount() => amount;
 
     protected override void OnInitialized()
     {
-        // Initialize default values if empty
         if (string.IsNullOrEmpty(model.dict["Rate"])) model.dict["Rate"] = "0";
         if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
-        
-        UpdateProductDetails();
         Calculate();
     }
 }

@@ -84,12 +84,12 @@ public class Model
 
         DataTable dt = db.GetDataTable(Query);
         foreach (DataRow row in dt.Rows)
-        {   
+        {
             string columnName = row["COLUMN_NAME"].ToString();
             string dataType = row["DATA_TYPE"].ToString().ToLower();
             //Console.WriteLine(row["COLUMN_NAME"]);
             dict[row["COLUMN_NAME"].ToString()] = "";
-            
+
             // INITIALIZE WITH APPROPRIATE VALUE FOR TESTING PURPOSE : TO BE REMOVED
             //TO BE REMOVED : DATA_TYPE FROM THE QUERY, string dataType, SwitchCase
             switch (dataType)
@@ -156,7 +156,7 @@ public class Model
     //AutoGenerate The Primary Key Code with Max
     public void SetPrimaryKey()
     {
-        dict[PrimaryKeyColumn] = db.GenerateNextNo(TableName, PrimaryKeyColumn);
+        dict[PrimaryKeyColumn] = db.GenerateNextNo(TableName, $"Cast({PrimaryKeyColumn} as int)", $"{PrimaryKeyColumn} Like '[0-9]%'");
     }
 
     //AutoGenerate The Primary Key Code Having Prefix
@@ -167,9 +167,30 @@ public class Model
             FROM {TableName}
             WHERE {PrimaryKeyColumn} LIKE '{PrimaryKeyPrefix}%'";
 
-        string maxVal = db.GetScalar(query);
-        int nextNumber = int.Parse(maxVal) + 1;
-        dict[PrimaryKeyColumn] = prefix + nextNumber.ToString();
+        string checkQuery = $@"
+                    Select Count({PrimaryKeyColumn}) from {TableName} 
+                    where {PrimaryKeyColumn} Like '{prefix}%'";
+
+        int nextNumber;
+        string chVal = db.GetScalar(checkQuery);
+        Console.WriteLine($"Here is ChVal {chVal}");
+
+        if (prefix == "")
+        {
+            SetPrimaryKey();
+        }
+        else if (chVal == "0")
+        {
+            Console.WriteLine("Here It is ");
+            nextNumber = 1;
+            dict[PrimaryKeyColumn] = prefix + nextNumber.ToString();
+        }
+        else
+        {
+            string maxVal = db.GetScalar(query);
+            nextNumber = int.Parse(maxVal) + 1;
+            dict[PrimaryKeyColumn] = prefix + nextNumber.ToString();
+        }
     }
 
 
@@ -220,7 +241,12 @@ public class Model
         }
         return column.ToString();
     }
-    
+
+    public void SetPrefix(string prefix)
+    {
+        PrimaryKeyPrefix = prefix;
+        SetPrimaryKey(prefix);
+    }
     
 
 

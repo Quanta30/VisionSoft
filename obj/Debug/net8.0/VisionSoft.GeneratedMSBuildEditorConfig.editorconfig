@@ -24,10 +24,6 @@ build_property.EnableCodeStyleSeverity =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Home.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIb21lLnJhem9y
-build_metadata.AdditionalFiles.CssScope = 
-
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/AMCMaster.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXEFNQ01hc3Rlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
@@ -48,8 +44,100 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXENhbGxDbG9zZU1hc3Rlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/CompanyMaster2.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXENvbXBhbnlNYXN0ZXIyLnJhem9y
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/CompanyMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXENvbXBhbnlNYXN0ZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/CustomerMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXEN1c3RvbWVyTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/DailyAttendanceMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXERhaWx5QXR0ZW5kYW5jZU1hc3Rlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/DailyTravelMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXERhaWx5VHJhdmVsTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/DepartmentMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXERlcGFydG1lbnRNYXN0ZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/EngineerMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXEVuZ2luZWVyTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/GroupMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXEdyb3VwTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/GstCategoryMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXEdzdENhdGVnb3J5TWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/GSTStateMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXEdTVFN0YXRlTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/HsnMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXEhzbk1hc3Rlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/LedgerMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXExlZGdlck1hc3Rlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/LoginMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXExvZ2luTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/ProductMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFByb2R1Y3RNYXN0ZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/ReferenceMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFJlZmVyZW5jZU1hc3Rlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/ReminderMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFJlbWluZGVyTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/RepairyOutwardMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFJlcGFpcnlPdXR3YXJkTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/RouteMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFJvdXRlTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/SeriesMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFNlcmllc01hc3Rlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/ServiceMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFNlcnZpY2VNYXN0ZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/SMSMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFNNU01hc3Rlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/SMSTemplateMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFNNU1RlbXBsYXRlTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/SupplierMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFN1cHBsaWVyTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/TokenMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFRva2VuTWFzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Masters/UQCMaster.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYXN0ZXJzXFVRQ01hc3Rlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Routes.razor]
@@ -116,6 +204,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wbGF0ZXNcVF9UZXh0YXJlYS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/AMCBill.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcQU1DQmlsbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/AssetInward/AssetInward.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcQXNzZXRJbndhcmRcQXNzZXRJbndhcmQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
@@ -138,6 +230,14 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/NewEnquiry/NewEnquiryDetail.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcTmV3RW5xdWlyeVxOZXdFbnF1aXJ5RGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/Payment/PaymentDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcUGF5bWVudFxQYXltZW50RGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/Payment/Payments.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcUGF5bWVudFxQYXltZW50cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/PurchaseBill/PurchaseBill.razor]
@@ -180,14 +280,6 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcUmVwYWlyeUlud2FyZFxSZXBhaXJ5SW53YXJkRGV0YWlsLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/SA2/StockAdjustment2.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcU0EyXFN0b2NrQWRqdXN0bWVudDIucmF6b3I=
-build_metadata.AdditionalFiles.CssScope = 
-
-[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/SA2/StockAdjustmentDetail2.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcU0EyXFN0b2NrQWRqdXN0bWVudERldGFpbDIucmF6b3I=
-build_metadata.AdditionalFiles.CssScope = 
-
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/SalesBill/SalesBill.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcU2FsZXNCaWxsXFNhbGVzQmlsbC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
@@ -220,6 +312,14 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcU2Vjb25kSGFuZFNhbGVzQmlsbFxTZWNvbmRIYW5kU2FsZXNCaWxsRGV0YWlsLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/StockAdjustment/StockAdjustment.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcU3RvY2tBZGp1c3RtZW50XFN0b2NrQWRqdXN0bWVudC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/StockAdjustment/StockAdjustmentDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcU3RvY2tBZGp1c3RtZW50XFN0b2NrQWRqdXN0bWVudERldGFpbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Transactions/Voucher/Voucher.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmFuc2FjdGlvbnNcVm91Y2hlclxWb3VjaGVyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
@@ -232,10 +332,14 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xfSW1wb3J0cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Home.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIb21lLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-kbwf6akic6
+
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Layout/MainLayout.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTWFpbkxheW91dC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-fiki7rr9f8
 
-[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Layout/NavMenu.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTmF2TWVudS5yYXpvcg==
-build_metadata.AdditionalFiles.CssScope = b-38c7ww9ajk
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Layout/NavBar.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTmF2QmFyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-izx8rq5kpc

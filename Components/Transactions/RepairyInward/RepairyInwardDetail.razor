@@ -6,6 +6,9 @@
         <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
     </td>
     <td>
+        @SerialNo
+    </td>
+    <td>
         <T_RInput Title="" Layout="3" TableName="RepairyOutwardHead" PrimaryColumn="RepairyOutwardNo" DisplayColumn="RepairyOutwardNo" Value="@model.dict["RepairyOutwardNo"]" ValueChanged="OnRepairyOutwardChanged"/>
     </td>
     <td>
@@ -14,14 +17,14 @@
         </div>
     </td>
     <td>
-      <div style="width:80px">
+        <div style="width:80px">
             <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>     
+        </div>
     </td>
     <td>
-      <div style="width:70px">
+        <div style="width:70px">
             <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>  
+        </div>
     </td>
     <td>
         @amount.ToString("F2")
@@ -29,27 +32,46 @@
 </tr>
 
 @code {
-    [Parameter] public EventCallback<int> OnRemove{get; set;}
-    [Parameter] public int SerialNo {get; set;}
-    [Parameter] public string EntryNo {get; set;}
-    [Parameter] public EventCallback<int> OnCalculationChanged{get; set;}
-    [Parameter] public Model model{get; set;}
-    
-    public float amount = 0;
-    public string itemDetails = "";
+    [Parameter] public EventCallback<int> OnRemove { get; set; }
+    [Parameter] public int SerialNo { get; set; }
+    [Parameter] public string EntryNo { get; set; }
+    [Parameter] public EventCallback OnCalculationChanged { get; set; }
+    [Parameter] public DataRow InitialDataRow { get; set; }
+
+    private Model model = new Model("RepairyInwardDetails", "");
     private ClsDatabase db = new ClsDatabase();
+    public string itemDetails = "";
+    public float amount = 0;
 
     protected override void OnParametersSet(){
-        model.dict["EntryNo"] = EntryNo;
+        if (InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
+            UpdateRepairyOutwardDetails();
+        }
+        else
+        {
+            model.Clear();
+            model.dict["EntryNo"] = EntryNo;
+            model.dict["SrNo"] = SerialNo.ToString();
+        }
         Calculate();
     }
 
     private void OnRepairyOutwardChanged(string repairyOutwardNo)
-    {   
-        model.dict["RepairyOutwardNo"] = repairyOutwardNo;
-        UpdateRepairyOutwardDetails();
-        Calculate();
-        StateHasChanged();
+    {
+        try
+        {
+            model.dict["RepairyOutwardNo"] = repairyOutwardNo;
+            Console.WriteLine($"RepairyOutward changed - RepairyOutwardNo: {repairyOutwardNo}");
+            UpdateRepairyOutwardDetails();
+            Calculate();
+            StateHasChanged();
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine($"Error in OnRepairyOutwardChanged: {ex.Message}");
+        }
     }
 
     private void UpdateRepairyOutwardDetails()
@@ -58,7 +80,6 @@
         {
             try
             {
-                // Get details from RepairyOutward to show what was sent for repair
                 string query = $@"
                     SELECT ROH.CustomerCode, ROH.EntryDate, ROD.ProductCode, ROD.Quantity as OutwardQuantity,
                            PM.ProductName, CM.CustomerName
@@ -73,55 +94,76 @@
                 if (result.Rows.Count > 0)
                 {
                     DataRow row = result.Rows[0];
-                    
-                    // Build item details string
                     string productName = row["ProductName"]?.ToString() ?? "N/A";
                     string customerName = row["CustomerName"]?.ToString() ?? "N/A";
                     string outwardDate = row["EntryDate"] != DBNull.Value ? 
                         Convert.ToDateTime(row["EntryDate"]).ToString("dd/MM/yyyy") : "N/A";
                     string outwardQty = row["OutwardQuantity"]?.ToString() ?? "0";
+                    model.dict["ProductCode"] = row["ProductCode"]?.ToString() ?? "";
                     
                     itemDetails = $"{productName}\nCustomer: {customerName}\nSent: {outwardDate}\nQty: {outwardQty}";
-                    
-                    // Auto-populate quantity with outward quantity
                     model.dict["Quantity"] = outwardQty;
                 }
                 else
                 {
                     itemDetails = "Repairy Outward not found";
+                    model.dict["Quantity"] = "1";
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting repairy outward details: {ex.Message}");
                 itemDetails = "Error loading details";
+                model.dict["Quantity"] = "1";
             }
         }
         else
         {
             itemDetails = "";
+            model.dict["Quantity"] = "1";
         }
     }
 
-    public async Task HandleRemove(){
-        Console.WriteLine("Removing the row");
-        await OnRemove.InvokeAsync(SerialNo-1);
+    public async Task HandleRemove()
+    {
+        Console.WriteLine($"Removing row with SerialNo: {SerialNo}");
+        await OnRemove.InvokeAsync(SerialNo);
     }
 
-    public void HandleSave(){
-        Console.WriteLine("Saving the Detail");
-        model.dict["EntryNo"] = EntryNo;
-        
-        Calculate();
-        
-        // Update repair status and stock
-        UpdateRepairStatus();
-        
-        model.Save();
-        model.Clear();
+    public bool SaveDetail()
+    {
+        try
+        {
+            Console.WriteLine($"Saving detail {SerialNo}");
+            model.dict["EntryNo"] = EntryNo;
+            model.dict["SrNo"] = SerialNo.ToString();
+            if (string.IsNullOrEmpty(model.dict["RepairyOutwardNo"]) || model.dict["RepairyOutwardNo"] == "0")
+            {
+                Console.WriteLine("Cannot save - no repairy outward selected");
+                return false;
+            }
+            Calculate();
+            model.dict["Amount"] = amount.ToString("F2");
+            UpdateRepairStatusAndStock();
+            bool saved = model.Save();
+            if (saved)
+            {
+                Console.WriteLine($"Detail {SerialNo} saved successfully");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to save detail {SerialNo}");
+            }
+            return saved;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
+            return false;
+        }
     }
 
-    private void UpdateRepairStatus()
+    private void UpdateRepairStatusAndStock()
     {
         if (!string.IsNullOrEmpty(model.dict["RepairyOutwardNo"]) && 
             !string.IsNullOrEmpty(model.dict["Quantity"]))
@@ -129,55 +171,55 @@
             try
             {
                 float quantity = float.Parse(model.dict["Quantity"]);
-                
-                // Mark repairy outward as completed/returned
                 string updateQuery = $@"
                     UPDATE RepairyOutwardHead 
                     SET RepairCompleted = 1, ReturnDate = GETDATE()
-                    WHERE RepairyOutwardNo = {model.dict["RepairyOutwardNo"]}";
-                
+                    WHERE RepairyOutwardNo = '{model.dict["RepairyOutwardNo"]}'";
                 db.ExecuteQuery(updateQuery);
-                
-                // Add repaired items back to stock if needed
-                // This depends on your business logic - whether repaired items go back to regular stock
-                // or are returned to customer directly
-                
-                Console.WriteLine($"Updated Repair Status for RepairyOutwardNo: {model.dict["RepairyOutwardNo"]}, Quantity: {quantity}");
+                if (!string.IsNullOrEmpty(model.dict["ProductCode"]))
+                {
+                    string stockUpdateQuery = $@"
+                        UPDATE PhysicalStock 
+                        SET Quantity = Quantity + {quantity}
+                        WHERE ProductCode = '{model.dict["ProductCode"]}'";
+                    db.ExecuteQuery(stockUpdateQuery);
+                    Console.WriteLine($"Updated PhysicalStock for ProductCode: {model.dict["ProductCode"]}, Quantity: +{quantity}");
+                }
+                Console.WriteLine($"Updated Repair Status for RepairyOutwardNo: {model.dict["RepairyOutwardNo"]}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error updating repair status: {ex.Message}");
+                Console.WriteLine($"Error updating repair status or stock: {ex.Message}");
             }
         }
     }
 
-    private void Calculate(){
+    private void Calculate()
+    {
         if (float.TryParse(model.dict["Rate"], out float rate) &&
             float.TryParse(model.dict["Quantity"], out float quantity))
         {
             amount = rate * quantity;
-            model.dict2["Amount"] = amount.ToString("F2");
         }
         else
         {
             amount = 0f;
-            model.dict2["Amount"] = "0";
         }
     }
 
-    public void OnChange(string value){
+    public void OnChange(string value)
+    {
         Console.WriteLine("Change In Details");
         Calculate();
         OnCalculationChanged.InvokeAsync();
     }
 
+    public float GetAmount() => amount;
+
     protected override void OnInitialized()
     {
-        // Initialize default values if empty
         if (string.IsNullOrEmpty(model.dict["Rate"])) model.dict["Rate"] = "0";
         if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
-        
-        UpdateRepairyOutwardDetails();
         Calculate();
     }
 }

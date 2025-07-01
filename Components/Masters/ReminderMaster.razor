@@ -1,0 +1,187 @@
+@page "/remindermaster"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer
+
+<T_Msg @ref="Msg" />
+@if (isViewing)
+{
+    <FrmView TableName="ReminderMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+}
+
+<T_Frm FormName="Reminder Master">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Entry No *" ReadOnly="true" @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-2" />
+            <T_Input Title="Entry Date" Type="date" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-2" />
+            <T_Input Title="Remind What *" @bind-Value="@model.dict["RemindWhat"]" MaxLength="50" ColSize="col-md-4" />
+            <T_Checkbox Title="Reminder On" @bind-Value="@model.dict["ReminderOn"]" ColSize="col-md-2" />
+            <T_Checkbox Title="Reminder Off" @bind-Value="@model.dict["ReminderOff"]" ColSize="col-md-2" />
+        </T_Row>
+        <T_Row>
+            <T_Checkbox Title="Mon" @bind-Value="@model.dict["DayMon"]" />
+            <T_Checkbox Title="Tue" @bind-Value="@model.dict["DayTue"]" />
+            <T_Checkbox Title="Wed" @bind-Value="@model.dict["DayWed"]" />
+            <T_Checkbox Title="Thu" @bind-Value="@model.dict["DayThu"]" />
+            <T_Checkbox Title="Fri" @bind-Value="@model.dict["DayFri"]" />
+            <T_Checkbox Title="Sat" @bind-Value="@model.dict["DaySat"]" />
+            <T_Checkbox Title="Sun" @bind-Value="@model.dict["DaySun"]" />
+        </T_Row>
+        <T_Row>
+            @for (int i = 1; i <= 31; i++)
+            {
+                <T_Checkbox Title=@($"Date{i}") @bind-Value="@model.dict[$"Date{i}"]" ColSize="col-md-1" />
+                if (i % 8 == 0)
+                {
+                    @* </T_Row><T_Row> *@
+                }
+            }
+        </T_Row>
+        <T_Row>
+            <T_Checkbox Title="Jan" @bind-Value="@model.dict["MonthJan"]" />
+            <T_Checkbox Title="Feb" @bind-Value="@model.dict["MonthFeb"]" />
+            <T_Checkbox Title="Mar" @bind-Value="@model.dict["MonthMar"]" />
+            <T_Checkbox Title="Apr" @bind-Value="@model.dict["MonthApr"]" />
+            <T_Checkbox Title="May" @bind-Value="@model.dict["MonthMay"]" />
+            <T_Checkbox Title="Jun" @bind-Value="@model.dict["MonthJun"]" />
+            <T_Checkbox Title="Jul" @bind-Value="@model.dict["MonthJul"]" />
+            <T_Checkbox Title="Aug" @bind-Value="@model.dict["MonthAug"]" />
+            <T_Checkbox Title="Sep" @bind-Value="@model.dict["MonthSep"]" />
+            <T_Checkbox Title="Oct" @bind-Value="@model.dict["MonthOct"]" />
+            <T_Checkbox Title="Nov" @bind-Value="@model.dict["MonthNov"]" />
+            <T_Checkbox Title="Dec" @bind-Value="@model.dict["MonthDec"]" />
+        </T_Row>
+        <T_Row>
+            @for (int y = 2010; y <= 2020; y++)
+            {
+                <T_Checkbox Title=@y.ToString() @bind-Value="@model.dict[$"Year{y}"]" ColSize="col-md-1" />
+                if ((y - 2009) % 6 == 0)
+                {
+                    @* </T_Row><T_Row> *@
+                }
+            }
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Remind Time" Type="time" @bind-Value="@model.dict["RemindTime"]" ColSize="col-md-2" />
+            <T_Input Title="Snooze" Type="number" @bind-Value="@model.dict["Snooze"]" ColSize="col-md-2" />
+            <T_Input Title="Repeat" Type="number" @bind-Value="@model.dict["Repeat"]" ColSize="col-md-2" />
+            <T_Input Title="Agent" @bind-Value="@model.dict["Agent"]" MaxLength="50" ColSize="col-md-3" />
+        </T_Row>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+    </CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<ReminderMaster> dotNetRef;
+
+    Model model = new Model("ReminderMaster", "EntryNo");
+    private bool isViewing = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            if (!ValidateForm()) return;
+
+            bool success = isEditing
+                ? model.Update()
+                : model.Save();
+
+            if (success)
+            {
+                await Msg.Success();
+
+                if (!isEditing)
+                {
+                    HandleClear();
+                }
+
+                isEditing = false;
+            }
+            else
+            {
+                await Msg.SaveError();
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.SaveError();
+            Console.WriteLine($"Error saving Reminder Master record: {ex.Message}");
+        }
+        HandleClear();
+    }
+
+    [JSInvokable]
+    public void HandleClear()
+    {
+        model.Clear();
+        isEditing = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    public async Task HandleEdit(DataRow row)
+    {
+        try
+        {
+            isEditing = true;
+            isViewing = false;
+            model.Populate(row);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Reminder Master record: {ex.Message}");
+        }
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(model.dict["RemindWhat"])) 
+            errors.Add("Remind What is required");
+
+        if (errors.Any())
+        {
+            var message = string.Join(", ", errors);
+            Msg.Show(message, "danger", "bi-exclamation-triangle");
+            return false;
+        }
+
+        return true;
+    }
+
+    public void Dispose(){
+        dotNetRef.Dispose();
+    }
+}

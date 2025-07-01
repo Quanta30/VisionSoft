@@ -14,7 +14,7 @@
         </div>
     </td>
     <td>
-        <T_RInput Title="" Layout="3" TableName="PhysicalStock" PrimaryColumn="StockId" DisplayColumn="ProductName" Value="@model.dict["StockId"]" ValueChanged="OnStockChanged"/>
+        <T_RInput Title="" Layout="3" TableName="PhysicalStockView" PrimaryColumn="ProductName" DisplayColumn="ProductName" Value=@StockName ValueChanged="OnStockChanged"/>
     </td>
     <td>
       <div style="width:70px">
@@ -27,37 +27,39 @@
     [Parameter] public EventCallback<int> OnRemove{get; set;}
     [Parameter] public int SerialNo {get; set;}
     [Parameter] public string EntryNo {get; set;}
-    [Parameter] public Model model{get; set;}
-    [Parameter] public bool ToSave{get; set;} = false;
-    
-    public string StockName = "";
+    [Parameter] public DataRow InitialDataRow { get; set; }
+
+    private Model model = new Model("AssetOutwardDetails", "");
     private ClsDatabase db = new ClsDatabase();
-    private bool isSaved = false;
+    public string StockName = "";
 
     protected override void OnParametersSet(){
-        model.dict["EntryNo"] = EntryNo;
-        model.dict["SrNo"] = SerialNo.ToString();
-        
-        // Initialize StockName if StockId exists
-        if(!string.IsNullOrEmpty(model.dict["StockId"]) && model.dict["StockId"] != "0"){
-            StockName = db.GetScalar($"SELECT ProductName FROM PhysicalStock WHERE StockId = '{model.dict["StockId"]}'");
+        if (InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
+            StockName = StockIdToName(model.dict["StockId"]);
         }
-
-        if(!isSaved && ToSave){
-            HandleSave();
-            isSaved = true;
+        else
+        {
+            model.dict["EntryNo"] = EntryNo;
+            model.dict["SrNo"] = SerialNo.ToString();
         }
     }
 
-    private void OnStockChanged(string stockId)
+    public string StockNameToId(string sn){
+        string pc = db.GetScalar($"Select ProductCode from ProductMaster where ProductName = '{sn}'");
+        string Id = db.GetScalar($"Select StockId from PhysicalStock where ProductCode = '{pc}'");
+        return Id;
+    }
+    public string StockIdToName(string Id){
+        string pc = db.GetScalar($"Select ProductCode from PhysicalStock where StockId = '{Id}'");
+        string name = db.GetScalar($"Select ProductName from ProductMaster where ProductCode = '{pc}'");
+        return name;
+    }
+    private void OnStockChanged(string sname)
     {   
-        model.dict["StockId"] = stockId;
-        
-        // Update StockName when StockId changes
-        if(!string.IsNullOrEmpty(stockId) && stockId != "0"){
-            StockName = db.GetScalar($"SELECT ProductName FROM PhysicalStock WHERE StockId = '{stockId}'");
-        }
-        
+        model.dict["StockId"] = StockNameToId(sname);
+        StockName = sname;
         UpdateStockDetails();
         StateHasChanged();
     }
@@ -66,89 +68,40 @@
     {
         if (!string.IsNullOrEmpty(model.dict["StockId"]) && model.dict["StockId"] != "0")
         {
-            try
-            {
-                string query = $"SELECT ProductName FROM PhysicalStock WHERE StockId = '{model.dict["StockId"]}'";
-                DataTable result = db.GetDataTable(query);
-                
-                if (result.Rows.Count > 0)
-                {
-                    DataRow row = result.Rows[0];
-                    
-                    // Auto-populate item name from stock
-                    if (row["ProductName"] != DBNull.Value)
-                    {
-                        model.dict["ItemName"] = row["ProductName"].ToString();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting stock details: {ex.Message}");
-            }
+
+                model.dict["ItemName"] = StockIdToName(model.dict["StockId"]);
+
         }
     }
 
     public async Task HandleRemove(){
-        Console.WriteLine("Removing the row");
-        Console.WriteLine(SerialNo);
-        await OnRemove.InvokeAsync(SerialNo-1);
+        await OnRemove.InvokeAsync(SerialNo);
     }
 
-    public void HandleSave(){
-        Console.WriteLine("Saving the Detail");
-        model.dict["EntryNo"] = EntryNo;
-        model.dict["SrNo"] = SerialNo.ToString();
-        
-        // Update asset tracking for outward movement
-        UpdateAssetTracking();
-        
-        model.Save();
-        model.Clear();
-    }
+    // Called by parent during save
+    public bool SaveDetail(){
+        try{
+            model.dict["EntryNo"] = EntryNo;
+            model.dict["SrNo"] = SerialNo.ToString();
 
-    private void UpdateAssetTracking()
-    {
-        if (!string.IsNullOrEmpty(model.dict["StockId"]) && 
-            !string.IsNullOrEmpty(model.dict["Quntity"]) &&
-            !string.IsNullOrEmpty(EntryNo))
-        {
-            try
-            {
-                float quantity = float.Parse(model.dict["Quntity"]);
-                
-                // Log the asset outward movement
-                Console.WriteLine($"Asset Outward: StockId {model.dict["StockId"]}, Quantity: {quantity}, Department: Moving from department");
-                
-                // Optional: Update AssetAllocation table to track outward movement
-                /*
-                string updateQuery = $@"
-                    UPDATE AssetAllocation 
-                    SET Quantity = Quantity - {quantity}
-                    WHERE StockId = {model.dict["StockId"]} AND DepartmentCode = {model.dict["DepartmentCode"]}";
-                
-                db.ExecuteQuery(updateQuery);
-                
-                // Or insert outward record
-                string insertQuery = $@"
-                    INSERT INTO AssetAllocation (StockId, DepartmentCode, Quantity, AllocationDate, EntryNo, MovementType)
-                    VALUES ({model.dict["StockId"]}, {model.dict["DepartmentCode"]}, -{quantity}, GETDATE(), {EntryNo}, 'OUTWARD')";
-                
-                db.ExecuteQuery(insertQuery);
-                */
+            // Validation
+            if(string.IsNullOrEmpty(model.dict["StockId"]) || model.dict["StockId"] == "0"){
+                Console.WriteLine("Cannot save - no stock selected");
+                return false;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating asset tracking: {ex.Message}");
-            }
+
+            bool saved = model.Save();
+            return saved;
+        }
+        catch(Exception ex){
+            Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
+            return false;
         }
     }
 
-    protected override void OnInitialized()
+      protected override void OnInitialized()
     {
-        // Initialize default values if empty
         if (string.IsNullOrEmpty(model.dict["Quntity"])) model.dict["Quntity"] = "1";
-        
         UpdateStockDetails();
     }
 }

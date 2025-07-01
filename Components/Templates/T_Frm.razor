@@ -12,6 +12,16 @@
                             @FormName
                         </h5>
                     </div>
+                    @if(OnFormTypeChange.HasDelegate)
+                    {
+                        <div class="col-auto">
+                            <select class="form-select form-select-sm" @onchange="HandleFormTypeChange">
+                                <option value="">Empty</option>
+                                <option value="A">Type A</option>
+                                <option value="B">Type B</option>
+                            </select>
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -35,9 +45,19 @@
     [Parameter] public string FormName { get; set; } = string.Empty;
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? CardFooterContent { get; set; }
+    [Parameter] public EventCallback<string> OnFormTypeChange { get; set; }
 
+    public async Task HandleFormTypeChange(ChangeEventArgs e)
+    {
 
+            if (OnFormTypeChange.HasDelegate)
+            {   
+                Console.WriteLine(e.Value.ToString());
+                await OnFormTypeChange.InvokeAsync(e.Value.ToString());
+            }
+        
+
+    }
 
     public int index = 0;
-
 }

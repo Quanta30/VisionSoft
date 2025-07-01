@@ -1,0 +1,143 @@
+@page "/ledgermaster"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer
+
+<T_Msg @ref="Msg" />
+@if (isViewing)
+{
+    <FrmView TableName="LedgerMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+}
+
+<T_Frm FormName="Ledger Master">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Ledger Code *" ReadOnly="true" @bind-Value="@model.dict["LedgerCode"]" ColSize="col-md-3" />
+            <T_Input Title="Ledger Name *" @bind-Value="@model.dict["LedgerName"]" MaxLength="1000" ColSize="col-md-6" />
+            <T_RInput Title="Group" @bind-Value="@model.dict["GroupCode"]" ColSize="col-md-3"
+                      TableName="GroupMaster" PrimaryColumn="GroupCode" DisplayColumn="GroupName" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Debit Opening Balance" Type="number" Step="0.01" @bind-Value="@model.dict["DebitOpeningBalance"]" ColSize="col-md-3" />
+            <T_Input Title="Credit Opening Balance" Type="number" Step="0.01" @bind-Value="@model.dict["CreditOpeningBalance"]" ColSize="col-md-3" />
+            <T_Input Title="Closing Balance" Type="number" Step="0.01" @bind-Value="@model.dict["ClosingBalance"]" ColSize="col-md-3" />
+        </T_Row>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+    </CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<LedgerMaster> dotNetRef;
+
+    Model model = new Model("LedgerMaster", "LedgerCode");
+    private bool isViewing = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            if (!ValidateForm()) return;
+
+            bool success = isEditing
+                ? model.Update()
+                : model.Save();
+
+            if (success)
+            {
+                await Msg.Success();
+
+                if (!isEditing)
+                {
+                    HandleClear();
+                }
+
+                isEditing = false;
+            }
+            else
+            {
+                await Msg.SaveError();
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.SaveError();
+            Console.WriteLine($"Error saving Ledger Master record: {ex.Message}");
+        }
+        HandleClear();
+    }
+
+    [JSInvokable]
+    public void HandleClear()
+    {
+        model.Clear();
+        isEditing = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    public async Task HandleEdit(DataRow row)
+    {
+        try
+        {
+            isEditing = true;
+            isViewing = false;
+            model.Populate(row);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Ledger Master record: {ex.Message}");
+        }
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(model.dict["LedgerName"])) 
+            errors.Add("Ledger Name is required");
+
+        if (errors.Any())
+        {
+            var message = string.Join(", ", errors);
+            Msg.Show(message, "danger", "bi-exclamation-triangle");
+            return false;
+        }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+}

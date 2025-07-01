@@ -42,8 +42,7 @@
             <th>Action</th>
             <th>Sr. No.</th>
             <th>Product</th>
-            <th>Purchase Rate</th>
-            <th>Sale Rate</th>
+            <th>Rate</th>
             <th>Quantity</th>
             <th>Discount</th>
             <th>GST%</th>
@@ -53,14 +52,18 @@
             <th>Net Amount</th>
         </TableHeads>
         <TableRows>
-            @for(int i = 0; i<details.Count; i++){
-                <PurchaseBillDetail SerialNo=@(i+1) 
-                                PurchaseBillNo=@model.dict["PurchaseBillNo"] 
-                                OnRemove="HandleRemove" model="@details[i]" OnCalculationChanged="CalculateTotals" ToSave=@ToSave/> 
+            @for(int i = 0; i < detailComponents.Count; i++){
+                int index = i;
+                <PurchaseBillDetail SerialNo="@(index+1)" 
+                                    PurchaseBillNo="@model.dict["PurchaseBillNo"]" 
+                                    OnRemove="HandleRemove" 
+                                    OnCalculationChanged="CalculateTotals"
+                                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                                    @ref="detailComponents[index]" />
             }
         </TableRows>
         <TableFooter>
-            Total Count : @details.Count
+            Total Count : @detailComponents.Count
         </TableFooter>
     </TableView>
     <T_SummaryCard >
@@ -83,24 +86,21 @@
 </T_Frm>
 
 @code{
-    //ELEMENT REFERENCES
     private T_Msg Msg;
     public DotNetObjectReference<PurchaseBill> dotNetRef;
-    
-    //Models and Class Objects
+
+    // Component references and data rows
+    private List<PurchaseBillDetail> detailComponents = new();
+    public List<DataRow> detailRows = new();
+
     Model model = new Model("PurchaseBillHead", "PurchaseBillNo", "A");
-    List<Model> details = new List<Model>();
     ClsDatabase db = new ClsDatabase();
-   
-    //BooleanValues
+
     private bool isViewing = false;
-    private bool isAddClicked = false;
     private bool isEditing = false;
-    public bool ToSave = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender){
         if(firstRender){
-            Console.WriteLine("First Render");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
@@ -120,8 +120,8 @@
 
     [JSInvokable]
     public void HandleAdd(){
-        Model detail = new Model("PurchaseBillDetails", "");
-        details.Add(detail);
+        detailComponents.Add(null); // Placeholder for @ref
+        detailRows.Add(null); // Placeholder for new row
         StateHasChanged();
     }
 
@@ -129,48 +129,58 @@
         HandleClear();
         isEditing = true;
         model.Populate(row);
-        Console.WriteLine(model.dict["PurchaseBillNo"]);
+
         DataTable dataTable = db.GetDataTable($"Select * from PurchaseBillDetails where PurchaseBillNo='{model.dict["PurchaseBillNo"]}'");
-        Console.WriteLine(dataTable.Rows.Count);
-        foreach(DataRow row1 in dataTable.Rows){
-            Model detail = new Model("PurchaseBillDetails", "");
-            Console.WriteLine("Adding Detail");
-            detail.Populate(row1);
-            details.Add(detail);
+        foreach(DataRow detailRow in dataTable.Rows){
+            detailRows.Add(detailRow);
+            detailComponents.Add(null); // @ref will be set after render
         }
         StateHasChanged();
     }
 
     [JSInvokable]
-    public void HandleSave(){
-        Console.WriteLine("Saving");
+    public async Task HandleSave(){
         try{
-            ToSave = true;
-            bool er = model.Save();
-            if(!er)throw new Exception();
-            Msg.Success();
+            // Save all detail components
+            bool allDetailsSaved = true;
+            if(isEditing)
+                db.ExecuteQuery($"Delete From PurchaseBillDetails where PurchaseBillNo='{model.dict["PurchaseBillNo"]}'");
+            for(int i=0; i<detailComponents.Count; i++){
+                var detail = detailComponents[i];
+                if(detail != null){
+                    bool saved = detail.SaveDetail();
+                    if(!saved) allDetailsSaved = false;
+                }
+            }
+            if(!allDetailsSaved){
+                throw new Exception("Failed to save some details");
+            }
+
+            // Save the parent
+            bool er;
+            if(isEditing) er = model.Update();
+            else er = model.Save();
+
+            if(!er) throw new Exception("Failed to save header");
+
+            await Msg.Success();
         }
         catch(Exception e){
-            Msg.SaveError();
-        }
-        finally{
-
+            await Msg.SaveError();
         }
     }
 
     [JSInvokable]
     public void HandleClear(){
-        Console.WriteLine("Clear Form");
         model.Clear();
-        details.Clear();    
-        isEditing=false;
-        isAddClicked=false;
-        isViewing=false;  
+        detailComponents.Clear();
+        detailRows.Clear();
+        isEditing = false;
+        isViewing = false;
         StateHasChanged();
     }
 
     public void HandleClose(){
-        isAddClicked = false;
         isViewing = false;
     }
 
@@ -180,26 +190,27 @@
         db.ExecuteQuery($"Delete From PurchaseBillDetails where PurchaseBillNo='{pk}'");
     }
 
-    public void HandleRemove(int i){
-        Console.WriteLine($"Removing Row in Parent {i}");
-        if (i >= 0 && i < details.Count)
+    public void HandleRemove(int serialNo){
+        int index = serialNo - 1;
+        if (index >= 0 && index < detailComponents.Count)
         {
-            details.RemoveAt(i);
-            Console.WriteLine($"Count At {i}");
+            detailComponents.RemoveAt(index);
+            if(detailRows.Count > index)detailRows.RemoveAt(index);
             CalculateTotals();
             StateHasChanged();
         }
     }
 
-    // Calculate totals method
     private void CalculateTotals()
     {
         float totalAmount = 0;
         float gstAmount = 0;
 
-        foreach(Model detail in details){
-            totalAmount += float.TryParse(detail.dict2["TotalAmount"], out float ta)?ta:0;
-            gstAmount += float.TryParse(detail.dict2["Gst"], out float gt)?gt:0;
+        foreach(var detail in detailComponents){
+            if(detail != null){
+                totalAmount += detail.GetTotalAmount();
+                gstAmount += detail.GetGstAmount();
+            }
         }
 
         model.dict["TotalAmount"] = totalAmount.ToString("F2");
@@ -218,7 +229,6 @@
 
     protected override void OnInitialized()
     {
-        // Initialize default values
         if (string.IsNullOrEmpty(model.dict["ModeOfPay"])) model.dict["ModeOfPay"] = "CASH";
         if (string.IsNullOrEmpty(model.dict["ConsiderInAccounts"])) model.dict["ConsiderInAccounts"] = "1";
     }

@@ -1,0 +1,142 @@
+@page "/dailyattendancemaster"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer
+
+<T_Msg @ref="Msg" />
+@if (isViewing)
+{
+    <FrmView TableName="DailyAttendanceMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+}
+
+<T_Frm FormName="Daily Attendance Master">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Entry No *" ReadOnly="true" @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-3" />
+            <T_Input Title="Entry Date" Type="date" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-3" />
+            <T_RInput Title="Engineer" @bind-Value="@model.dict["EngineerCode"]" ColSize="col-md-6"
+                      TableName="EngineerMaster" PrimaryColumn="EngineerCode" DisplayColumn="EngineerName" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="In Time" Type="datetime-local" @bind-Value="@model.dict["InTime"]" ColSize="col-md-6" />
+            <T_Input Title="Out Time" Type="datetime-local" @bind-Value="@model.dict["OutTime"]" ColSize="col-md-6" />
+        </T_Row>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+    </CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<DailyAttendanceMaster> dotNetRef;
+
+    Model model = new Model("DailyAttendanceMaster", "EntryNo");
+    private bool isViewing = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            if (!ValidateForm()) return;
+
+            bool success = isEditing
+                ? model.Update()
+                : model.Save();
+
+            if (success)
+            {
+                await Msg.Success();
+
+                if (!isEditing)
+                {
+                    HandleClear();
+                }
+
+                isEditing = false;
+            }
+            else
+            {
+                await Msg.SaveError();
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.SaveError();
+            Console.WriteLine($"Error saving Daily Attendance record: {ex.Message}");
+        }
+        HandleClear();
+    }
+
+    [JSInvokable]
+    public void HandleClear()
+    {
+        model.Clear();
+        isEditing = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    public async Task HandleEdit(DataRow row)
+    {
+        try
+        {
+            isEditing = true;
+            isViewing = false;
+            model.Populate(row);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Daily Attendance record: {ex.Message}");
+        }
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(model.dict["EngineerCode"]) || model.dict["EngineerCode"] == "0")
+            errors.Add("Engineer is required");
+
+        if (errors.Any())
+        {
+            var message = string.Join(", ", errors);
+            Msg.Show(message, "danger", "bi-exclamation-triangle");
+            return false;
+        }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+}

@@ -1,0 +1,150 @@
+@using System.Data
+@namespace VisionSoft.Components.Transactions.Voucher
+@rendermode InteractiveServer
+<tr>
+    <td>
+        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
+    </td>
+    <td>
+        @SerialNo
+    </td>
+    <td>
+        <T_RInput Title="" Layout="3" TableName="LedgerMaster" PrimaryColumn="LedgerCode" DisplayColumn="LedgerName" Value="@model.dict["LedgerCode"]" ValueChanged="OnLedgerChanged"/>
+    </td>
+    <td>
+        <T_RInput Title="" Layout="3" TableName="LedgerMaster" PrimaryColumn="LedgerCode" DisplayColumn="LedgerName" Value="@model.dict["OppositeLedgerCode"]" ValueChanged="OnOppositeLedgerChanged"/>
+    </td>
+    <td>
+        <div style="width:100px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["DebitAmount"]" Placeholder="0.00" ChangeFunction="OnAmountChanged"/>
+        </div>
+    </td>
+    <td>
+        <div style="width:100px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["CreditAmount"]" Placeholder="0.00" ChangeFunction="OnAmountChanged"/>
+        </div>
+    </td>
+</tr>
+
+@code {
+    [Parameter] public EventCallback<int> OnRemove { get; set; }
+    [Parameter] public int SerialNo { get; set; }
+    [Parameter] public string VoucherNo { get; set; }
+    [Parameter] public string VoucherType { get; set; }
+    [Parameter] public EventCallback OnCalculationChanged { get; set; }
+    [Parameter] public DataRow InitialDataRow { get; set; }
+
+    private Model model = new Model("VoucherDetails", "");
+    private ClsDatabase db = new ClsDatabase();
+
+    protected override void OnParametersSet(){
+        if (InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
+        }
+        else
+        {
+            model.dict["VoucherNo"] = VoucherNo;
+            model.dict["Sequence"] = SerialNo.ToString();
+        }
+    }
+
+    private void OnLedgerChanged(string ledgerCode)
+    {
+        model.dict["LedgerCode"] = ledgerCode;
+        ValidateAmounts();
+        OnCalculationChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private void OnOppositeLedgerChanged(string oppositeLedgerCode)
+    {
+        model.dict["OppositeLedgerCode"] = oppositeLedgerCode;
+        StateHasChanged();
+    }
+
+    private void OnAmountChanged(string value)
+    {
+        Console.WriteLine("Change in Amounts");
+        ValidateAmounts();
+        OnCalculationChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private void ValidateAmounts()
+    {
+        if (decimal.TryParse(model.dict["DebitAmount"], out decimal debit) && debit != 0)
+        {
+            model.dict["CreditAmount"] = "0";
+        }
+        else if (decimal.TryParse(model.dict["CreditAmount"], out decimal credit) && credit != 0)
+        {
+            model.dict["DebitAmount"] = "0";
+        }
+    }
+
+    public async Task HandleRemove()
+    {
+        Console.WriteLine($"Removing row with SerialNo: {SerialNo}");
+        await OnRemove.InvokeAsync(SerialNo);
+    }
+
+    public bool SaveDetail()
+    {
+        try
+        {
+            Console.WriteLine($"Saving detail {SerialNo}");
+            model.dict["VoucherNo"] = VoucherNo;
+            model.dict["Sequence"] = SerialNo.ToString();
+
+            if (string.IsNullOrEmpty(model.dict["LedgerCode"]) || model.dict["LedgerCode"] == "0")
+            {
+                Console.WriteLine("Cannot save - no ledger selected");
+                return false;
+            }
+
+            decimal debit = decimal.TryParse(model.dict["DebitAmount"], out decimal d) ? d : 0;
+            decimal credit = decimal.TryParse(model.dict["CreditAmount"], out decimal c) ? c : 0;
+
+            if (debit != 0 && credit != 0)
+            {
+                Console.WriteLine("Cannot save - both debit and credit amounts cannot be non-zero");
+                return false;
+            }
+
+            bool saved = model.Save();
+
+            if (saved)
+            {
+                Console.WriteLine($"Detail {SerialNo} saved successfully");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to save detail {SerialNo}");
+            }
+
+            return saved;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
+            return false;
+        }
+    }
+
+    public decimal GetDebitAmount()
+    {
+        return decimal.TryParse(model.dict["DebitAmount"], out decimal debit) ? debit : 0;
+    }
+
+    public decimal GetCreditAmount()
+    {
+        return decimal.TryParse(model.dict["CreditAmount"], out decimal credit) ? credit : 0;
+    }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(model.dict["DebitAmount"])) model.dict["DebitAmount"] = "0";
+        if (string.IsNullOrEmpty(model.dict["CreditAmount"])) model.dict["CreditAmount"] = "0";
+    }
+}

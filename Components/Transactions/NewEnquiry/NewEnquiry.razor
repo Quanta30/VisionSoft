@@ -35,7 +35,7 @@
         <T_Input Title="Reference Contact No" @bind-Value="@model.dict["ReferenceContactNo"]" ColSize="col-md-6"/>
     </T_Row>
     <T_Row>
-        <T_RInput Title="Marketing Person" Layout="1" TableName="EmployeeMaster" PrimaryColumn="MarketingPersonCode" DisplayColumn="EmployeeName" Value="@model.dict["MarketingPersonCode"]" ValueChanged="OnMarketingPersonChanged" ColSize="col-md-12"/>
+        <T_RInput Title="Marketing Person Code" Layout="1" Value="@model.dict["MarketingPersonCode"]" ValueChanged="OnMarketingPersonChanged" ColSize="col-md-12"/>
     </T_Row>
     <T_Row>
         <T_Checkbox Title="Demo Required" @bind-Value="@model.dict["Demo"]" ColSize="col-md-3"/>
@@ -54,14 +54,18 @@
             <th>Status Date</th>
         </TableHeads>
         <TableRows>
-            @for(int i = 0; i<details.Count; i++){
-                <NewEnquiryDetail SerialNo=@(i+1) 
-                                EnquiryNo=@model.dict["EnquiryNo"] 
-                                OnRemove="HandleRemove" model="@details[i]"/> 
+            @for(int i = 0; i < detailComponents.Count; i++){
+                int index = i;
+                <NewEnquiryDetail 
+                    SerialNo="@(index+1)"
+                    EnquiryNo="@model.dict["EnquiryNo"]"
+                    OnRemove="HandleRemove"
+                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                    @ref="detailComponents[index]" />
             }
         </TableRows>
         <TableFooter>
-            Total Status Updates: @details.Count
+            Total Status Updates: @detailComponents.Count
         </TableFooter>
     </TableView>
 </ChildContent>
@@ -76,23 +80,21 @@
 </T_Frm>
 
 @code{
-    //ELEMENT REFERENCES
     private T_Msg Msg;
     public DotNetObjectReference<NewEnquiry> dotNetRef;
-    
-    //Models and Class Objects
+
+    // Component references and data rows
+    private List<NewEnquiryDetail> detailComponents = new();
+    public List<DataRow> detailRows = new();
+
     Model model = new Model("NewEnquiryHead", "EnquiryNo");
-    List<Model> details = new List<Model>();
     ClsDatabase db = new ClsDatabase();
-   
-    //BooleanValues
+
     private bool isViewing = false;
-    private bool isAddClicked = false;
     private bool isEditing = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender){
         if(firstRender){
-            Console.WriteLine("First Render");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
@@ -118,8 +120,8 @@
 
     [JSInvokable]
     public void HandleAdd(){
-        Model detail = new Model("NewEnquiryDetails", "");
-        details.Add(detail);
+        detailComponents.Add(null); // Placeholder for @ref
+        detailRows.Add(null); // Placeholder for new row
         StateHasChanged();
     }
 
@@ -127,36 +129,52 @@
         HandleClear();
         isEditing = true;
         model.Populate(row);
-        Console.WriteLine(model.dict["EnquiryNo"]);
+
         DataTable dataTable = db.GetDataTable($"Select * from NewEnquiryDetails where EnquiryNo='{model.dict["EnquiryNo"]}' ORDER BY SrNo");
-        Console.WriteLine(dataTable.Rows.Count);
-        foreach(DataRow row1 in dataTable.Rows){
-            Model detail = new Model("NewEnquiryDetails", "");
-            Console.WriteLine("Adding Detail");
-            detail.Populate(row1);
-            details.Add(detail);
+        foreach(DataRow detailRow in dataTable.Rows){
+            detailRows.Add(detailRow);
+            detailComponents.Add(null); // @ref will be set after render
         }
         StateHasChanged();
     }
 
     [JSInvokable]
     public async Task HandleSave(){
-        Console.WriteLine("Saving");
-        
         // Validation
         if (string.IsNullOrEmpty(model.dict["PartyName"]))
         {
             await Msg.Error("Party Name is required.");
             return;
         }
+        if (detailComponents.Count == 0)
+        {
+            await Msg.Error("Please add at least one status update.");
+            return;
+        }
 
         try{
-            bool er = model.Save();
-            foreach(Model detail in details){
-                if(!er)throw new Exception();
-                er = detail.Save();
+            // Save all detail components
+            bool allDetailsSaved = true;
+            if(isEditing)
+                db.ExecuteQuery($"Delete From NewEnquiryDetails where EnquiryNo='{model.dict["EnquiryNo"]}'");
+            for(int i=0; i<detailComponents.Count; i++){
+                var detail = detailComponents[i];
+                if(detail != null){
+                    bool saved = detail.SaveDetail();
+                    if(!saved) allDetailsSaved = false;
+                }
             }
-            if(!er)throw new Exception();
+            if(!allDetailsSaved){
+                throw new Exception("Failed to save some details");
+            }
+
+            // Save the parent
+            bool er;
+            if(isEditing) er = model.Update();
+            else er = model.Save();
+
+            if(!er) throw new Exception("Failed to save header");
+
             await Msg.Success();
         }
         catch(Exception e){
@@ -166,17 +184,15 @@
 
     [JSInvokable]
     public void HandleClear(){
-        Console.WriteLine("Clear Form");
         model.Clear();
-        details.Clear();    
-        isEditing=false;
-        isAddClicked=false;
-        isViewing=false;  
+        detailComponents.Clear();
+        detailRows.Clear();
+        isEditing = false;
+        isViewing = false;
         StateHasChanged();
     }
 
     public void HandleClose(){
-        isAddClicked = false;
         isViewing = false;
     }
 
@@ -186,19 +202,18 @@
         db.ExecuteQuery($"Delete From NewEnquiryDetails where EnquiryNo='{pk}'");
     }
 
-    public void HandleRemove(int i){
-        Console.WriteLine($"Removing Row in Parent {i}");
-        if (i >= 0 && i < details.Count)
+    public void HandleRemove(int serialNo){
+        int index = serialNo - 1;
+        if (index >= 0 && index < detailComponents.Count)
         {
-            details.RemoveAt(i);
-            Console.WriteLine($"Count At {i}");
+            detailComponents.RemoveAt(index);
+            if(detailRows.Count > index)detailRows.RemoveAt(index);
             StateHasChanged();
         }
     }
 
     protected override void OnInitialized()
     {
-        // Initialize default values
         if (string.IsNullOrEmpty(model.dict["Demo"])) model.dict["Demo"] = "false";
         if (string.IsNullOrEmpty(model.dict["DemoCompleted"])) model.dict["DemoCompleted"] = "false";
         if (string.IsNullOrEmpty(model.dict["HardwareRequirement"])) model.dict["HardwareRequirement"] = "false";

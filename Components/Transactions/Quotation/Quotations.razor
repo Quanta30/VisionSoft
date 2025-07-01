@@ -1,21 +1,12 @@
-@page "/Quotations"
+@page "/Quotation"
 @inject IJSRuntime JS
 @using System.Data
 @using VisionSoft.Components.Transactions.Quotation
 @rendermode InteractiveServer 
 
-@* QuotationDetails	QuotationNo
-QuotationDetails	SrNo
-QuotationDetails	ProductCode
-QuotationDetails	Rate
-QuotationDetails	Quantity
-QuotationDetails	Discount
-QuotationDetails	Free *@
-
 <T_Msg @ref="Msg"/>
 @if(isViewing){
-    <FrmView TableName="QuotationHead" OnClosed="HandleClose" EditClicked="HandleEdit"
-        DeleteClicked="HandleDelete"/>
+    <FrmView TableName="QuotationHead" OnClosed="HandleClose" EditClicked="HandleEdit" DeleteClicked="HandleDelete"/>
 }
 <T_Frm FormName="Quotation">
 <ChildContent>
@@ -46,53 +37,51 @@ QuotationDetails	Free *@
             <th>Net Amount</th>
         </TableHeads>
         <TableRows>
-            @for(int i = 0; i<details.Count; i++){
-                <QuotationDetail SerialNo=@(i+1) 
-                                QuotationNo=@Convert.ToInt32(model.dict["QuotationNo"]) 
-                                OnRemove="HandleRemove" model="@details[i]" OnCalculationChanged="CalculateTotals"/> 
+            @for(int i = 0; i < detailComponents.Count; i++){
+                int index = i;
+                <QuotationDetail 
+                    SerialNo="@(index+1)" 
+                    QuotationNo="@Convert.ToInt32(model.dict["QuotationNo"])" 
+                    OnRemove="@((idx) => HandleRemove(idx))"
+                    OnCalculationChanged="CalculateTotals"
+                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                    @ref="detailComponents[index]" />
             }
         </TableRows>
         <TableFooter>
-            Total Count : @details.Count
+            Total Count : @detailComponents.Count
         </TableFooter>
     </TableView>
     <T_SummaryCard >
         <T_Input Title="Total Amount" Layout=2 ReadOnly @bind-Value="@model.dict["TotalAmount"]" Placeholder="-"/>
-        <T_Input Title="GST" Layout=2 ReadOnly @bind-Value="@model.dict["GstAmount"]" Placeholder="-"/>
-        <T_Input Title="Discount" Layout=2 @bind-Value="@model.dict["Discount"]"/>
-        <T_Input Title="Add/Less" Layout=2 @bind-Value="@model.dict["AddLess"]"/>
-        <T_Input Title="Rounding" Layout=2 @bind-Value="@model.dict["Rounding"]"/>
+        <T_Input Title="GST Amount" Layout=2 ReadOnly @bind-Value="@model.dict["GstAmount"]" Placeholder="-"/>
+        <T_Input Title="Discount" Layout=2 @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals"/>
+        <T_Input Title="Add/Less" Layout=2 @bind-Value="@model.dict["AddLess"]" ChangeFunction="CalculateTotals"/>
+        <T_Input Title="Rounding" Layout=2 @bind-Value="@model.dict["Rounding"]" ChangeFunction="CalculateTotals"/>
         <T_Input Title="Net Amount" Layout=2 ReadOnly @bind-Value="@model.dict["NetAmount"]" Placeholder="-"/>
     </T_SummaryCard>
 </ChildContent>
 
 <CardFooterContent>
     <T_Button Text="Save" Style="" OnClick="HandleSave"/>
-    <T_Button Text="Clear" Style=""/>
-    <T_Button Text="View" Style=""/>
+    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
+    <T_Button Text="View" Style="" OnClick="HandleView"/>
     <T_Button Text="Print" Style=""/>
 </CardFooterContent>
-
-
 </T_Frm>
 
-@code{
-    //ELEMENT REFERENCES
+@code {
     private T_Msg Msg;
     public DotNetObjectReference<Quotations> dotNetRef;
-    
-   
-    //Models and Class Objects
-    Model model = new Model("QuotationHead", "QuotationNo");
-    List<Model> details = new List<Model>();
-    ClsDatabase db = new ClsDatabase();
-   
 
-    //BooleanValues
+    Model model = new Model("QuotationHead", "QuotationNo");
+    private List<QuotationDetail> detailComponents = new();
+    public List<DataRow> detailRows = new();
+    ClsDatabase db = new ClsDatabase();
+
     private bool isViewing = false;
     private bool isAddClicked = false;
     private bool isEditing = false;
-
 
     protected override async Task OnAfterRenderAsync(bool firstRender){
         if(firstRender){
@@ -110,24 +99,22 @@ QuotationDetails	Free *@
 
     [JSInvokable]
     public void HandleAdd(){
-        Model detail = new Model("QuotationDetails", "");
-        details.Add(detail);
+        detailComponents.Add(null);
         StateHasChanged();
     }
 
-    public void HandleEdit(DataRow row){
+    public void HandleEdit(DataRow row)
+    {
         HandleClear();
         isEditing = true;
         model.Populate(row);
-        Console.WriteLine(model.dict["QuotationNo"]);
         DataTable dataTable = db.GetDataTable($"Select * from QuotationDetails where QuotationNo={model.dict["QuotationNo"]}");
-        Console.WriteLine(dataTable.Rows.Count);
-        foreach(DataRow row1 in dataTable.Rows){
-            Model detail = new Model("QuotationDetails", "");
-            Console.WriteLine("Adding Detail");
-            detail.Populate(row1);
-            details.Add(detail);
+        foreach(DataRow detailRow in dataTable.Rows)
+        {
+            detailRows.Add(detailRow);
+            detailComponents.Add(null);
         }
+        isViewing = false;
         StateHasChanged();
     }
 
@@ -135,11 +122,27 @@ QuotationDetails	Free *@
     public void HandleSave(){
         Console.WriteLine("Saving");
         try{
-            model.Save();
-            foreach(Model detail in details)detail.Save();
+            bool allDetailsSaved = true;
+            if(isEditing){
+                db.ExecuteQuery($"Delete From QuotationDetails where QuotationNo={model.dict["QuotationNo"]}");
+            }
+            foreach(var detail in detailComponents){
+                if(detail != null){
+                    bool saved = detail.SaveDetail();
+                    if(!saved) allDetailsSaved = false;
+                }
+            }
+            if(!allDetailsSaved){
+                throw new Exception("Failed to save some details");
+            }
+            bool er;
+            if(isEditing) er = model.Update();
+            else er = model.Save();
+            if(!er) throw new Exception("Failed to save header");
             Msg.Success();
         }
         catch(Exception e){
+            Console.WriteLine($"Save error: {e.Message}");
             Msg.SaveError();
         }
     }
@@ -148,10 +151,11 @@ QuotationDetails	Free *@
     public void HandleClear(){
         Console.WriteLine("Clear Form");
         model.Clear();
-        details.Clear();    
-        isEditing=false;
-        isAddClicked=false;
-        isViewing=false;  
+        detailComponents.Clear();
+        detailRows.Clear();
+        isEditing = false;
+        isAddClicked = false;
+        isViewing = false;
         StateHasChanged();
     }
 
@@ -166,43 +170,51 @@ QuotationDetails	Free *@
         db.ExecuteQuery($"Delete From QuotationDetails where QuotationNo={pk}");
     }
 
-    public void HandleRemove(int i){
-        Console.WriteLine($"Removing Row in Parent {i}");
-        if (i >= 0 && i < details.Count)
+    public void HandleRemove(int serialNo){
+        Console.WriteLine($"Removing Row with SerialNo {serialNo}");
+        int index = serialNo - 1;
+        if (index >= 0 && index < detailComponents.Count)
         {
-            details.RemoveAt(i);  // ✅ Correct - RemoveAt() for index
-            Console.WriteLine($"Count At {i}");
+            detailComponents.RemoveAt(index);
+            if(detailRows.Count > index)detailRows.RemoveAt(index);
+            Console.WriteLine($"Removed item at index {index}. New count: {detailComponents.Count}");
+            CalculateTotals();
             StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine($"Invalid index {index} for removal. Count: {detailComponents.Count}");
         }
     }
 
-
-    // Add calculation method
     private void CalculateTotals()
     {
         float totalAmount = 0;
         float gstAmount = 0;
-        float discount = 0;
 
-        foreach(Model detail in details){
-            totalAmount += float.TryParse(detail.dict2["TotalAmount"], out float ta)?ta:0;
-            gstAmount += float.TryParse(detail.dict2["Gst"], out float gt)?gt:0;
-            discount += float.TryParse(detail.dict2["Discount"], out float dt)?dt:0;
+        foreach(var detail in detailComponents){
+            if(detail != null){
+                totalAmount += detail.GetTotalAmount();
+                gstAmount += detail.GetGstAmount();
+            }
         }
 
         model.dict["TotalAmount"] = totalAmount.ToString("F2");
         model.dict["GstAmount"] = gstAmount.ToString("F2");
-        model.dict["Discount"] = discount.ToString("F2");
-        
-        // Calculate net amount
-        float additionalDiscount = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
+
+        float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
         float addLess = float.TryParse(model.dict["AddLess"], out float al) ? al : 0;
         float rounding = float.TryParse(model.dict["Rounding"], out float r) ? r : 0;
-        
-        float netAmount = totalAmount + gstAmount - additionalDiscount + addLess + rounding;
+
+        float netAmount = totalAmount + gstAmount - discount + addLess + rounding;
         model.dict["NetAmount"] = netAmount.ToString("F2");
 
         StateHasChanged();
     }
 
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(model.dict["Quotationdate"]))
+            model.dict["Quotationdate"] = DateTime.Now.ToString("yyyy-MM-dd");
+    }
 }

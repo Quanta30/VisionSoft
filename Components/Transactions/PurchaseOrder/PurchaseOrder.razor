@@ -19,8 +19,8 @@
     </T_Row>
     <T_Row>
         <T_RInput Title="Supplier *" Layout="1" TableName="SupplierMaster" PrimaryColumn="SupplierCode" DisplayColumn="SupplierName" Value="@model.dict["SupplierCode"]" ValueChanged="OnSupplierChanged" ColSize="col-md-4"/>
-        <T_RInput Title="Person In-charge" Layout="1" TableName="EmployeeMaster" PrimaryColumn="PersonInchargeCode" DisplayColumn="EmployeeName" Value="@model.dict["PersonInchargeCode"]" ValueChanged="OnPersonInchargeChanged" ColSize="col-md-4"/>
-        <T_RInput Title="Approved By" Layout="1" TableName="EmployeeMaster" PrimaryColumn="ApprovedByCode" DisplayColumn="EmployeeName" Value="@model.dict["ApprovedByCode"]" ValueChanged="OnApprovedByChanged" ColSize="col-md-4"/>
+        <T_RInput Title="Person In-charge" Layout="1" TableName="EngineerMaster" PrimaryColumn="EngineerCode" DisplayColumn="EngineerName" Value="@model.dict["PersonInchargeCode"]" ValueChanged="OnPersonInchargeChanged" ColSize="col-md-4"/>
+        <T_RInput Title="Approved By" Layout="1" TableName="EngineerMaster" PrimaryColumn="EngineerCode" DisplayColumn="EngineerName" Value="@model.dict["ApprovedByCode"]" ValueChanged="OnApprovedByChanged" ColSize="col-md-4"/>
     </T_Row>
     <T_Row>
         <T_Checkbox Title="Approved" @bind-Value="@model.dict["Approved"]" ColSize="col-md-3"/>
@@ -36,14 +36,18 @@
             <th>Amount</th>
         </TableHeads>
         <TableRows>
-            @for(int i = 0; i<details.Count; i++){
-                <PurchaseOrderDetail SerialNo=@(i+1) 
-                                PONumber=@model.dict["PONumber"] 
-                                OnRemove="HandleRemove" model="@details[i]" OnCalculationChanged="CalculateTotals"/> 
+            @for(int i = 0; i < detailComponents.Count; i++){
+                int index = i;
+                <PurchaseOrderDetail SerialNo="@(index+1)" 
+                                    PONumber="@model.dict["PONumber"]" 
+                                    OnRemove="HandleRemove"
+                                    OnCalculationChanged="CalculateTotals"
+                                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                                    @ref="detailComponents[index]" />
             }
         </TableRows>
         <TableFooter>
-            Total Count : @details.Count
+            Total Count : @detailComponents.Count
         </TableFooter>
     </TableView>
     <T_SummaryCard >
@@ -61,23 +65,21 @@
 </T_Frm>
 
 @code{
-    //ELEMENT REFERENCES
     private T_Msg Msg;
     public DotNetObjectReference<PurchaseOrder> dotNetRef;
-    
-    //Models and Class Objects
+
+    // Component references and data rows
+    private List<PurchaseOrderDetail> detailComponents = new();
+    public List<DataRow> detailRows = new();
+
     Model model = new Model("PurchaseOrderHead", "PONumber");
-    List<Model> details = new List<Model>();
     ClsDatabase db = new ClsDatabase();
-   
-    //BooleanValues
+
     private bool isViewing = false;
-    private bool isAddClicked = false;
     private bool isEditing = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender){
         if(firstRender){
-            Console.WriteLine("First Render");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
@@ -109,8 +111,8 @@
 
     [JSInvokable]
     public void HandleAdd(){
-        Model detail = new Model("PurchaseOrderDetails", "");
-        details.Add(detail);
+        detailComponents.Add(null); // Placeholder for @ref
+        detailRows.Add(null); // Placeholder for new row
         StateHasChanged();
     }
 
@@ -118,48 +120,52 @@
         HandleClear();
         isEditing = true;
         model.Populate(row);
-        Console.WriteLine(model.dict["PONumber"]);
         DataTable dataTable = db.GetDataTable($"Select * from PurchaseOrderDetails where PONumber='{model.dict["PONumber"]}'");
-        Console.WriteLine(dataTable.Rows.Count);
         foreach(DataRow row1 in dataTable.Rows){
-            Model detail = new Model("PurchaseOrderDetails", "");
-            Console.WriteLine("Adding Detail");
-            detail.Populate(row1);
-            details.Add(detail);
+            detailRows.Add(row1);
+            detailComponents.Add(null); // @ref will be set after render
         }
         StateHasChanged();
     }
 
     [JSInvokable]
     public void HandleSave(){
-        Console.WriteLine("Saving");
         try{
-            bool er = model.Save();
-            foreach(Model detail in details){
-                if(!er)throw new Exception();
-                er = detail.Save();
+            bool allDetailsSaved = true;
+            if(isEditing)
+                db.ExecuteQuery($"Delete From PurchaseOrderDetails where PONumber='{model.dict["PONumber"]}'");
+            for(int i=0; i<detailComponents.Count; i++){
+                var detail = detailComponents[i];
+                if(detail != null){
+                    bool saved = detail.SaveDetail();
+                    if(!saved) allDetailsSaved = false;
+                }
             }
-            if(!er)throw new Exception();
+            if(!allDetailsSaved){
+                throw new Exception("Failed to save some details");
+            }
+            bool er;
+            if(isEditing) er = model.Update();
+            else er = model.Save();
+            if(!er) throw new Exception("Failed to save header");
             Msg.Success();
         }
-        catch(Exception e){
+        catch(Exception){
             Msg.SaveError();
         }
     }
 
     [JSInvokable]
     public void HandleClear(){
-        Console.WriteLine("Clear Form");
         model.Clear();
-        details.Clear();    
-        isEditing=false;
-        isAddClicked=false;
-        isViewing=false;  
+        detailComponents.Clear();
+        detailRows.Clear();
+        isEditing = false;
+        isViewing = false;
         StateHasChanged();
     }
 
     public void HandleClose(){
-        isAddClicked = false;
         isViewing = false;
     }
 
@@ -169,33 +175,31 @@
         db.ExecuteQuery($"Delete From PurchaseOrderDetails where PONumber='{pk}'");
     }
 
-    public void HandleRemove(int i){
-        Console.WriteLine($"Removing Row in Parent {i}");
-        if (i >= 0 && i < details.Count)
+    public void HandleRemove(int serialNo){
+        int index = serialNo - 1;
+        if (index >= 0 && index < detailComponents.Count)
         {
-            details.RemoveAt(i);
-            Console.WriteLine($"Count At {i}");
+            detailComponents.RemoveAt(index);
+            if(detailRows.Count > index)detailRows.RemoveAt(index);
             CalculateTotals();
             StateHasChanged();
         }
     }
 
-    // Calculate totals method
     private void CalculateTotals()
     {
         float totalAmount = 0;
-
-        foreach(Model detail in details){
-            totalAmount += float.TryParse(detail.dict["Amount"], out float amount) ? amount : 0;
+        foreach(var detail in detailComponents){
+            if(detail != null){
+                totalAmount += detail.GetAmount();
+            }
         }
-
         model.dict["TotalAmount"] = totalAmount.ToString("F2");
         StateHasChanged();
     }
 
     protected override void OnInitialized()
     {
-        // Initialize default values
         if (string.IsNullOrEmpty(model.dict["Approved"])) model.dict["Approved"] = "false";
     }
 }

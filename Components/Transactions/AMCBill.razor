@@ -1,0 +1,274 @@
+@page "/amcbill"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer 
+
+<T_Msg @ref="Msg" />
+@if (isViewing)
+{
+    <FrmView TableName="AMCBill" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+}
+
+<T_Frm FormName="AMC Bill">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Entry No *" ReadOnly="true" @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-4" />
+            <T_Input Title="Entry Date" Type="datetime-local" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-4" />
+            <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-4" />
+        </T_Row>
+        <T_Row>
+            <T_RInput Title="Customer *" Layout="1" TableName="CustomerMaster" PrimaryColumn="CustomerCode" DisplayColumn="CustomerName" Value="@model.dict["CustomerCode"]" ValueChanged="OnCustomerChanged" ColSize="col-md-6"/>
+            <T_RInput Title="Product *" Layout="1" TableName="ProductMaster" PrimaryColumn="ProductCode" DisplayColumn="ProductName" Value="@model.dict["ProductCode"]" ValueChanged="OnProductChanged" ColSize="col-md-6"/>
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Installation Date" Type="datetime-local" @bind-Value="@model.dict["InstallationDate"]" ColSize="col-md-4" />
+            <T_Input Title="AMC From Date" Type="datetime-local" @bind-Value="@model.dict["AMCFromDate"]" ColSize="col-md-4" />
+            <T_Input Title="AMC To Date" Type="datetime-local" @bind-Value="@model.dict["AMCToDate"]" ColSize="col-md-4" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="AMC Amount *" Type="number" Step="0.01" @bind-Value="@model.dict["AMCAmount"]" ColSize="col-md-3" />
+            <T_Input Title="Online Calls" Type="number" @bind-Value="@model.dict["OnlineCall"]" ColSize="col-md-3" />
+            <T_Input Title="Onsite Calls" Type="number" @bind-Value="@model.dict["OnsiteCall"]" ColSize="col-md-3" />
+            <T_Input Title="No. of Nodes" Type="number" @bind-Value="@model.dict["NoOfNodes"]" ColSize="col-md-3" />
+        </T_Row>
+        <T_Row>
+            <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" MaxLength="1000" ColSize="col-md-12" />
+        </T_Row>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+        <T_Button Text="Print" btnType="Print" OnClick="HandlePrint" Style=""/>
+    </CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<AMCBill> dotNetRef;
+
+    Model model = new Model("AMCBill", "EntryNo");
+    private bool isViewing = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            Console.WriteLine("AMCBill OnAfterRenderAsync executed");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+            
+            // Initialize dates
+            if (string.IsNullOrEmpty(model.dict["EntryDate"]))
+                model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-ddTHH:mm");
+        }
+    }
+
+    private void OnCustomerChanged(string customerCode)
+    {
+        model.dict["CustomerCode"] = customerCode;
+        StateHasChanged();
+    }
+
+    private void OnProductChanged(string productCode)
+    {
+        model.dict["ProductCode"] = productCode;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            if (!ValidateForm()) return;
+
+            bool success = isEditing
+                ? model.Update()
+                : model.Save();
+
+            if (success)
+            {
+                await Msg.Success();
+
+                if (!isEditing)
+                {
+                    HandleClear();
+                }
+
+                isEditing = false;
+            }
+            else
+            {
+                await Msg.SaveError();
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.SaveError();
+            Console.WriteLine($"Error saving AMC Bill record: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public void HandleClear()
+    {
+        model.Clear();
+        isEditing = false;
+        
+        // Reset entry date to today
+        model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-ddTHH:mm");
+        
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandlePrint()
+    {
+        Console.WriteLine("Print AMC Bill");
+        // implement printing logic if needed
+        StateHasChanged();
+    }
+
+    public async Task HandleEdit(DataRow row)
+    {
+        try
+        {
+            isEditing = true;
+            isViewing = false;
+            model.Populate(row);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading AMC Bill record: {ex.Message}");
+        }
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        // Required field validations
+        if (string.IsNullOrWhiteSpace(model.dict["EntryNo"])) 
+            errors.Add("Entry No is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["CustomerCode"]) || model.dict["CustomerCode"] == "0") 
+            errors.Add("Customer is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["ProductCode"]) || model.dict["ProductCode"] == "0") 
+            errors.Add("Product is required");
+
+        if (string.IsNullOrWhiteSpace(model.dict["AMCAmount"])) 
+            errors.Add("AMC Amount is required");
+
+        // Numeric validations
+        if (!string.IsNullOrWhiteSpace(model.dict["CustomerCode"]) && !int.TryParse(model.dict["CustomerCode"], out _))
+            errors.Add("Customer Code must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["ProductCode"]) && !int.TryParse(model.dict["ProductCode"], out _))
+            errors.Add("Product Code must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["AMCAmount"]) && !float.TryParse(model.dict["AMCAmount"], out _))
+            errors.Add("AMC Amount must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["OnlineCall"]) && !int.TryParse(model.dict["OnlineCall"], out _))
+            errors.Add("Online Calls must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["OnsiteCall"]) && !int.TryParse(model.dict["OnsiteCall"], out _))
+            errors.Add("Onsite Calls must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["NoOfNodes"]) && !int.TryParse(model.dict["NoOfNodes"], out _))
+            errors.Add("No. of Nodes must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["Cancelled"]) && !int.TryParse(model.dict["Cancelled"], out _))
+            errors.Add("Cancelled must be a valid number");
+
+        // Date validations
+        if (!string.IsNullOrWhiteSpace(model.dict["EntryDate"]) && !DateTime.TryParse(model.dict["EntryDate"], out _))
+            errors.Add("Entry Date must be a valid date");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["InstallationDate"]) && !DateTime.TryParse(model.dict["InstallationDate"], out _))
+            errors.Add("Installation Date must be a valid date");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["AMCFromDate"]) && !DateTime.TryParse(model.dict["AMCFromDate"], out _))
+            errors.Add("AMC From Date must be a valid date");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["AMCToDate"]) && !DateTime.TryParse(model.dict["AMCToDate"], out _))
+            errors.Add("AMC To Date must be a valid date");
+
+        // Business logic validations
+        if (!string.IsNullOrWhiteSpace(model.dict["AMCFromDate"]) && !string.IsNullOrWhiteSpace(model.dict["AMCToDate"]))
+        {
+            if (DateTime.TryParse(model.dict["AMCFromDate"], out DateTime fromDate) && 
+                DateTime.TryParse(model.dict["AMCToDate"], out DateTime toDate))
+            {
+                if (toDate <= fromDate)
+                    errors.Add("AMC To Date must be greater than AMC From Date");
+            }
+        }
+
+        // Length validations
+        if (!string.IsNullOrWhiteSpace(model.dict["Narration"]) && model.dict["Narration"].Length > 1000)
+            errors.Add("Narration cannot exceed 1000 characters");
+
+        // Amount validations
+        if (!string.IsNullOrWhiteSpace(model.dict["AMCAmount"]) && float.TryParse(model.dict["AMCAmount"], out float amount))
+        {
+            if (amount <= 0)
+                errors.Add("AMC Amount must be greater than 0");
+        }
+
+        if (errors.Any())
+        {
+            var message = string.Join(", ", errors);
+            Msg.Show(message, "danger", "bi-exclamation-triangle");
+            return false;
+        }
+
+        return true;
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize default values
+        if (string.IsNullOrEmpty(model.dict["EntryDate"]))
+            model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-ddTHH:mm");
+        if (string.IsNullOrEmpty(model.dict["Cancelled"]))
+            model.dict["Cancelled"] = "0";
+        if (string.IsNullOrEmpty(model.dict["CustomerCode"]))
+            model.dict["CustomerCode"] = "0";
+        if (string.IsNullOrEmpty(model.dict["ProductCode"]))
+            model.dict["ProductCode"] = "0";
+        if (string.IsNullOrEmpty(model.dict["AMCAmount"]))
+            model.dict["AMCAmount"] = "0";
+        if (string.IsNullOrEmpty(model.dict["OnlineCall"]))
+            model.dict["OnlineCall"] = "0";
+        if (string.IsNullOrEmpty(model.dict["OnsiteCall"]))
+            model.dict["OnsiteCall"] = "0";
+        if (string.IsNullOrEmpty(model.dict["NoOfNodes"]))
+            model.dict["NoOfNodes"] = "0";
+        if (string.IsNullOrEmpty(model.dict["Narration"]))
+            model.dict["Narration"] = "";
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+}

@@ -1,0 +1,297 @@
+@page "/Payments"
+@inject IJSRuntime JS
+@using System.Data
+@using VisionSoft.Components.Transactions.Payment
+@rendermode InteractiveServer 
+
+<T_Msg @ref="Msg"/>
+@if(isViewing){
+    <FrmView TableName="PaymentHead" OnClosed="HandleClose" EditClicked="HandleEdit" DeleteClicked="HandleDelete"/>
+}
+<T_Frm FormName="Payment">
+<ChildContent>
+    <T_Row>
+        <T_Input Title="Payment No *" ReadOnly=true @bind-Value="@model.dict["PaymentNo"]" ColSize="col-md-3"/>
+        <T_Input Title="Payment Date" Type="date" @bind-Value="@model.dict["PaymentDate"]" ColSize="col-md-3"/>
+        <T_Input Title="Payment Time" @bind-Value="@model.dict["PaymentTime"]" ColSize="col-md-3"/>
+        <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
+    </T_Row>
+    <T_Row>
+        <div class="col-md-3">
+            <label class="form-label">Mode of Pay</label>
+            <select class="form-control" value = "@model.dict["ModeOfPay"]" @onchange="OnModeOfPayChanged">
+                <option selected value="CASH">Cash</option>
+                <option value="CARD">Card</option>
+                <option value="UPI">UPI</option>
+                <option value="CHEQUE">Cheque</option>
+                <option value="NETBANKING">Net Banking</option>
+            </select>
+        </div>
+        <T_RInput Title="Supplier *" Layout="1" TableName="SupplierMaster" PrimaryColumn="SupplierCode" DisplayColumn="SupplierName" Value="@model.dict["SupplierCode"]" ValueChanged="OnSupplierChanged" ColSize="col-md-3"/>
+        <T_Input Title="Amount" @bind-Value="@model.dict["Amount"]" ChangeFunction="CalculateTotals" ColSize="col-md-3"/>
+        <T_Input Title="Discount" @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals" ColSize="col-md-3"/>
+    </T_Row>
+    
+    @* Cheque/Card specific fields - show based on mode of pay *@
+    @if(model.dict["ModeOfPay"] == "CHEQUE")
+    {
+        <T_Row>
+            <T_Input Title="Cheque Number" @bind-Value="@model.dict["ChequeNumber"]" ColSize="col-md-3"/>
+            <T_Input Title="Cheque Date" Type="date" @bind-Value="@model.dict["ChequeDate"]" ColSize="col-md-3"/>
+            <T_Input Title="Cheque Bank Name" @bind-Value="@model.dict["ChequeBankName"]" ColSize="col-md-6"/>
+        </T_Row>
+    }
+    
+    @if(model.dict["ModeOfPay"] == "CARD")
+    {
+        <T_Row>
+            <T_Input Title="Card Number" @bind-Value="@model.dict["CardNumber"]" ColSize="col-md-4"/>
+            <T_Input Title="Card Name" @bind-Value="@model.dict["CardName"]" ColSize="col-md-4"/>
+            <T_Input Title="Card Type" @bind-Value="@model.dict["CardType"]" ColSize="col-md-4"/>
+        </T_Row>
+    }
+    
+    <T_Row>
+        <T_Input Title="Party Bank Name" @bind-Value="@model.dict["PartyBankName"]" ColSize="col-md-3"/>
+        <T_Input Title="Account Name" @bind-Value="@model.dict["AccountName"]" ColSize="col-md-3"/>
+        <T_Input Title="Account To Be Credited" @bind-Value="@model.dict["AccountToBeCredited"]" ColSize="col-md-3"/>
+        <T_Input Title="Account To Be Debited" @bind-Value="@model.dict["AccountToBeDebted"]" ColSize="col-md-3"/>
+    </T_Row>
+    <T_Row>
+        <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-12"/>
+    </T_Row>
+    
+    <TableView TableName="Payment Details" HandleAdd="HandleAdd">
+        <TableHeads>
+            <th>Action</th>
+            <th>Sr. No.</th>
+            <th>Voucher No</th>
+            <th>Voucher Type</th>
+            <th>Amount Paid</th>
+        </TableHeads>
+        <TableRows>
+            @for(int i = 0; i < detailComponents.Count; i++){
+                int index = i;
+                <PaymentDetail 
+                    SerialNo="@(index+1)" 
+                    PaymentNo="@model.dict["PaymentNo"]" 
+                    OnRemove="@((idx) => HandleRemove(idx))"
+                    OnCalculationChanged="CalculateTotals"
+                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                    @ref="detailComponents[index]" />
+            }
+        </TableRows>
+        <TableFooter>
+            Total Count: @detailComponents.Count
+        </TableFooter>
+    </TableView>
+    
+    <T_SummaryCard >
+        <T_Input Title="Total Amount" Layout=2 ReadOnly @bind-Value="@model.dict["Amount"]" Placeholder="-"/>
+        <T_Input Title="Discount" Layout=2 @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals"/>
+        <T_Input Title="Net Amount" Layout=2 ReadOnly @bind-Value="@model.dict["NetAmount"]" Placeholder="-"/>
+    </T_SummaryCard>
+</ChildContent>
+
+<CardFooterContent>
+    <T_Button Text="Save" Style="" OnClick="HandleSave"/>
+    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
+    <T_Button Text="View" Style="" OnClick="HandleView"/>
+    <T_Button Text="Print" Style=""/>
+</CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<Payments> dotNetRef;
+
+    Model model = new Model("PaymentHead", "PaymentNo");
+    private List<PaymentDetail> detailComponents = new();
+    public List<DataRow> detailRows = new();
+    ClsDatabase db = new ClsDatabase();
+
+    private bool isViewing = false;
+    private bool isAddClicked = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(firstRender){
+            Console.WriteLine("First Render");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    private void OnSupplierChanged(string supplierCode)
+    {
+        model.dict["SupplierCode"] = supplierCode;
+        StateHasChanged();
+    }
+
+    private void OnModeOfPayChanged(ChangeEventArgs e)
+    {
+        model.dict["ModeOfPay"] = e.Value?.ToString() ?? "CASH";
+        
+        // Clear mode-specific fields when mode changes
+        if(model.dict["ModeOfPay"] != "CHEQUE")
+        {
+            model.dict["ChequeNumber"] = "";
+            model.dict["ChequeDate"] = "";
+            model.dict["ChequeBankName"] = "";
+        }
+        if(model.dict["ModeOfPay"] != "CARD")
+        {
+            model.dict["CardNumber"] = "";
+            model.dict["CardName"] = "";
+            model.dict["CardType"] = "";
+        }
+        
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView(){
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleAdd(){
+        detailComponents.Add(null);
+        StateHasChanged();
+    }
+
+    public void HandleEdit(DataRow row)
+    {
+        HandleClear();
+        isEditing = true;
+        model.Populate(row);
+        DataTable dataTable = db.GetDataTable($"Select * from PaymentDetails where PaymentNo='{model.dict["PaymentNo"]}'");
+        foreach(DataRow detailRow in dataTable.Rows)
+        {
+            detailRows.Add(detailRow);
+            detailComponents.Add(null);
+        }
+        isViewing = false;
+        CalculateTotals();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task HandleSave(){
+        Console.WriteLine("Saving");
+        try{
+            if (string.IsNullOrEmpty(model.dict["SupplierCode"]) || model.dict["SupplierCode"] == "0")
+            {
+                await Msg.Error("Please select a supplier.");
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(model.dict["Amount"]) || float.Parse(model.dict["Amount"]) <= 0)
+            {
+                await Msg.Error("Please enter a valid amount.");
+                return;
+            }
+
+            bool allDetailsSaved = true;
+            if(isEditing){
+                db.ExecuteQuery($"Delete From PaymentDetails where PaymentNo='{model.dict["PaymentNo"]}'");
+            }
+            foreach(var detail in detailComponents){
+                if(detail != null){
+                    bool saved = detail.SaveDetail();
+                    if(!saved) allDetailsSaved = false;
+                }
+            }
+            if(!allDetailsSaved){
+                throw new Exception("Failed to save some details");
+            }
+            bool er;
+            if(isEditing) er = model.Update();
+            else er = model.Save();
+            if(!er) throw new Exception("Failed to save header");
+            await Msg.Success();
+        }
+        catch(Exception e){
+            Console.WriteLine($"Save error: {e.Message}");
+            await Msg.SaveError();
+        }
+    }
+
+    [JSInvokable]
+    public void HandleClear(){
+        Console.WriteLine("Clear Form");
+        model.Clear();
+        detailComponents.Clear();
+        detailRows.Clear();
+        isEditing = false;
+        isAddClicked = false;
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    public void HandleClose(){
+        isAddClicked = false;
+        isViewing = false;
+    }
+
+    public void HandleDelete(DataRow row){
+        string pk = row["PaymentNo"].ToString();
+        db.ExecuteQuery($"Delete From PaymentHead where PaymentNo='{pk}'");
+        db.ExecuteQuery($"Delete From PaymentDetails where PaymentNo='{pk}'");
+    }
+
+    public void HandleRemove(int serialNo){
+        Console.WriteLine($"Removing Row with SerialNo {serialNo}");
+        int index = serialNo - 1;
+        if (index >= 0 && index < detailComponents.Count)
+        {
+            detailComponents.RemoveAt(index);
+            if(detailRows.Count > index)detailRows.RemoveAt(index);
+            Console.WriteLine($"Removed item at index {index}. New count: {detailComponents.Count}");
+            CalculateTotals();
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine($"Invalid index {index} for removal. Count: {detailComponents.Count}");
+        }
+    }
+
+    private void CalculateTotals()
+    {
+        float totalDetailAmount = 0;
+
+        foreach(var detail in detailComponents){
+            if(detail != null){
+                totalDetailAmount += detail.GetAmountPaid();
+            }
+        }
+
+        float amount = float.TryParse(model.dict["Amount"], out float a) ? a : 0;
+        float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
+
+        float netAmount = amount - discount;
+        model.dict["NetAmount"] = netAmount.ToString("F2");
+
+        StateHasChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(model.dict["PaymentDate"]))
+            model.dict["PaymentDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        if (string.IsNullOrEmpty(model.dict["PaymentTime"]))
+            model.dict["PaymentTime"] = DateTime.Now.ToString("HH:mm");
+        if (string.IsNullOrEmpty(model.dict["ModeOfPay"]))
+            model.dict["ModeOfPay"] = "CASH";
+        if (string.IsNullOrEmpty(model.dict["Cancelled"]))
+            model.dict["Cancelled"] = "false";
+        if (string.IsNullOrEmpty(model.dict["Amount"]))
+            model.dict["Amount"] = "0";
+        if (string.IsNullOrEmpty(model.dict["Discount"]))
+            model.dict["Discount"] = "0";
+        if (string.IsNullOrEmpty(model.dict["NetAmount"]))
+            model.dict["NetAmount"] = "0";
+    }
+}

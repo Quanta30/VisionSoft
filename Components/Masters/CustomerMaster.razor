@@ -1,0 +1,175 @@
+@page "/customermaster"
+@inject IJSRuntime JS
+@using System.Data
+@rendermode InteractiveServer
+
+<T_Msg @ref="Msg" />
+@if (isViewing)
+{
+    <FrmView TableName="CustomerMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+}
+
+<T_Frm FormName="Customer Master">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Customer Code *" ReadOnly="true" @bind-Value="@model.dict["CustomerCode"]" ColSize="col-md-3" />
+            <T_RInput Title="Ledger" @bind-Value="@model.dict["LedgerCode"]" ColSize="col-md-3"
+                    TableName="LedgerMaster" PrimaryColumn="LedgerCode" DisplayColumn="LedgerName"/>
+            <T_Input Title="Customer Name *" @bind-Value="@model.dict["CustomerName"]" MaxLength="1000" ColSize="col-md-6" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Customer City" @bind-Value="@model.dict["CustomerCity"]" MaxLength="1000" ColSize="col-md-3" />
+            <T_Input Title="Customer District" @bind-Value="@model.dict["CustomerDistrict"]" MaxLength="50" ColSize="col-md-3" />
+            <T_Input Title="Customer Phone No" @bind-Value="@model.dict["CustomerPhoneNo"]" MaxLength="50" ColSize="col-md-3" />
+            <T_Input Title="Customer Mobile No" @bind-Value="@model.dict["CustomerMobileNo"]" MaxLength="50" ColSize="col-md-3" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Customer Email" @bind-Value="@model.dict["CustomerEmail"]" MaxLength="50" ColSize="col-md-3" />
+            <T_Input Title="Customer GST No" @bind-Value="@model.dict["CustomerGSTNo"]" MaxLength="50" ColSize="col-md-3" />
+            <T_Input Title="Customer PAN No" @bind-Value="@model.dict["CustomerPanNo"]" MaxLength="50" ColSize="col-md-3" />
+            <T_Input Title="Customer State Code" @bind-Value="@model.dict["CustomerStateCode"]" ColSize="col-md-3" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Customer Bill Mode" @bind-Value="@model.dict["CustomerBillMode"]" MaxLength="50" ColSize="col-md-3" />
+            <T_Input Title="Customer Credit Days" @bind-Value="@model.dict["CustomerCreditDays"]" ColSize="col-md-3" />
+            <T_Input Title="Person Incharge" @bind-Value="@model.dict["PersonIncharge"]" MaxLength="50" ColSize="col-md-3" />
+            <T_RInput Title="Engineer" @bind-Value="@model.dict["EngineerCode"]" ColSize="col-md-3" 
+                    TableName="EngineerMaster" PrimaryColumn="EngineerCode" DisplayColumn="EngineerName"/>
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Customer District (Custom)" @bind-Value="@model.dict["CustomertDistrict"]" MaxLength="50" ColSize="col-md-3" />
+            <T_Checkbox Title="Don't Show In Debtors List" @bind-Value="@model.dict["DontShowInDebtorsList"]" ColSize="col-md-3" />
+            <T_Checkbox Title="Discontinue Party" @bind-Value="@model.dict["DiscontinueParty"]" ColSize="col-md-3" />
+            <T_Input Title="Customer Grade" @bind-Value="@model.dict["CustomerGrade"]" MaxLength="100" ColSize="col-md-3" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Customer Address" @bind-Value="@model.dict["CustomerAddress"]" MaxLength="500" ColSize="col-md-6" />
+            <T_RInput Title="Route" @bind-Value="@model.dict["RouteCode"]" ColSize="col-md-3" 
+                    TableName="RouteMaster" PrimaryColumn="RouteCode" DisplayColumn="RouteName"/>
+            <T_RInput Title="Area" @bind-Value="@model.dict["AreaCode"]" ColSize="col-md-3" 
+                    TableName="AreaMaster" PrimaryColumn="AreaCode" DisplayColumn="AreaName"/>
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Password" @bind-Value="@model.dict["Password"]" MaxLength="50" ColSize="col-md-3" />
+            <T_Input Title="FCM Token" @bind-Value="@model.dict["FCMToken"]" MaxLength="500" ColSize="col-md-6" />
+            <T_Checkbox Title="Login Flag" @bind-Value="@model.dict["Loginflag"]" ColSize="col-md-3" />
+        </T_Row>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+    </CardFooterContent>
+</T_Frm>
+
+@code {
+    private T_Msg Msg;
+    public DotNetObjectReference<CustomerMaster> dotNetRef;
+
+    Model model = new Model("CustomerMaster", "CustomerCode");
+    private bool isViewing = false;
+    private bool isEditing = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            if (!ValidateForm()) return;
+
+            bool success = isEditing
+                ? model.Update()
+                : model.Save();
+
+            if (success)
+            {
+                await Msg.Success();
+
+                if (!isEditing)
+                {
+                    HandleClear();
+                }
+
+                isEditing = false;
+            }
+            else
+            {
+                await Msg.SaveError();
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.SaveError();
+            Console.WriteLine($"Error saving Customer Master record: {ex.Message}");
+        }
+        HandleClear();
+    }
+
+    [JSInvokable]
+    public void HandleClear()
+    {
+        model.Clear();
+        isEditing = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    public async Task HandleEdit(DataRow row)
+    {
+        try
+        {
+            isEditing = true;
+            isViewing = false;
+            model.Populate(row);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Customer Master record: {ex.Message}");
+        }
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(model.dict["CustomerName"])) 
+            errors.Add("Customer Name is required");
+
+        if (errors.Any())
+        {
+            var message = string.Join(", ", errors);
+            Msg.Show(message, "danger", "bi-exclamation-triangle");
+            return false;
+        }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+}

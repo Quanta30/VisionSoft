@@ -1,6 +1,7 @@
 @using System.Data
 @namespace VisionSoft.Components.Transactions.PurchaseBill
 @rendermode InteractiveServer
+
 <tr>
     <td>
         <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
@@ -12,43 +13,38 @@
         <T_RInput Title="" Layout="3" TableName="PhysicalStockView" PrimaryColumn="ProductName" DisplayColumn="ProductName" Value=@StockName ValueChanged="OnStockChanged"/>
     </td>
     <td>
-      <div style="width:70px">
+        <div style="width:70px">
             <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>     
-    </td>
-    <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["SaleRate"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>     
-    </td>
-    <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>  
-    </td>
-    <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>  
+        </div>
     </td>
     <td>
         <div style="width:70px">
-            <select class="form-control form-control-sm" value="@GstCategoryCode" @onchange="OnGstChange">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
+        </div>
+    </td>
+    <td>
+        <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" Placeholder="" ChangeFunction="OnChange"/>
+        </div>
+    </td>
+    <td>
+        <div style="width:70px">
+            <select class="form-control form-control-sm" value="GstCategoryCode" @onchange="OnGstCategoryChanged">
                 <option value="1">0% GST</option>
                 <option value="2">5% GST</option>
                 <option value="3">12% GST</option>
                 <option value="4">18% GST</option>
                 <option value="5">28% GST</option>
             </select>
-      </div>
+        </div>
     </td>
     <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" Placeholder="" Type="number" Value="@taxableAmount.ToString("F2")" ReadOnly="true"/>
-      </div>  
+        <div style="width:70px">
+            <T_Input Title="" Layout="3" Value="@taxableAmount.ToString("F2")" ReadOnly="true" Placeholder=""/>
+        </div>
     </td>
     <td>
-        @((gst/2).ToString("F2"))
+        @(gst > 0 ? (gst/2).ToString("F2") : "0.00")
     </td>
     <td>
         @gst.ToString("F2")
@@ -59,153 +55,182 @@
 </tr>
 
 @code {
-    [Parameter] public EventCallback<int> OnRemove{get; set;}
-    [Parameter] public int SerialNo {get; set;}
-    [Parameter] public string PurchaseBillNo {get; set;}
-    [Parameter] public EventCallback<int> OnCalculationChanged{get; set;}
-    [Parameter] public Model model{get; set;}
-    
-    public float gst = 0;
-    public float taxableAmount = 0;
-    public float netAmount = 0;
-    public int GstCategoryCode = 2;
-    public float gstPercent = 0;
-    public string StockName="";
-    private ClsDatabase db = new ClsDatabase();
-    [Parameter] public bool ToSave{get; set;} = false;
-    private bool isSaved = false;
+    [Parameter] public EventCallback<int> OnRemove { get; set; }
+    [Parameter] public int SerialNo { get; set; }
+    [Parameter] public string PurchaseBillNo { get; set; }
+    [Parameter] public EventCallback OnCalculationChanged { get; set; }
+    [Parameter] public DataRow InitialDataRow { get; set; }
 
-    protected override void OnParametersSet(){
-        model.dict["PurchaseBillNo"] = PurchaseBillNo;
-        model.dict["SrNo"] = SerialNo.ToString();
-        
-        // Fix the condition - use AND instead of OR
-        if(!string.IsNullOrEmpty(model.dict["StockID"]) && model.dict["StockID"] != "0"){
-            try{
-                StockName = db.GetScalar($@"select ProductName from 
-                                                PhysicalStock ps join ProductMaster pm 
-                                                on ps.ProductCode = pm.ProductCode
-                                                where StockId = {model.dict["StockID"]}");
-            }
-            catch(Exception ex){
-                Console.WriteLine($"Error getting stock name: {ex.Message}");
-                StockName = "";
-            }
+    private Model model = new Model("PurchaseBillDetails", "");
+    private ClsDatabase db = new ClsDatabase();
+    private float taxableAmount = 0;
+    private float gst = 0;
+    private float netAmount = 0;
+    private int GstCategoryCode = 2;
+    private float PurchaseRate = 0;
+    public string StockName = "";
+    protected override void OnParametersSet()
+    {
+        if (InitialDataRow != null)
+        {
+            Console.WriteLine("Initializing Value");
+            model.Populate(InitialDataRow);
+            // Determine GstCategoryCode from non-zero GST fields
+            if (float.TryParse(model.dict["GST5APPAMOUNT"], out float gst5) && gst5 > 0) GstCategoryCode = 2;
+            else if (float.TryParse(model.dict["GST12APPAMOUNT"], out float gst12) && gst12 > 0) GstCategoryCode = 3;
+            else if (float.TryParse(model.dict["GST18APPAMOUNT"], out float gst18) && gst18 > 0) GstCategoryCode = 4;
+            else if (float.TryParse(model.dict["GST28APPAMOUNT"], out float gst28) && gst28 > 0) GstCategoryCode = 5;
+            else GstCategoryCode = 1;
+            Calculate();
+            StockName = StockIdToName(model.dict["StockID"]);
         }
-        
+        else
+        {
+            model.dict["PurchaseBillNo"] = PurchaseBillNo;
+            model.dict["SrNo"] = SerialNo.ToString();
+        }
         Calculate();
-        Console.WriteLine($"On Parameter set {isSaved} {ToSave}");
-        if(!isSaved && ToSave){
-            HandleSave();
-            isSaved = true;
-        }
+        
+    }
+
+    public string StockNameToId(string sn){
+        string pc = db.GetScalar($"Select ProductCode from ProductMaster where ProductName = '{sn}'");
+        string Id = db.GetScalar($"Select StockId from PhysicalStock where ProductCode = '{pc}'");
+        return Id;
+    }
+    public string StockIdToName(string Id){
+        string pc = db.GetScalar($"Select ProductCode from PhysicalStock where StockId = '{Id}'");
+        string name = db.GetScalar($"Select ProductName from ProductMaster where ProductCode = '{pc}'");
+        return name;
     }
     private void OnStockChanged(string sname)
-    {          
+    {
+        model.dict["StockID"] = StockNameToId(sname);
         StockName = sname;
-        model.dict["StockId"] = db.GetScalar($@"select StockID from 
-                                            PhysicalStock ps join ProductMaster pm 
-                                            on ps.ProductCode = pm.ProductCode
-                                            where ProductName = '{sname}'");
         UpdateStockDetails();
         Calculate();
-
-    }
-    private void OnGstChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int gstCode))
-        {
-            GstCategoryCode = gstCode;
-            Calculate();
-            OnCalculationChanged.InvokeAsync();
-            StateHasChanged();
-        }
+        StateHasChanged();
     }
 
     private void UpdateStockDetails()
     {
-        if (!string.IsNullOrEmpty(model.dict["StockID"]))
+        if (!string.IsNullOrEmpty(model.dict["StockID"]) && model.dict["StockID"] != "0")
         {
             try
             {
-                string query = $"SELECT PurchaseRate, SaleRate, GstCategoryCode FROM PhysicalStock WHERE StockID = '{model.dict["StockID"]}'";
+                string query = $"SELECT PurchaseRate, GstCategoryCode FROM PhysicalStock WHERE StockID = '{model.dict["StockID"]}'";
                 DataTable result = db.GetDataTable(query);
-                
+
                 if (result.Rows.Count > 0)
                 {
                     DataRow row = result.Rows[0];
-                    
-                    if (row["PurchaseRate"] != DBNull.Value)
-                    {
-                        model.dict["Rate"] = row["PurchaseRate"].ToString();
-                    }
-                    
-                    if (row["SaleRate"] != DBNull.Value)
-                    {
-                        model.dict["SaleRate"] = row["SaleRate"].ToString();
-                    }
-                    
-                    if (row["GstCategoryCode"] != DBNull.Value && int.TryParse(row["GstCategoryCode"].ToString(), out int gstCode))
-                    {
-                        GstCategoryCode = gstCode;
-                    }
+                    float.TryParse((row["PurchaseRate"]).ToString(), out float pr);
+                    PurchaseRate = pr;
+                    GstCategoryCode = row["GstCategoryCode"] != DBNull.Value ? Convert.ToInt32(row["GstCategoryCode"]) : 2;
+                }
+                else
+                {
+                    Console.WriteLine("No stock found for the selected item");
+                    PurchaseRate = 0;
+                    GstCategoryCode = 2;
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting stock details: {ex.Message}");
-                model.dict["Rate"] = "0";
-                model.dict["SaleRate"] = "0";
+                PurchaseRate = 0;
+                GstCategoryCode = 2;
             }
         }
     }
 
-    public async Task HandleRemove(){
-        Console.WriteLine("Removing the row");
-        Console.WriteLine(SerialNo);
-        await OnRemove.InvokeAsync(SerialNo-1);
+    private void OnGstCategoryChanged(ChangeEventArgs e)
+    {
+        GstCategoryCode = Convert.ToInt32(e.Value);
+        Calculate();
+        OnCalculationChanged.InvokeAsync();
     }
 
-    public void HandleSave(){
-        Console.WriteLine("Saving the Detail");
-        model.dict["PurchaseBillNo"] = PurchaseBillNo;
-        model.dict["SrNo"] = SerialNo.ToString();
-        
-        // Save GST details based on percentage
-        string percent = gstPercent.ToString("F0");
-        model.dict[$"GST{percent}APPAMOUNT"] = taxableAmount.ToString();
-        model.dict[$"CGST{percent}AMOUNT"] = (gst/2).ToString();
-        model.dict[$"SGST{percent}AMOUNT"] = (gst/2).ToString();
-        
-        // Update stock quantity and rates (add to physical stock)
-        UpdatePhysicalStock();
-        
-        model.Save();
-        model.Clear();
-        isSaved = false;
+    public async Task HandleRemove()
+    {
+        Console.WriteLine($"Removing row with SerialNo: {SerialNo}");
+        await OnRemove.InvokeAsync(SerialNo);
+    }
+
+    public bool SaveDetail()
+    {
+        try
+        {
+            Console.WriteLine($"Saving detail {SerialNo}");
+            model.dict["PurchaseBillNo"] = PurchaseBillNo;
+            model.dict["SrNo"] = SerialNo.ToString();
+
+            if (string.IsNullOrEmpty(model.dict["StockID"]) || model.dict["StockID"] == "0")
+            {
+                Console.WriteLine("Cannot save - no stock selected");
+                return false;
+            }
+
+            if (!float.TryParse(model.dict["Quantity"], out float quantity) || quantity <= 0)
+            {
+                Console.WriteLine("Cannot save - invalid quantity");
+                return false;
+            }
+
+            Calculate();
+
+            // Clear all GST fields
+            string[] gstPercentages = { "0", "5", "12", "18", "28" };
+            foreach (string pr in gstPercentages)
+            {
+                model.dict[$"GST{pr}APPAMOUNT"] = "0";
+                model.dict[$"CGST{pr}AMOUNT"] = "0";
+                model.dict[$"SGST{pr}AMOUNT"] = "0";
+                model.dict[$"IGST{pr}APPAMOUNT"] = "0";
+                model.dict[$"IGST{pr}AMOUNT"] = "0";
+                model.dict[$"UTGST{pr}APPAMOUNT"] = "0";
+                model.dict[$"UTGST{pr}AMOUNT"] = "0";
+            }
+
+            // Set the relevant GST fields based on GstCategoryCode
+            string percent = GetGstPercent().ToString("F0");
+            model.dict[$"GST{percent}APPAMOUNT"] = taxableAmount.ToString("F2");
+            model.dict[$"CGST{percent}AMOUNT"] = (gst / 2).ToString("F2");
+            model.dict[$"SGST{percent}AMOUNT"] = (gst / 2).ToString("F2");
+
+
+            UpdatePhysicalStock();
+            bool saved = model.Save();
+
+            if (saved)
+            {
+                Console.WriteLine($"Detail {SerialNo} saved successfully");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to save detail {SerialNo}");
+            }
+
+            return saved;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
+            return false;
+        }
     }
 
     private void UpdatePhysicalStock()
     {
         if (!string.IsNullOrEmpty(model.dict["StockID"]) && 
-            !string.IsNullOrEmpty(model.dict["Quantity"]))
+            float.TryParse(model.dict["Quantity"], out float quantity))
         {
             try
             {
-                float quantity = float.Parse(model.dict["Quantity"]);
-                float purchaseRate = float.TryParse(model.dict["Rate"], out float pr) ? pr : 0;
-                float salesRate = float.TryParse(model.dict["SaleRate"], out float sr) ? sr : 0;
-                
-                // Update stock quantity (add to existing stock) and rates
-                string updateQuery = $@"
-                    UPDATE PhysicalStock 
-                    SET Quantity = Quantity + {quantity},
-                        PurchaseRate = {purchaseRate},
-                        SaleRate = {salesRate}
-                    WHERE StockID = {model.dict["StockID"]}";
-                
+                // Using string interpolation properly for the simple query
+                string updateQuery = $"UPDATE PhysicalStock SET Quantity = Quantity + {quantity}, PurchaseRate = {PurchaseRate} WHERE StockID = '{model.dict["StockID"]}'";
                 db.ExecuteQuery(updateQuery);
-                Console.WriteLine($"Updated PhysicalStock for StockID: {model.dict["StockID"]}, Added Quantity: {quantity}");
+                Console.WriteLine($"Updated PhysicalStock for StockID: {model.dict["StockID"]}, Increased Quantity: {quantity}");
             }
             catch (Exception ex)
             {
@@ -214,60 +239,57 @@
         }
     }
 
-    private void Calculate(){
-        // Get GST percentage
-        gstPercent = GstCategoryCode switch
+    private float GetGstPercent()
+    {
+        return GstCategoryCode switch
         {
-            1 => 0f,   // 0% GST
-            2 => 5f,   // 5% GST  
-            3 => 12f,  // 12% GST
-            4 => 18f,  // 18% GST
-            5 => 28f,  // 28% GST
+            1 => 0f,
+            2 => 5f,
+            3 => 12f,
+            4 => 18f,
+            5 => 28f,
             _ => 0f
         };
+    }
 
-        if (float.TryParse(model.dict["Rate"], out float rate) &&
-            float.TryParse(model.dict["Quantity"], out float quantity))
+    private void Calculate()
+    {
+        float gstPercent = GetGstPercent();
+        if (
+            float.TryParse(model.dict["Quantity"], out float quantity) &&
+            float.TryParse(model.dict["Discount"], out float discount))
         {
-            float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0f;
-            
-            // Calculate taxable amount: (Rate × Quantity) - Discount
-            taxableAmount = (rate * quantity) - discount;
-            
-            // Calculate GST
-            gst = (taxableAmount * gstPercent) / 100f;
-            
-            // Calculate net amount
+            float gross = PurchaseRate * quantity;
+            taxableAmount = gross - discount;
+            gst = taxableAmount * gstPercent / 100f;
             netAmount = taxableAmount + gst;
-            
-            // Store for parent calculations
-            model.dict2["TotalAmount"] = (rate * quantity).ToString();
-            model.dict2["Gst"] = gst.ToString();
-            model.dict2["Discount"] = discount.ToString();
         }
         else
         {
-            taxableAmount = 0f;
-            gst = 0f;
-            netAmount = 0f;
+            taxableAmount = 0;
+            gst = 0;
+            netAmount = 0;
         }
     }
 
-    public void OnChange(string value){
+    public void OnChange(string value)
+    {
+        Console.WriteLine(model.dict["Quantity"]);
         Console.WriteLine("Change In Details");
+        float.TryParse(model.dict["Rate"], out float pr);
+        PurchaseRate = pr;
         Calculate();
         OnCalculationChanged.InvokeAsync();
     }
 
+    public float GetTotalAmount() => netAmount;
+    public float GetGstAmount() => gst;
+
     protected override void OnInitialized()
     {
-        // Initialize default values if empty
-        if (string.IsNullOrEmpty(model.dict["Rate"])) model.dict["Rate"] = "0";
         if (string.IsNullOrEmpty(model.dict["SaleRate"])) model.dict["SaleRate"] = "0";
         if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
         if (string.IsNullOrEmpty(model.dict["Discount"])) model.dict["Discount"] = "0";
-        
-        UpdateStockDetails();
         Calculate();
     }
 }

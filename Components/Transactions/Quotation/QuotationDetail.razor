@@ -1,4 +1,3 @@
-@* T_DetailRow.razor *@
 @using System.Data
 @namespace VisionSoft.Components.Transactions.Quotation
 @rendermode InteractiveServer
@@ -10,199 +9,242 @@
         @SerialNo
     </td>
     <td>
-        <T_RInput Title="" Layout="3" TableName="ProductMaster" PrimaryColumn="ProductCode" DisplayColumn="ProductName" Value="@model.dict["ProductCode"]" ValueChanged="OnProductCodeChanged"/>
-    </td>
-    <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>     
-    </td>
-    <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>  
-    </td>
-    <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>  
-    </td>
-    <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Free"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>  
+        <T_RInput Title="" Layout="3" TableName="ProductMaster" PrimaryColumn="ProductName" DisplayColumn="ProductName" Value="@ProductName" ValueChanged="OnProductChanged"/>
     </td>
     <td>
         <div style="width:70px">
-            <select class="form-control form-control-sm" @bind="@GstCategoryCode">
-                <option value="1">0% GST</option>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
+        </div>
+    </td>
+    <td>
+        <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
+        </div>
+    </td>
+    <td>
+        <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" Placeholder="" ChangeFunction="OnChange"/>
+        </div>
+    </td>
+    <td>
+        <div style="width:70px">
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Free"]" Placeholder="" ChangeFunction="OnChange"/>
+        </div>
+    </td>
+    <td>
+        <div style="width:70px">
+            <select class="form-control form-control-sm" value=@GstCategoryCode @onchange="OnGstCategoryChanged">
+                <option value="1" selected>0% GST</option>
                 <option value="2">5% GST</option>
                 <option value="3">12% GST</option>
                 <option value="4">18% GST</option>
                 <option value="5">28% GST</option>
             </select>
-      </div>
+        </div>
     </td>
     <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" Placeholder="" Type="number" Value="@taxableAmount.ToString()" ChangeFunction="OnChange"/>
-      </div>  
+        <div style="width:70px">
+            <T_Input Title="" Layout="3" Value="@taxableAmount.ToString("F2")" ReadOnly="true" Placeholder=""/>
+        </div>
     </td>
     <td>
-        @(gst/2)
+        @(gst > 0 ? (gst/2).ToString("F2") : "0.00")
     </td>
     <td>
-        @gst
+        @gst.ToString("F2")
     </td>
     <td>
-        @netAmount
+        @netAmount.ToString("F2")
     </td>
-    
-
-    
 </tr>
 
-@* QuotationDetails	QuotationNo
-QuotationDetails	SrNo
-QuotationDetails	ProductCode
-QuotationDetails	Rate
-QuotationDetails	Quantity
-QuotationDetails	Discount
-QuotationDetails	Free *@
-
 @code {
-    [Parameter] public EventCallback<int> OnRemove{get; set;}
-    [Parameter] public int SerialNo {get; set;}
-    [Parameter] public int QuotationNo {get; set;}
-    [Parameter] public EventCallback<int> OnCalculationChanged{get; set;}
+    [Parameter] public EventCallback<int> OnRemove { get; set; }
+    [Parameter] public int SerialNo { get; set; }
+    [Parameter] public int QuotationNo { get; set; }
+    [Parameter] public EventCallback OnCalculationChanged { get; set; }
+    [Parameter] public DataRow InitialDataRow { get; set; }
 
+    private Model model = new Model("QuotationDetails", "");
+    private ClsDatabase db = new ClsDatabase();
+    public string ProductName = "";
+    public float taxableAmount = 0;
+    public float gst = 0;
+    public float netAmount = 0;
+    public int GstCategoryCode = 0;
 
-    [Parameter] public Model model{get; set;}
-    
-
-    public float gst{get; set;}=21;
-    public float taxableAmount=10;
-    public float netAmount=0;
-
-    public int GstCategoryCode = 2;
-    public float gstPercent = 0;
-
-    private ClsDatabase db = new ClsDatabase(); // Add database instance
-
-    // Add this method to handle product changes
     protected override void OnParametersSet(){
-        model.dict["QuotationNo"] = QuotationNo.ToString();
-        model.dict["SrNo"] = SerialNo.ToString();
+
+        if (InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
+            ProductName = ProductCodeToName(model.dict["ProductCode"]);
+        }
+        else
+        {
+            model.dict["QuotationNo"] = QuotationNo.ToString();
+            model.dict["SrNo"] = SerialNo.ToString();
+        }
         Calculate();
-    }
-    private void OnProductCodeChanged(string pcode)
-    {   
-        model.dict["ProductCode"] = pcode;
-        UpdateGstCategoryFromProduct();
-        Calculate();
-        StateHasChanged();
     }
 
-    // Method to get GST category from database
-    private void UpdateGstCategoryFromProduct()
+    private string ProductCodeToName(string code)
+    {
+        string name = db.GetScalar($"select ProductName from ProductMaster where ProductCode='{code}'");
+        Console.WriteLine($"ProductCode: {code}, ProductName: {name}");
+        return name;
+    }
+
+    private string ProductNameToCode(string name)
+    {
+        string code = db.GetScalar($"select ProductCode from ProductMaster where ProductName='{name}'");
+        return code;
+    }
+
+    private void OnProductChanged(string productName)
+    {
+        try
+        {
+            string productCode = ProductNameToCode(productName);
+            ProductName = productName;
+            model.dict["ProductCode"] = productCode;
+            Console.WriteLine($"Product changed - ProductCode: {productCode}");
+            UpdateProductDetails();
+            Calculate();
+            StateHasChanged();
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine($"Error in OnProductChanged: {ex.Message}");
+        }
+    }
+
+    private void UpdateProductDetails()
     {
         if (!string.IsNullOrEmpty(model.dict["ProductCode"]))
         {
             try
             {
-                string query = $"SELECT GstCategoryCode FROM ProductMaster WHERE ProductCode = '{model.dict["ProductCode"]}'";
-                object result = db.GetScalar(query);
-                
-                if (result != null && int.TryParse(result.ToString(), out int gstCode))
+                string query = $"SELECT PurchaseRate, GstCategoryCode FROM ProductMaster WHERE ProductCode = '{model.dict["ProductCode"]}'";
+                DataTable result = db.GetDataTable(query);
+                if (result.Rows.Count > 0)
                 {
-                    GstCategoryCode = gstCode;
+                    DataRow row = result.Rows[0];
+                    model.dict["Rate"] = row["PurchaseRate"] != DBNull.Value ? row["PurchaseRate"].ToString() : "0";
+                    GstCategoryCode = Convert.ToInt32(row["GstCategoryCode"]);
+                }
+                else
+                {
+                    Console.WriteLine("No product found for the selected code");
+                    model.dict["Rate"] = "0";
+                    GstCategoryCode = 2;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error getting GST category: {ex.Message}");
-                // Keep default GST category if error occurs
+                Console.WriteLine($"Error getting product details: {ex.Message}");
+                model.dict["Rate"] = "0";
+                GstCategoryCode = 2;
             }
         }
     }
 
-    //Handle Functions
-    public async Task HandleRemove(){
-        Console.WriteLine("Removing the row");
-        Console.WriteLine(SerialNo);
-        await OnRemove.InvokeAsync(SerialNo-1);
-        //In the parent function It should be handled like this:
-        //models.Remove(model);
+    public async Task HandleRemove()
+    {
+        Console.WriteLine($"Removing row with SerialNo: {SerialNo}");
+        await OnRemove.InvokeAsync(SerialNo);
     }
 
-    public void HandleSave(){
-        Console.WriteLine("Saving the Detail");
-        model.dict["QuotationNo"] = QuotationNo.ToString();
-        model.dict["SrNo"] = SerialNo.ToString();
-        string percent = gstPercent.ToString();
-        model.dict[$"GST{percent}APPAMOUNT"] = taxableAmount.ToString();
-        model.dict[$"CGST{percent}AMOUNT"] = (gst/2).ToString();
-        model.dict[$"SGST{percent}AMOUNT"] = (gst/2).ToString();
-        model.Save();
-
-        model.Clear();
-    }
-
-    private void Calculate(){
-        // Get GST percentage
-        gstPercent = GstCategoryCode switch
+    public bool SaveDetail()
+    {
+        try
         {
-            1 => 0f,   // 0% GST
-            2 => 5f,   // 5% GST  
-            3 => 12f,  // 12% GST
-            4 => 18f,  // 18% GST
-            5 => 28f,  // 28% GST
+            Console.WriteLine($"Saving detail {SerialNo}");
+            model.dict["QuotationNo"] = QuotationNo.ToString();
+            model.dict["SrNo"] = SerialNo.ToString();
+            if (string.IsNullOrEmpty(model.dict["ProductCode"]) || model.dict["ProductCode"] == "0")
+            {
+                Console.WriteLine("Cannot save - no product selected");
+                return false;
+            }
+            Calculate();
+            string percent = GetGstPercent().ToString();
+            model.dict[$"GST{percent}APPAMOUNT"] = taxableAmount.ToString("F2");
+            model.dict[$"CGST{percent}AMOUNT"] = (gst / 2).ToString("F2");
+            model.dict[$"SGST{percent}AMOUNT"] = (gst / 2).ToString("F2");
+            bool saved = model.Save();
+            if (saved)
+            {
+                Console.WriteLine($"Detail {SerialNo} saved successfully");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to save detail {SerialNo}");
+            }
+            return saved;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
+            return false;
+        }
+    }
+
+    private float GetGstPercent()
+    {
+        return GstCategoryCode switch
+        {
+            1 => 0f,
+            2 => 5f,
+            3 => 12f,
+            4 => 18f,
+            5 => 28f,
             _ => 0f
         };
+    }
 
-        // Calculate taxable amount properly
+    private void Calculate()
+    {
         if (float.TryParse(model.dict["Rate"], out float rate) &&
-            float.TryParse(model.dict["Quantity"], out float quantity))
+            float.TryParse(model.dict["Quantity"], out float quantity) &&
+            float.TryParse(model.dict["Discount"], out float discount) &&
+            float.TryParse(model.dict["Free"], out float free))
         {
-            float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0f;
-            float free = float.TryParse(model.dict["Free"], out float f) ? f : 0f;
-            
-            // Calculate taxable amount: (Rate × Quantity) - Discount - Free
-            taxableAmount = (rate-discount) * (quantity-free);
-            
-            // Calculate GST
-            gst = (taxableAmount * gstPercent) / 100f;
-            
-            // Calculate net amount
+            float gstPercent = GetGstPercent();
+            float gross = rate * quantity;
+            taxableAmount = gross - discount - (rate * free);
+            gst = taxableAmount * gstPercent / 100f;
             netAmount = taxableAmount + gst;
-            model.dict2["TotalAmount"] = (rate*quantity).ToString();
-            model.dict2["Gst"] = gst.ToString();
-            model.dict2["Discount"] = discount.ToString();
         }
         else
         {
-            taxableAmount = 0f;
-            gst = 0f;
-            netAmount = 0f;
+            taxableAmount = 0;
+            gst = 0;
+            netAmount = 0;
         }
     }
 
-    public void OnChange(string value){
+    public void OnGstCategoryChanged(ChangeEventArgs e){
+        GstCategoryCode = Convert.ToInt32(e.Value);
+        OnChange(GstCategoryCode.ToString());
+    }
+    public void OnChange(string value)
+    {
         Console.WriteLine("Change In Details");
         Calculate();
         OnCalculationChanged.InvokeAsync();
     }
 
-    // Initialize calculations when component loads
+    public float GetTotalAmount() => netAmount;
+    public float GetGstAmount() => gst;
+
     protected override void OnInitialized()
     {
-        // Initialize default values if empty
         if (string.IsNullOrEmpty(model.dict["Rate"])) model.dict["Rate"] = "0";
         if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
         if (string.IsNullOrEmpty(model.dict["Discount"])) model.dict["Discount"] = "0";
         if (string.IsNullOrEmpty(model.dict["Free"])) model.dict["Free"] = "0";
-        
-        UpdateGstCategoryFromProduct(); // Get GST category from existing product
-        Calculate(); // Calculate initial values
+
+        Calculate();
     }
 }

@@ -1,0 +1,313 @@
+body{
+    overflow: hidden;
+}
+.nvbar {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(90deg, #f8f9fa, #ffffff);
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0.4rem 1.5rem;
+    gap: 1.5rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    position: relative;
+    z-index: 9999; /* Ensures it's above all other content */
+}
+
+.nvbar-brand {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #2d3748;
+    text-decoration: none;
+    margin-right: 2rem;
+    white-space: nowrap;
+}
+
+.nvbar-search {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.nvbar-search input[type="search"] {
+    width: 100%;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.9rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    transition: all 0.2s;
+}
+
+.nvbar-search input[type="search"]:focus {
+    outline: none;
+    border-color: #007bff;
+    background-color: #fff;
+}
+
+.nvbar-links {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex-wrap: nowrap;
+}
+
+.nv-item {
+    position: relative;
+}
+
+.nv-link {
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: none;
+    border: none;
+    padding: 0.35rem 0.75rem;
+    color: #374151;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+
+.nv-link:hover,
+.nv-link:focus {
+    background: #e2e8f0;
+    color: #007bff;
+    outline: none;
+}
+
+.nv-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 220px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    z-index: 10000;
+    padding: 0.4rem 0;
+}
+
+.nv-item:hover .nv-dropdown-menu,
+.nv-item:focus-within .nv-dropdown-menu {
+    display: block;
+}
+
+.nv-dropdown-item {
+    font-size: 0.85rem;
+    padding: 0.4rem 1rem;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
+    text-decoration: none;
+}
+
+.nv-dropdown-button {
+    /* Remove default button appearance */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    
+    /* Remove borders and backgrounds */
+    background: none;
+    background-color: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    
+    /* Remove default padding and margins */
+    margin: 0;
+    padding: 0.35rem 1.1rem;
+    
+    /* Text styling */
+    font: inherit;
+    font-size: 0.85rem;
+    color: #374151;
+    text-decoration: none;
+    text-align: left;
+    
+    /* Layout */
+    display: block;
+    width: 100%;
+    cursor: pointer;
+    white-space: nowrap;
+    
+    /* Transitions */
+    transition: background 0.15s, color 0.15s;
+    
+    /* Remove any focus styles */
+    border-radius: 0;
+}
+
+.nv-dropdown-button:hover,
+.nv-dropdown-button:focus {
+    background: #f1f5f9;
+    color: #007bff;
+    outline: none;
+    box-shadow: none;
+    border: none;
+}
+
+.nv-dropdown-button:active {
+    background: #f1f5f9;
+    color: #007bff;
+    outline: none;
+    box-shadow: none;
+    border: none;
+    transform: none;
+}
+
+/* Remove any browser-specific button styles */
+.nv-dropdown-button::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+}
+
+.nv-dropdown-item a {
+    text-decoration: none;
+    color: #374151;
+    display: block;
+    width: 100%;
+}
+
+.nv-dropdown-item:hover,
+.nv-dropdown-item:focus-within,
+.nv-dropdown-item a:hover {
+    background: #f1f5f9;
+    color: #007bff;
+}
+
+.nv-dropdown-divider {
+    height: 1px;
+    margin: 0.3rem 0;
+    background: #e5e7eb;
+    border: none;
+}
+
+/* LOGOUT BUTTON Styling */
+.nv-item.logout .nv-link {
+    border: 1px solid #e53e3e;
+    color: #e53e3e;
+    font-weight: 600;
+    transition: background 0.2s, color 0.2s, border 0.2s;
+}
+
+.nv-item.logout .nv-link:hover {
+    background-color: #ffeaea;
+    color: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.nvbar-links,
+.nvbar-links li {
+    list-style: none;
+
+}
+
+/* Submenu Arrow Styling */
+.nv-submenu-arrow {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    color: #6b7280;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.nv-has-submenu .nv-dropdown-button {
+    position: relative;
+    padding-right: 30px; /* Make space for the arrow */
+}
+
+.nv-has-submenu:hover .nv-submenu-arrow {
+    color: #007bff;
+    transform: translateY(-50%) rotate(90deg);
+}
+
+/* Submenu Arrow Styling */
+.nv-submenu-arrow {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    color: #6b7280;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.nv-has-submenu .nv-dropdown-button {
+    position: relative;
+    padding-right: 30px; /* Make space for the arrow */
+}
+
+.nv-has-submenu:hover .nv-submenu-arrow {
+    color: #007bff;
+    transform: translateY(-50%) rotate(90deg);
+}
+
+/* Submenu Styling - Fixed positioning */
+.nv-submenu {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: calc(100% - 5px); /* Overlap slightly to prevent gap */
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    z-index: 10001;
+    padding: 0.4rem 0;
+}
+
+/* Show submenu on parent hover OR submenu hover */
+.nv-has-submenu:hover .nv-submenu,
+.nv-submenu:hover {
+    display: block !important;
+}
+
+/* Create invisible bridge to prevent gap issues */
+.nv-has-submenu::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -5px;
+    width: 15px;
+    height: 100%;
+    background: transparent;
+    z-index: 10000;
+}
+
+/* Adjust positioning for nested items */
+.nv-has-submenu {
+    position: relative;
+}
+
+/* Ensure proper spacing and alignment */
+.nv-submenu .nv-dropdown-item {
+    padding: 0.35rem 1rem;
+    white-space: nowrap;
+}
+
+.nv-submenu .nv-dropdown-link {
+    color: #374151;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+}
+
+.nv-submenu .nv-dropdown-item:hover,
+.nv-submenu .nv-dropdown-item:hover .nv-dropdown-link {
+    background: #f1f5f9;
+    color: #007bff;
+}
+
+/* Remove animation that might cause flickering */
+.nv-submenu {
+    opacity: 1;
+    transform: translateX(0);
+}

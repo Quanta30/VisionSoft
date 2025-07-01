@@ -6,8 +6,7 @@
 
 <T_Msg @ref="Msg"/>
 @if(isViewing){
-    <FrmView TableName="SecondHandPurchaseBillHead" OnClosed="HandleClose" EditClicked="HandleEdit"
-        DeleteClicked="HandleDelete"/>
+    <FrmView TableName="SecondHandPurchaseBillHead" OnClosed="HandleClose" EditClicked="HandleEdit" DeleteClicked="HandleDelete"/>
 }
 <T_Frm FormName="Second Hand Purchase Bill">
 <ChildContent>
@@ -54,14 +53,19 @@
             <th>Net Amount</th>
         </TableHeads>
         <TableRows>
-            @for(int i = 0; i<details.Count; i++){
-                <SecondHandPurchaseBillDetail SerialNo=@(i+1) 
-                                SecondHandPurchaseBillNo=@model.dict["SecondHandPurchaseBillNo"] 
-                                OnRemove="HandleRemove" model="@details[i]" OnCalculationChanged="CalculateTotals"/> 
+            @for(int i = 0; i < detailComponents.Count; i++){
+                int index = i;
+                <SecondHandPurchaseBillDetail 
+                    SerialNo="@(index+1)" 
+                    SecondHandPurchaseBillNo="@model.dict["SecondHandPurchaseBillNo"]" 
+                    OnRemove="@((idx) => HandleRemove(idx))"
+                    OnCalculationChanged="CalculateTotals"
+                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                    @ref="detailComponents[index]" />
             }
         </TableRows>
         <TableFooter>
-            Total Count : @details.Count
+            Total Count: @detailComponents.Count | Total Qty: @model.dict["TotalQty"]
         </TableFooter>
     </TableView>
     <T_SummaryCard >
@@ -80,20 +84,17 @@
     <T_Button Text="View" Style="" OnClick="HandleView"/>
     <T_Button Text="Print" Style=""/>
 </CardFooterContent>
-
 </T_Frm>
 
-@code{
-    //ELEMENT REFERENCES
+@code {
     private T_Msg Msg;
     public DotNetObjectReference<SecondHandPurchaseBill> dotNetRef;
-    
-    //Models and Class Objects
+
     Model model = new Model("SecondHandPurchaseBillHead", "SecondHandPurchaseBillNo");
-    List<Model> details = new List<Model>();
+    private List<SecondHandPurchaseBillDetail> detailComponents = new();
+    public List<DataRow> detailRows = new();
     ClsDatabase db = new ClsDatabase();
-   
-    //BooleanValues
+
     private bool isViewing = false;
     private bool isAddClicked = false;
     private bool isEditing = false;
@@ -126,24 +127,23 @@
 
     [JSInvokable]
     public void HandleAdd(){
-        Model detail = new Model("SecondHandPurchaseBillDetails", "");
-        details.Add(detail);
+        detailComponents.Add(null);
         StateHasChanged();
     }
 
-    public void HandleEdit(DataRow row){
+    public void HandleEdit(DataRow row)
+    {
         HandleClear();
         isEditing = true;
         model.Populate(row);
-        Console.WriteLine(model.dict["SecondHandPurchaseBillNo"]);
         DataTable dataTable = db.GetDataTable($"Select * from SecondHandPurchaseBillDetails where SecondHandPurchaseBillNo='{model.dict["SecondHandPurchaseBillNo"]}'");
-        Console.WriteLine(dataTable.Rows.Count);
-        foreach(DataRow row1 in dataTable.Rows){
-            Model detail = new Model("SecondHandPurchaseBillDetails", "");
-            Console.WriteLine("Adding Detail");
-            detail.Populate(row1);
-            details.Add(detail);
+        foreach(DataRow detailRow in dataTable.Rows)
+        {
+            detailRows.Add(detailRow);
+            detailComponents.Add(null);
         }
+        isViewing = false;
+        CalculateTotals();
         StateHasChanged();
     }
 
@@ -151,15 +151,37 @@
     public async Task HandleSave(){
         Console.WriteLine("Saving");
         try{
-            bool er = model.Save();
-            foreach(Model detail in details){
-                if(!er)throw new Exception();
-                er = detail.Save();
+            if (string.IsNullOrEmpty(model.dict["CustomerCode"]) && string.IsNullOrEmpty(model.dict["SupplierCode"]))
+            {
+                await Msg.Error("Please select either a customer or a supplier.");
+                return;
             }
-            if(!er)throw new Exception();
+            if (detailComponents.Count == 0)
+            {
+                await Msg.Error("Please add at least one purchase item.");
+                return;
+            }
+            bool allDetailsSaved = true;
+            if(isEditing){
+                db.ExecuteQuery($"Delete From SecondHandPurchaseBillDetails where SecondHandPurchaseBillNo='{model.dict["SecondHandPurchaseBillNo"]}'");
+            }
+            foreach(var detail in detailComponents){
+                if(detail != null){
+                    bool saved = detail.SaveDetail();
+                    if(!saved) allDetailsSaved = false;
+                }
+            }
+            if(!allDetailsSaved){
+                throw new Exception("Failed to save some details");
+            }
+            bool er;
+            if(isEditing) er = model.Update();
+            else er = model.Save();
+            if(!er) throw new Exception("Failed to save header");
             await Msg.Success();
         }
         catch(Exception e){
+            Console.WriteLine($"Save error: {e.Message}");
             await Msg.SaveError();
         }
     }
@@ -168,10 +190,11 @@
     public void HandleClear(){
         Console.WriteLine("Clear Form");
         model.Clear();
-        details.Clear();    
-        isEditing=false;
-        isAddClicked=false;
-        isViewing=false;  
+        detailComponents.Clear();
+        detailRows.Clear();
+        isEditing = false;
+        isAddClicked = false;
+        isViewing = false;
         StateHasChanged();
     }
 
@@ -186,36 +209,45 @@
         db.ExecuteQuery($"Delete From SecondHandPurchaseBillDetails where SecondHandPurchaseBillNo='{pk}'");
     }
 
-    public void HandleRemove(int i){
-        Console.WriteLine($"Removing Row in Parent {i}");
-        if (i >= 0 && i < details.Count)
+    public void HandleRemove(int serialNo){
+        Console.WriteLine($"Removing Row with SerialNo {serialNo}");
+        int index = serialNo - 1;
+        if (index >= 0 && index < detailComponents.Count)
         {
-            details.RemoveAt(i);
-            Console.WriteLine($"Count At {i}");
+            detailComponents.RemoveAt(index);
+            detailRows.RemoveAt(index);
+            Console.WriteLine($"Removed item at index {index}. New count: {detailComponents.Count}");
             CalculateTotals();
             StateHasChanged();
         }
+        else
+        {
+            Console.WriteLine($"Invalid index {index} for removal. Count: {detailComponents.Count}");
+        }
     }
 
-    // Calculate totals method
     private void CalculateTotals()
     {
         float totalAmount = 0;
         float gstAmount = 0;
+        float totalQty = 0;
 
-        foreach(Model detail in details){
-            totalAmount += float.TryParse(detail.dict2["TotalAmount"], out float ta)?ta:0;
-            gstAmount += float.TryParse(detail.dict2["Gst"], out float gt)?gt:0;
+        foreach(var detail in detailComponents){
+            if(detail != null){
+                totalAmount += detail.GetTotalAmount();
+                gstAmount += detail.GetGstAmount();
+                totalQty += float.TryParse(detail.model.dict["Quantity"], out float qty) ? qty : 0;
+            }
         }
 
         model.dict["TotalAmount"] = totalAmount.ToString("F2");
         model.dict["GSTAmount"] = gstAmount.ToString("F2");
-        
-        // Calculate net amount
+        model.dict["TotalQty"] = totalQty.ToString("F2");
+
         float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
         float addLess = float.TryParse(model.dict["AddLess"], out float al) ? al : 0;
         float rounding = float.TryParse(model.dict["Rounding"], out float r) ? r : 0;
-        
+
         float netAmount = totalAmount + gstAmount - discount + addLess + rounding;
         model.dict["NetAmount"] = netAmount.ToString("F2");
 
@@ -224,8 +256,13 @@
 
     protected override void OnInitialized()
     {
-        // Initialize default values
-        if (string.IsNullOrEmpty(model.dict["ModeOfPay"])) model.dict["ModeOfPay"] = "CASH";
-        if (string.IsNullOrEmpty(model.dict["ConsiderInAccounts"])) model.dict["ConsiderInAccounts"] = "1";
+        if (string.IsNullOrEmpty(model.dict["SecondHandPurchaseBillDate"]))
+            model.dict["SecondHandPurchaseBillDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        if (string.IsNullOrEmpty(model.dict["ModeOfPay"]))
+            model.dict["ModeOfPay"] = "CASH";
+        if (string.IsNullOrEmpty(model.dict["ConsiderInAccounts"]))
+            model.dict["ConsiderInAccounts"] = "true";
+        if (string.IsNullOrEmpty(model.dict["Cancelled"]))
+            model.dict["Cancelled"] = "false";
     }
 }
