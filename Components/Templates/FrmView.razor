@@ -323,7 +323,7 @@
     //Uses ROW_NUMBER() sql window Function to add serial no. to the dataTable, So that it can be divided into pages
 private async Task LoadData()
 {   
-    Console.WriteLine("Loading Data In FrmViewHelper");
+
     selectedRowIndex = 0;
     IsLoading = true;
     StateHasChanged();
@@ -337,10 +337,11 @@ private async Task LoadData()
             // Escape single quotes to prevent SQL injection
             var escapedSearchText = searchText.Replace("'", "''");
             var pattern = $@"%{escapedSearchText}%";
+            if(filterCondition != "like")pattern = $"{escapedSearchText}";
             
             // For global search, always use LIKE across selected columns
             whereClause = "WHERE " + string.Join(" OR ",
-                selectedColumns.Select(c => $"CAST({c} AS NVARCHAR(MAX)) LIKE '{pattern}'"));
+                selectedColumns.Select(c => $"CAST({c} AS NVARCHAR(MAX)) {filterCondition} '{pattern}'"));
         }
 
         // Get total count
@@ -368,6 +369,7 @@ private async Task LoadData()
             FETCH NEXT {pageSize} ROWS ONLY";
 
         TableData = db.GetDataTable(dataQuery);
+        Console.WriteLine(whereClause);
 
     }
     catch (Exception ex)
