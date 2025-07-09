@@ -19,41 +19,40 @@
     <!-- Rate Input -->
     <td>
         <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange" Type="Number"/>
         </div>
     </td>
 
     <!-- Quantity Input -->
     <td>
         <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange" Type="Number"/>
         </div>
     </td>
 
     <!-- Discount Input -->
     <td>
         <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" Placeholder="" ChangeFunction="OnChange"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" Placeholder="" ChangeFunction="OnChange" Type="Number"/>
         </div>
     </td>
 
     <!-- Free Quantity -->
     <td>
         <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Free"]" Placeholder="" ChangeFunction="OnChange"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Free"]" Placeholder="" ChangeFunction="OnChange" Type="Number"/>
         </div>
     </td>
 
     <!-- GST Category Dropdown -->
     <td>
         <div style="width:70px">
-            <select class="form-control form-control-sm" value=@GstCategoryCode @onchange="OnGstCategoryChanged">
-                <option value="1">0% GST</option>
-                <option value="2">5% GST</option>
-                <option value="3">12% GST</option>
-                <option value="4">18% GST</option>
-                <option value="5">28% GST</option>
-            </select>
+            <T_Select 
+                    Value="@GstCategoryCode.ToString()" 
+                    Options="1:0% GST,2:5% GST,3:12% GST,4:18% GST,5:28% GST"
+                    ValueChanged="OnGstCategoryChanged"
+                    ColSize="col-md-3" 
+                    Layout="2"/>
         </div>
     </td>
 
@@ -87,7 +86,7 @@
     <!-- Warranty Date -->
     <td>
         <div style="width:100px">
-            <T_Input Title="" Layout="3" Type="date" @bind-Value="@model.dict["WarrantyTillDate"]" Placeholder=""/>
+            <T_Input Title="" Layout="3"  @bind-Value="@model.dict["WarrantyTillDate"]" Placeholder="" Type="month"/>
         </div>
     </td>
 </tr>
@@ -235,9 +234,9 @@
         netAmount = taxableAmount + gst;
     }
 
-    public void OnGstCategoryChanged(ChangeEventArgs e)
+    public void OnGstCategoryChanged(String Value)
     {
-        GstCategoryCode = Convert.ToInt32(e.Value);
+        GstCategoryCode = Convert.ToInt32(Value);
         OnChange("");
     }
 

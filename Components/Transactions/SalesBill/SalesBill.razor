@@ -23,19 +23,21 @@
         <T_Row>
             <T_Input Title="Sales Bill No *" ReadOnly="true"
                      @bind-Value="@model.dict["SalesBillNo"]"
-                     ColSize="col-md-3" />
+                     ColSize="col-md-3" 
+                     />
 
             <T_Input Title="Sales Bill Date" Type="date"
                      @bind-Value="@model.dict["SalesBillDate"]"
-                     ColSize="col-md-3" FocusOn=@FocusOn/>
+                     ColSize="col-md-3" />
 
             <T_Input Title="Due Date" Type="date"
                      @bind-Value="@model.dict["DueDate"]"
-                     ColSize="col-md-3" FocusOn=@FocusOn/>
+                     ColSize="col-md-3" />
 
             <T_Input Title="Booking No"
                      @bind-Value="@model.dict["BookingNo"]"
-                     ColSize="col-md-3" FocusOn=@FocusOn/>
+                     ColSize="col-md-3" 
+                     Type="Number"/>
         </T_Row>
 
         <!-- Customer & Engineer Info -->
@@ -47,46 +49,49 @@
                       Value="@model.dict["CustomerCode"]"
                       ValueChanged="OnCustomerChanged"
                       ColSize="col-md-4" 
-                      FocusOn=@FocusOn/>
+                      />
 
             <T_Input Title="Customer Name"
                      @bind-Value="@model.dict["CustomerName"]"
                      MaxLength="100"
-                     ColSize="col-md-4" FocusOn=@FocusOn/>
+                     ColSize="col-md-4" />
 
             <T_Input Title="Customer City"
                      @bind-Value="@model.dict["CustomerCity"]"
                      MaxLength="50"
-                     ColSize="col-md-4" FocusOn=@FocusOn/>
+                     ColSize="col-md-4" />
         </T_Row>
 
         <T_Row>
             <T_Input Title="Mobile No."
                      @bind-Value="@model.dict["CustomerMobileNo"]"
                      MaxLength="50"
-                     ColSize="col-md-3" FocusOn=@FocusOn/>
+                     ColSize="col-md-4"
+                     Type="Number"/>
 
             <T_RInput Title="Engineer" Layout="1"
                       TableName="EngineerMaster"
                       PrimaryColumn="EngineerCode"
                       DisplayColumn="EngineerName"
                       @bind-Value="@model.dict["EngineerCode"]"
-                      ColSize="col-md-3" 
-                      FocusOn=@FocusOn/>
+                      ColSize="col-md-4" 
+                     />
 
-            <T_Select @bind-Value="@model.dict["ModeOfPay"]" 
-                    Options="CASH:Cash,CARD:Card,UPI:UPI,CHEQUE:Cheque,CREDIT:Credit" />
+            <T_Select @bind-Value="@model.dict["ModeOfPay"]" Label="Mode Of Pay"
+                    Options="CASH:Cash,CARD:Card,UPI:UPI,CHEQUE:Cheque,CREDIT:Credit" 
+                    ColSize="col-md-4"/>
 
-            <T_Checkbox Title="Cancelled"
-                        @bind-Value="@model.dict["Cancelled"]"
-                        ColSize="col-md-3" />
+            
         </T_Row>
 
         <!-- Narration and Options -->
         <T_Row>
+            <T_Checkbox Title="Cancelled"
+                        @bind-Value="@model.dict["Cancelled"]"
+                        ColSize="col-md-3" />
             <T_Checkbox Title="Consider In Accounts"
                         @bind-Value="@model.dict["ConsiderInAccounts"]"
-                        ColSize="col-md-6" />
+                        ColSize="col-md-3" />
 
             <T_Textarea Title="Narration"
                         @bind-Value="@model.dict["Narration"]"
@@ -141,25 +146,25 @@
         <!-- Summary Section -->
         <T_SummaryCard>
             <T_Input Title="Total Amount" Layout="2" ReadOnly
-                     @bind-Value="@model.dict["TotalAmount"]" Placeholder="-" />
+                     @bind-Value="@model.dict["TotalAmount"]" Placeholder="-" Type="Number"/>
 
             <T_Input Title="GST Amount" Layout="2" ReadOnly
-                     @bind-Value="@model.dict["GSTAmount"]" Placeholder="-" />
+                     @bind-Value="@model.dict["GSTAmount"]" Placeholder="-" Type="Number"/>
 
             <T_Input Title="Discount" Layout="2"
-                     @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals" />
+                     @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals" Type="Number"/>
 
             <T_Input Title="Add/Less" Layout="2"
-                     @bind-Value="@model.dict["AddLess"]" ChangeFunction="CalculateTotals" />
+                     @bind-Value="@model.dict["AddLess"]" ChangeFunction="CalculateTotals" Type="Number"/>
 
             <T_Input Title="Rounding" Layout="2"
-                     @bind-Value="@model.dict["Rounding"]" ChangeFunction="CalculateTotals" />
+                     @bind-Value="@model.dict["Rounding"]" ChangeFunction="CalculateTotals" Type="Number"/>
 
             <T_Input Title="Oct Re Emb Amount" Layout="2"
-                     @bind-Value="@model.dict["OctReEmbAmount"]" ChangeFunction="CalculateTotals" />
+                     @bind-Value="@model.dict["OctReEmbAmount"]" ChangeFunction="CalculateTotals" Type="Number"/>
 
             <T_Input Title="Net Amount" Layout="2" ReadOnly
-                     @bind-Value="@model.dict["NetAmount"]" Placeholder="-" />
+                     @bind-Value="@model.dict["NetAmount"]" Placeholder="-" Type="Number"/>
         </T_SummaryCard>
     </ChildContent>
 
@@ -203,7 +208,7 @@
         "Engineer"
     };
     
-    private string FocusOn = "";
+    @* private string FocusOn = "";
     private int currentFocusIndex = -1;
 
     [JSInvokable]
@@ -238,7 +243,7 @@
         {
             Console.WriteLine($"Error in HandleEnter: {ex.Message}");
         }
-    }
+    } *@
 
     // Lifecycle
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -260,13 +265,13 @@
         if (string.IsNullOrEmpty(model.dict["DueDate"]))
             model.dict["DueDate"] = DateTime.Now.AddDays(30).ToString("yyyy-MM-dd");
 
-        model.dict["ModeOfPay"] ??= "CASH";
+        model.dict["ModeOfPay"] = "CASH";
         model.dict["ConsiderInAccounts"] ??= "true";
         model.dict["Cancelled"] ??= "false";
 
         GstStateCode = 27;
 
-        HandleEnter();
+        //HandleEnter();
     }
 
     // RInput Change Handlers
@@ -321,6 +326,7 @@
     public async Task HandleEdit(DataRow row)
     {
         HandleClear();
+        await Task.Delay(50);
         isEditing = true;
         model.Populate(row);
 

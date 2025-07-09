@@ -2,7 +2,7 @@
     <div>
         <div class="form-check" style="padding-top: 35px;">
 
-            <label class="form-check-label" @onclick="ToggleCheckBox">@Title</label>
+            <label @onclick="ToggleCheckBox">@Title</label>
             <input class="form-check-input" value=@Value type="checkbox" @onkeydown="HandleKeyboardInput" 
                   checked=@IsChecked
                   @onchange="HandleChange" />

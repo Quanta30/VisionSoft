@@ -36,6 +36,58 @@
                         </div>
                     </div>
 
+                    <div style="min-width: 120px;">
+                        <select class="form-select form-select-sm" value=@filterCondition @onchange="onFilterChange">
+                            <option value="like">📝 Like</option>
+                            <option value="=">= Equal</option>
+                            <option value=">">&gt; Greater</option>
+                            <option value="<">&lt; Less</option>
+                            <option value=">=">&ge; Greater Equal</option>
+                            <option value="<=">&le; Less Equal</option>
+                            <option value="<>">&ne; Not Equal</option>
+                        </select>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            Select Columns (@selectedColumns.Count selected)
+                        </button>
+                        <ul class="dropdown-menu p-0" style="min-width: 250px; max-height: 600px; z-index: 1055;">
+                            <div class="p-2" style="max-height: 300px; overflow-y: auto;">
+                                @if (Columns.Count > 0)
+                                {
+                                    @foreach (var column in Columns)
+                                    {
+                                        <div class="dropdown-item-text">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" 
+                                                    id="col_@column" 
+                                                    @onchange="(e) => OnColumnToggle(column, e)"
+                                                    checked="@selectedColumns.Contains(column)" />
+                                                <label class="form-check-label" for="col_@column">
+                                                    @column
+                                                </label>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="dropdown-item-text text-muted">No columns available</div>
+                                }
+                            </div>
+                            <hr class="dropdown-divider my-1">
+                            <div class="p-2">
+                                <button class="btn btn-sm btn-outline-primary w-100" @onclick="SelectAllColumns">
+                                    Select All
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary w-100 mt-1" @onclick="ClearAllColumns">
+                                    Clear All
+                                </button>
+                            </div>
+                        </ul>
+                    </div>
+
                     <!-- Pagination Section -->
                     <div class="d-flex align-items-center gap-2">
                         <button type="button" class="btn btn-primary btn-sm" @onclick="PreviousPage"
@@ -156,7 +208,7 @@
     
     [Parameter] public EventCallback<DataRow> SelectClicked {get; set; }
     
-
+    public string filterCondition = "like";
 
     //Element Refernce for AutoFocus
     private ElementReference searchInput;
@@ -165,6 +217,7 @@
     private ClsDatabase db = new();
     private DataTable? TableData;
     private List<string> Columns = new();
+    private HashSet<string> selectedColumns = new HashSet<string>();
     private string PrimaryKeyColumn = "";
     private bool IsLoading;
     
@@ -218,6 +271,7 @@
                             .ToList();
                 
                 PrimaryKeyColumn = Columns.FirstOrDefault() ?? "";
+                selectedColumns = new HashSet<string>(Columns);
             }
             catch (Exception ex)
             {
@@ -226,83 +280,109 @@
         }
     }
 
+    private async void OnColumnToggle(string columnName, ChangeEventArgs e)
+    {
+        bool isChecked = (bool)(e.Value ?? false);
+        
+        if (isChecked)
+        {
+            selectedColumns.Add(columnName);
+        }
+        else
+        {
+            selectedColumns.Remove(columnName);
+        }
+        
+        Console.WriteLine($"Column {columnName} is now {(isChecked ? "selected" : "deselected")}");
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async void SelectAllColumns()
+    {
+        selectedColumns = new HashSet<string>(Columns);
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async void ClearAllColumns()
+    {
+        selectedColumns.Clear();
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async void onFilterChange(ChangeEventArgs e){
+        filterCondition = e.Value.ToString();
+        await LoadData();
+        StateHasChanged();
+    }
 
     //Load Data only on the current page
     //And matching the pattern in the Search Box for all column entries Pattern : {%patter%} For all columns
     //Uses ROW_NUMBER() sql window Function to add serial no. to the dataTable, So that it can be divided into pages
-    private async Task LoadData()
-    {   
-        Console.WriteLine("Loading Data In FrmViewHelper");
-        selectedRowIndex = 0;
-        IsLoading = true;
-        StateHasChanged();
+private async Task LoadData()
+{   
+    Console.WriteLine("Loading Data In FrmViewHelper");
+    selectedRowIndex = 0;
+    IsLoading = true;
+    StateHasChanged();
 
-        try
+    try
+    {
+        // Build WHERE clause for search
+        string whereClause = "";
+        if (!string.IsNullOrWhiteSpace(searchText) && selectedColumns.Count > 0)
         {
-            // Build WHERE clause for search
-            string whereClause = "";
-            if (!string.IsNullOrWhiteSpace(searchText) && Columns.Count > 0)
-            {
-                var pattern = $@"%{searchText}%";
-                whereClause = "WHERE " + string.Join(" OR ",
-                    Columns.Select(c => $"CAST({c} AS NVARCHAR(MAX)) LIKE '{pattern}'"));
-            }
-
-            // Get total count
-            string countQuery = $"SELECT COUNT(*) as cnt FROM {TableName} {whereClause}";
-            totalRecords = Convert.ToInt32(db.GetDataTable(countQuery).Rows[0]["cnt"]);
-            totalPages = totalRecords > 0 ? (int)Math.Ceiling((double)totalRecords / pageSize) : 1;
-
-            // Validate current page
-            if (currentPage > totalPages && totalPages > 0)
-            {
-                currentPage = totalPages;
-            }
-            else if (currentPage < 1)
-            {
-                currentPage = 1;
-            }
-
-            // Use ROW_NUMBER() for pagination
-            string columnList = string.Join(", ", Columns);
-
-            string dataQuery;
-            if (!string.IsNullOrWhiteSpace(whereClause))
-            {
-                dataQuery = $@"
-                    SELECT * 
-                    FROM {TableName}
-                    {whereClause}
-                    ORDER BY {PrimaryKeyColumn}
-                    OFFSET {(currentPage-1) * pageSize} ROWS
-                    FETCH NEXT {pageSize} ROWS ONLY";
-            }
-            else
-            {
-                dataQuery = $@"
-                    SELECT * 
-                    FROM {TableName}
-                    ORDER BY {PrimaryKeyColumn}
-                    OFFSET {(currentPage-1) * pageSize} ROWS
-                    FETCH NEXT {pageSize} ROWS ONLY";
-            }
-
-            TableData = db.GetDataTable(dataQuery);
-
+            // Escape single quotes to prevent SQL injection
+            var escapedSearchText = searchText.Replace("'", "''");
+            var pattern = $@"%{escapedSearchText}%";
+            
+            // For global search, always use LIKE across selected columns
+            whereClause = "WHERE " + string.Join(" OR ",
+                selectedColumns.Select(c => $"CAST({c} AS NVARCHAR(MAX)) LIKE '{pattern}'"));
         }
-        catch (Exception ex)
+
+        // Get total count
+        string countQuery = $"SELECT COUNT(*) as cnt FROM {TableName} {whereClause}";
+        totalRecords = Convert.ToInt32(db.GetDataTable(countQuery).Rows[0]["cnt"]);
+        totalPages = totalRecords > 0 ? (int)Math.Ceiling((double)totalRecords / pageSize) : 1;
+
+        // Validate current page
+        if (currentPage > totalPages && totalPages > 0)
         {
-            Console.WriteLine($"Error loading data: {ex.Message}");
-            TableData = null;
-            totalRecords = 0;
-            totalPages = 0;
+            currentPage = totalPages;
         }
-        finally
+        else if (currentPage < 1)
         {
-            IsLoading = false;
-            StateHasChanged();
+            currentPage = 1;
         }
+
+        // Get data with pagination
+        string dataQuery = $@"
+            SELECT * 
+            FROM {TableName}
+            {whereClause}
+            ORDER BY {PrimaryKeyColumn}
+            OFFSET {(currentPage-1) * pageSize} ROWS
+            FETCH NEXT {pageSize} ROWS ONLY";
+
+        TableData = db.GetDataTable(dataQuery);
+
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error loading data: {ex.Message}");
+        TableData = null;
+        totalRecords = 0;
+        totalPages = 0;
+    }
+    finally
+    {
+        IsLoading = false;
+        StateHasChanged();
+    }
+}
 
     //Navigation keys to navigate the table
     //After Key Press blazor automatically calls StateHasChanged
