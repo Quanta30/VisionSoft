@@ -75,17 +75,17 @@
 
     protected override void OnParametersSet(){
 
-        if (InitialDataRow != null)
-        {
+            model.dict["QuotationNo"] = QuotationNo.ToString();
+            model.dict["SrNo"] = SerialNo.ToString(); 
+        Calculate();
+    }
+
+    protected override void OnAfterRender(bool firstRender){
+        if(firstRender && InitialDataRow != null){
             model.Populate(InitialDataRow);
             ProductName = ProductCodeToName(model.dict["ProductCode"]);
+            StateHasChanged();
         }
-        else
-        {
-            model.dict["QuotationNo"] = QuotationNo.ToString();
-            model.dict["SrNo"] = SerialNo.ToString();
-        }
-        Calculate();
     }
 
     private string ProductCodeToName(string code)
@@ -244,7 +244,7 @@
         if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
         if (string.IsNullOrEmpty(model.dict["Discount"])) model.dict["Discount"] = "0";
         if (string.IsNullOrEmpty(model.dict["Free"])) model.dict["Free"] = "0";
-
+        GstCategoryCode = 1;
         Calculate();
     }
 }

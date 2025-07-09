@@ -22,7 +22,7 @@
                 if(event.altKey && (event.key==='V' || event.key === 'v')){
                     console.log("ShortCut Key: ALT + V Pressed")
                     dotNetRef.invokeMethodAsync('HandleView');
-                    Console.log("HERE");
+                    console.log("HERE");
                 }
                 if(event.altKey && (event.key==='S' || event.key === 's')){
                     console.log("ShortCut Key: ALT + S Pressed")
@@ -35,12 +35,19 @@
                 if(event.altKey && (event.key ==='C' || event.key === 'c')){
                     console.log("ShortCut Key: ALT + C Pressed")
                     dotNetRef.invokeMethodAsync('HandleClear');
+                }
                                 
                 if(event.altKey && (event.key ==='P' || event.key === 'p')){
                     console.log("ShortCut Key: ALT + A Pressed")
                     dotNetRef.invokeMethodAsync('HandleAdd');
                 }
+
+                if (event.key === 'Enter') {
+                    console.log("Handling Enter")
+                    event.preventDefault();
+                    dotNetRef.invokeMethodAsync('HandleEnter');
                 }
+
             })
         }
 

@@ -12,12 +12,27 @@
 <T_Frm FormName="Call Close Master">
     <ChildContent>
         <T_Row>
-            <T_Input Title="Entry No *" ReadOnly="true" @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-4" />
-            <T_Input Title="Entry Date" Type="date" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-4" />
-            <T_Input Title="Mode of Pay *" @bind-Value="@model.dict["ModeOfPay"]" MaxLength="50" ColSize="col-md-4" />
+            <T_Input Title="Entry No *" ReadOnly="true" @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-3" />
+            <T_Input Title="Entry Date" Type="date" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-3" />
+            <div class="col-md-3">
+                <label class="form-label">Mode of Pay *</label>
+                <select class="form-control" @bind="@model.dict["ModeOfPay"]">
+                    <option value="">Select Mode</option>
+                    <option value="CASH">Cash</option>
+                    <option value="CREDIT">Credit</option>
+                    <option value="CARD">Card</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CHEQUE">Cheque</option>
+                    <option value="NEFT">NEFT</option>
+                    <option value="RTGS">RTGS</option>
+                    <option value="IMPS">IMPS</option>
+                </select>
+            </div>
+            <T_Checkbox Title="Consider In Accounts" @bind-Value="@model.dict["ConsiderInAccounts"]" ColSize="col-md-3" />
         </T_Row>
         <T_Row>
-            <T_Input Title="Token ID *" @bind-Value="@model.dict["TokenID"]" MaxLength="50" ColSize="col-md-4" />
+            <T_RInput Title="Token ID *" @bind-Value="@model.dict["TokenID"]" ColSize="col-md-4"
+                      TableName="TokenMaster" PrimaryColumn="TokenID" DisplayColumn="TokenID" />
             <T_Input Title="Completion Date" Type="date" @bind-Value="@model.dict["CompletionDate"]" ColSize="col-md-4" />
             <T_Input Title="Completion Time" Type="time" @bind-Value="@model.dict["CompletionTime"]" ColSize="col-md-4" />
         </T_Row>
@@ -28,11 +43,8 @@
         </T_Row>
         <T_Row>
             <T_Input Title="Narration" @bind-Value="@model.dict["Narration"]" MaxLength="500" ColSize="col-md-6" />
-            <T_Input Title="Closed By" @bind-Value="@model.dict["ClosedBy"]" MaxLength="50" ColSize="col-md-6" />
-        </T_Row>
-        <T_Row>
-            <T_Checkbox Title="Consider In Accounts" @bind-Value="@model.dict["ConsiderInAccounts"]" />
-            <T_Input Title="Cancelled" Type="number" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-4" />
+            <T_Input Title="Closed By" @bind-Value="@model.dict["ClosedBy"]" MaxLength="50" ColSize="col-md-3" />
+            <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3" />
         </T_Row>
     </ChildContent>
 
@@ -51,7 +63,6 @@
     private bool isViewing = false;
     private bool isEditing = false;
 
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(firstRender)
@@ -60,19 +71,50 @@
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
             
-            // Initialize dates
-            if (string.IsNullOrEmpty(model.dict["EntryDate"]))
-                model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+            // Initialize defaults
+            InitializeDefaults();
         }
     }
 
+    protected override void OnInitialized()
+    {
+        // Initialize defaults when component is first created
+        InitializeDefaults();
+    }
+
+    private void InitializeDefaults()
+    {
+        // Set default date if empty
+        if (string.IsNullOrEmpty(model.dict["EntryDate"]))
+            model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        
+        // Set default Mode of Pay to CASH
+        if (string.IsNullOrEmpty(model.dict["ModeOfPay"]))
+            model.dict["ModeOfPay"] = "CASH";
+        
+        // Initialize boolean fields
+        if (string.IsNullOrEmpty(model.dict["ConsiderInAccounts"]))
+            model.dict["ConsiderInAccounts"] = "1";
+        
+        if (string.IsNullOrEmpty(model.dict["Cancelled"]))
+            model.dict["Cancelled"] = "0";
+        
+        // Initialize numeric fields to 0 if empty
+        if (string.IsNullOrEmpty(model.dict["Amount"]))
+            model.dict["Amount"] = "0.00";
+        
+        if (string.IsNullOrEmpty(model.dict["Discount"]))
+            model.dict["Discount"] = "0.00";
+        
+        if (string.IsNullOrEmpty(model.dict["NetAmount"]))
+            model.dict["NetAmount"] = "0.00";
+    }
 
     [JSInvokable]
     public async Task HandleSave()
     {
         try
         {
-            
             if (!ValidateForm()) return;
 
             bool success = isEditing
@@ -100,7 +142,6 @@
             await Msg.SaveError();
             Console.WriteLine($"Error saving Call Close record: {ex.Message}");
         }
-        HandleClear();
     }
 
     [JSInvokable]
@@ -109,8 +150,8 @@
         model.Clear();
         isEditing = false;
         
-        // Reset entry date to today
-        model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        // Re-apply defaults after clearing
+        InitializeDefaults();
         
         StateHasChanged();
     }
@@ -122,29 +163,26 @@
         StateHasChanged();
     }
 
-    [JSInvokable]
-    public void HandlePrint()
-    {
-        Console.WriteLine("Print Call Close Master");
-        // implement printing logic if needed
-        StateHasChanged();
-    }
-
     public async Task HandleEdit(DataRow row)
     {
         try
         {
             isEditing = true;
             isViewing = false;
-            @* foreach(DataColumn column in row.Table.Columns){
-                Console.WriteLine($"{column.ColumnName}: {row[column]?.ToString() ?? "NULL"}");
-            }    *@
+            
+            // Clear first to ensure clean state
+            model.Clear();
+            
+            // Populate with data
             model.Populate(row);
+            
             StateHasChanged();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading Call Close record: {ex.Message}");
+            Msg.Show($"Error loading record: {ex.Message}", "danger", "bi-exclamation-triangle");
+            HandleClear();
         }
     }
 
@@ -199,9 +237,6 @@
 
         if (!string.IsNullOrWhiteSpace(model.dict["NetAmount"]) && !double.TryParse(model.dict["NetAmount"], out _))
             errors.Add("Net Amount must be a valid number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["Cancelled"]) && !int.TryParse(model.dict["Cancelled"], out _))
-            errors.Add("Cancelled must be a valid number");
 
         // Date validations
         if (!string.IsNullOrWhiteSpace(model.dict["EntryDate"]) && !DateTime.TryParse(model.dict["EntryDate"], out _))

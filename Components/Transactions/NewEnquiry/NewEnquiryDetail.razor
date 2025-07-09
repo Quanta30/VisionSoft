@@ -49,16 +49,18 @@
     private Model model = new Model("NewEnquiryDetails", "");
     private ClsDatabase db = new ClsDatabase();
 
-    protected override void OnParametersSet(){
-        if (InitialDataRow != null)
-        {
-            model.Populate(InitialDataRow);
-        }
-        else
-        {
-            model.Clear();
+    protected override void OnParametersSet()
+    {
             model.dict["EnquiryNo"] = EnquiryNo;
             model.dict["SrNo"] = SerialNo.ToString();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
+            StateHasChanged();
         }
     }
 

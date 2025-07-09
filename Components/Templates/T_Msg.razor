@@ -70,7 +70,7 @@
 
     //Error Message Notification after saving
     public async Task SaveError(){
-        Show("Error saving company record. Please try again.", "danger", "bi-exclamation-triangle");
+        Show("Error saving record. Please try again.", "danger", "bi-exclamation-triangle");
         await Task.Delay(5000);  // Show longer for errors
         Clear();
     }

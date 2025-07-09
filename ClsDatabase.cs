@@ -111,6 +111,7 @@ public class ClsDatabase
             try
             {
                 string sqlQuery = Query;
+                Console.WriteLine(Query);
                 DataTable dt = GetDataTable(sqlQuery);
                 return dt.Rows[0][0].ToString();
             }

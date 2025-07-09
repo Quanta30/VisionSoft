@@ -69,68 +69,43 @@
     [Parameter] public string SalesReturnNo { get; set; }
     [Parameter] public EventCallback OnCalculationChanged { get; set; }
     [Parameter] public DataRow InitialDataRow { get; set; }
+    [Parameter] public int GstStateCode{get; set;} = 27;
 
     public Model model = new Model("SalesReturnDetails", "");
     private ClsDatabase db = new ClsDatabase();
+    private Utilities utilities = new Utilities();
     public float taxableAmount = 0;
     public float gst = 0;
     public float netAmount = 0;
     public int GstCategoryCode = 2;
+    
     public string StockName = "";
 
     protected override void OnParametersSet(){
-        if (InitialDataRow != null)
-        {
-            model.Populate(InitialDataRow);
-            StockName = StockIdToName(model.dict["StockID"]);
-        }
-        else
-        {
+
             model.dict["SalesReturnNo"] = SalesReturnNo;
             model.dict["SrNo"] = SerialNo.ToString();
-        }
+        
         Calculate();
     }
 
-    private string StockIdToName(string id)
-    {
-        try
+    protected override void OnAfterRender(bool firstRender){
+        if (firstRender && InitialDataRow != null)
         {
-            string name = db.GetScalar($@"select ProductName from PhysicalStock ps 
-                                         join ProductMaster pm on ps.ProductCode = pm.ProductCode 
-                                         where StockId = '{id}'");
-            Console.WriteLine($"StockId: {id}, ProductName: {name}");
-            return name;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error getting stock name: {ex.Message}");
-            return "";
+            model.Populate(InitialDataRow);
+            StockName = utilities.StockIdToName(model.dict["StockID"]);
+            StateHasChanged();
         }
     }
 
-    private string StockNameToId(string sname)
-    {
-        try
-        {
-            string pcode = db.GetScalar($"select ProductCode from ProductMaster where ProductName='{sname}'");
-            string stockId = db.GetScalar($"select StockId from PhysicalStock where ProductCode = '{pcode}'");
-            Console.WriteLine($"ProductName: {sname}, StockId: {stockId}");
-            return stockId;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error getting stock id: {ex.Message}");
-            return "0";
-        }
-    }
+
 
     public void OnStockChanged(string sname)
     {
         try
         {
             StockName = sname;
-            model.dict["StockID"] = StockNameToId(sname);
+            model.dict["StockID"] = utilities.StockNameToId(sname);
             Console.WriteLine($"Stock changed - StockID: {model.dict["StockID"]}");
             UpdateStockDetails();
             Calculate();
@@ -244,9 +219,16 @@
             Calculate();
             
             string percent = GetGstPercent().ToString("F0");
-            model.dict[$"GST{percent}APPAMOUNT"] = taxableAmount.ToString("F2");
-            model.dict[$"CGST{percent}AMOUNT"] = (gst / 2).ToString("F2");
-            model.dict[$"SGST{percent}AMOUNT"] = (gst / 2).ToString("F2");
+
+            if(GstStateCode == 27){
+                model.dict[$"GST{percent}APPAMOUNT"] = taxableAmount.ToString("F2");
+                model.dict[$"CGST{percent}AMOUNT"] = (gst / 2).ToString("F2");
+                model.dict[$"SGST{percent}AMOUNT"] = (gst / 2).ToString("F2");
+            }
+            else{
+                model.dict[$"GST{percent}APPAMOUNT"] = taxableAmount.ToString("F2");
+                model.dict[$"IGST{percent}AMOUNT"] = (gst).ToString("F2");
+            }
             
             UpdatePhysicalStock();
             bool saved = model.Save();
@@ -271,25 +253,7 @@
 
     private void UpdatePhysicalStock()
     {
-        if (!string.IsNullOrEmpty(model.dict["StockID"]) && 
-            !string.IsNullOrEmpty(model.dict["Quantity"]))
-        {
-            try
-            {
-                float quantity = float.Parse(model.dict["Quantity"]);
-                string updateQuery = $@"
-                    UPDATE PhysicalStock 
-                    SET Quantity = Quantity + {quantity}
-                    WHERE StockId = '{model.dict["StockID"]}'";
-                
-                db.ExecuteQuery(updateQuery);
-                Console.WriteLine($"Updated PhysicalStock for StockId: {model.dict["StockID"]}, Added Quantity: {quantity}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating physical stock: {ex.Message}");
-            }
-        }
+        utilities.AdjustStock(model.dict["StockId"], "ADD", model.dict["Quantity"]);
     }
 
     private float GetGstPercent()

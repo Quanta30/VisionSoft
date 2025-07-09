@@ -1,96 +1,121 @@
 @using System.Data
 @namespace VisionSoft.Components.Transactions.StockAdjustment
 @rendermode InteractiveServer
+
 <tr>
     <td>
-        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
+        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style="" />
     </td>
+    <td>@SerialNo</td>
+
     <td>
-        @SerialNo
+        <T_RInput Title="" Layout="3"
+                  TableName="PhysicalStockView"
+                  PrimaryColumn="ProductName"
+                  DisplayColumn="ProductName"
+                  Value="@StockName"
+                  ValueChanged="OnStockChanged" />
     </td>
-    <td>
-        <T_RInput Title="" Layout="3" TableName="PhysicalStockView" 
-        PrimaryColumn="ProductName" DisplayColumn="ProductName" Value=@StockName ValueChanged="OnStockChanged"/>
-    </td>
+
     <td>
         <div style="width:100px">
-            <select class="form-control form-control-sm" value="@model.dict["AdjustmentType"]" @onchange="OnAdjustmentTypeChange">
+            <select class="form-control form-control-sm"
+                    value="@model.dict["AdjustmentType"]"
+                    @onchange="OnAdjustmentTypeChange">
                 <option value="LESS">LESS</option>
                 <option value="ADD">ADD</option>
             </select>
         </div>
     </td>
+
     <td>
         <div style="width:80px">
-            <T_Input Title="" Layout="3" Value="@currentQuantity.ToString("F2")" ReadOnly="true" Placeholder=""/>
+            <T_Input Title="" Layout="3"
+                     Value="@currentQuantity.ToString("F2")"
+                     ReadOnly="true"
+                     Placeholder="" />
         </div>
     </td>
+
     <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>     
+        <div style="width:70px">
+            <T_Input Title="" Layout="3"
+                     @bind-Value="@model.dict["Rate"]"
+                     Placeholder=""
+                     ChangeFunction="OnChange" />
+        </div>
     </td>
+
     <td>
-      <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange"/>
-      </div>  
+        <div style="width:70px">
+            <T_Input Title="" Layout="3"
+                     @bind-Value="@model.dict["Quantity"]"
+                     Placeholder=""
+                     ChangeFunction="OnChange" />
+        </div>
     </td>
-    <td>
-        @amount.ToString("F2")
-    </td>
+
+    <td>@amount.ToString("F2")</td>
 </tr>
 
 @code {
-    [Parameter] public EventCallback<int> OnRemove{get; set;}
-    [Parameter] public int SerialNo {get; set;}
-    [Parameter] public int AdjustmentNo {get; set;}
-    [Parameter] public EventCallback OnCalculationChanged{get; set;}
+    [Parameter] public EventCallback<int> OnRemove { get; set; }
+    [Parameter] public EventCallback OnCalculationChanged { get; set; }
+
+    [Parameter] public int SerialNo { get; set; }
+    [Parameter] public int AdjustmentNo { get; set; }
+
     [Parameter] public DataRow InitialDataRow { get; set; }
+  
 
-    // Each child manages its own model
     private Model model = new Model("AdjustmentDetails", "");
-    public string StockName = "";
-    public float amount = 0;
-    public float currentQuantity = 0;
-    private ClsDatabase db = new ClsDatabase();
+    private string StockName = "";
+    private float currentQuantity = 0;
+    private float amount = 0;
 
-    protected override void OnParametersSet(){
-        if (InitialDataRow != null)
-        {
-            model.Populate(InitialDataRow);
-            StockName = StockIdToName(model.dict["StockID"]);
-        }
-        else{
-        model.Clear();
-        model.dict["AdjustmentNo"] = AdjustmentNo.ToString();
-        model.dict["SrNo"] = SerialNo.ToString();
-        }
+    private readonly ClsDatabase db = new();
+    private readonly Utilities utilities = new();
+
+    protected override void OnInitialized()
+    {
+        model.dict["Rate"] ??= "0";
+        model.dict["Quantity"] ??= "1";
+        model.dict["AdjustmentType"] ??= "LESS";
+
         Calculate();
     }
-    private string StockIdToName(string id){
-        string code = db.GetScalar($"select ProductCode from PhysicalStock where StockID={id}");
-        string name = db.GetScalar($"select ProductName from ProductMaster where ProductCode={code}");
-        Console.WriteLine($"{code} {name}");
-        return name;
+
+    protected override void OnParametersSet()
+    {
+        model.dict["AdjustmentNo"] = AdjustmentNo.ToString();
+        model.dict["SrNo"] = SerialNo.ToString();
+        Calculate();
     }
-    private string StockNameToId(string sname){
-        string pcode = db.GetScalar($"select ProductCode from ProductMaster where ProductName='{sname}'");
-        string stockId = db.GetScalar($"select StockId from PhysicalStock where ProductCode = '{pcode}'");
-        return stockId;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
+            StockName = utilities.StockIdToName(model.dict["StockID"]);
+            InitialDataRow = null;
+            Console.WriteLine("Rendering Again");
+            StateHasChanged();
+        }
     }
-    public void OnStockChanged(string sname)
-    {       
-        try{
-            string pcode = db.GetScalar($"select ProductCode from ProductMaster where ProductName='{sname}'");
-            string stockId = db.GetScalar($"select StockId from PhysicalStock where ProductCode = '{pcode}'");
-            StockName = sname;
-            model.dict["StockID"] = stockId;
-            Console.WriteLine($"Stock changed - StockID: {stockId}");
+
+    private void OnStockChanged(string name)
+    {
+        try
+        {
+            StockName = name;
+            model.dict["StockID"] = utilities.StockNameToId(name);
             UpdateStockDetails();
             Calculate();
             StateHasChanged();
         }
-        catch(Exception ex){
+        catch (Exception ex)
+        {
             Console.WriteLine($"Error in OnStockChanged: {ex.Message}");
         }
     }
@@ -102,147 +127,91 @@
         OnCalculationChanged.InvokeAsync();
     }
 
+    private void OnChange(string _)
+    {
+        Calculate();
+        OnCalculationChanged.InvokeAsync();
+    }
+
+    private void Calculate()
+    {
+        float.TryParse(model.dict["Rate"], out float rate);
+        float.TryParse(model.dict["Quantity"], out float quantity);
+        amount = rate * quantity;
+    }
+
     private void UpdateStockDetails()
-    {   
-        if (!string.IsNullOrEmpty(model.dict["StockID"]))
+    {
+        if (string.IsNullOrWhiteSpace(model.dict["StockID"]))
+            return;
+
+        try
         {
-            try
+            string query = $"SELECT PurchaseRate, Quantity FROM PhysicalStock WHERE StockID = '{model.dict["StockID"]}'";
+            DataTable result = db.GetDataTable(query);
+
+            if (result.Rows.Count > 0)
             {
-                string query = $"SELECT PurchaseRate, Quantity FROM PhysicalStock WHERE StockID = '{model.dict["StockID"]}'";
-                DataTable result = db.GetDataTable(query);
-                
-                if (result.Rows.Count > 0)
-                {
-                    DataRow row = result.Rows[0];
-                    
-                    if (row["PurchaseRate"] != DBNull.Value)
-                    {
-                        model.dict["Rate"] = row["PurchaseRate"].ToString();
-                    }
-                    
-                    if (row["Quantity"] != DBNull.Value)
-                    {
-                        currentQuantity = Convert.ToSingle(row["Quantity"]);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("No stock found for the selected item");
-                    model.dict["Rate"] = "0";
-                    currentQuantity = 0;
-                }
+                var row = result.Rows[0];
+
+                model.dict["Rate"] = row["PurchaseRate"]?.ToString() ?? "0";
+                currentQuantity = row["Quantity"] != DBNull.Value ? Convert.ToSingle(row["Quantity"]) : 0;
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"Error getting stock details: {ex.Message}");
+                Console.WriteLine("No stock found for the selected item");
                 model.dict["Rate"] = "0";
                 currentQuantity = 0;
             }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting stock details: {ex.Message}");
+            model.dict["Rate"] = "0";
+            currentQuantity = 0;
+        }
     }
 
-    public async Task HandleRemove(){
+    private void UpdatePhysicalStock()
+    {
+        utilities.AdjustStock(model.dict["StockID"], model.dict["AdjustmentType"], model.dict["Quantity"]);
+    }
+
+    public async Task HandleRemove()
+    {
         Console.WriteLine($"Removing row with SerialNo: {SerialNo}");
         await OnRemove.InvokeAsync(SerialNo);
     }
 
-    // Public method for parent to call during save
-    public bool SaveDetail(){
-        try{
-            Console.WriteLine($"Saving detail {SerialNo}");
-            model.dict["AdjustmentNo"] = AdjustmentNo.ToString();
-            model.dict["SrNo"] = SerialNo.ToString();
-            
-
-            if(string.IsNullOrEmpty(model.dict["StockID"]) || model.dict["StockID"] == "0"){
+    public bool SaveDetail()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(model.dict["StockID"]) || model.dict["StockID"] == "0")
+            {
                 Console.WriteLine("Cannot save - no stock selected");
                 return false;
             }
-            
+
+            model.dict["AdjustmentNo"] = AdjustmentNo.ToString();
+            model.dict["SrNo"] = SerialNo.ToString();
+
             UpdatePhysicalStock();
+
             bool saved = model.Save();
-            
-            if(saved){
-                Console.WriteLine($"Detail {SerialNo} saved successfully");
-            }
-            else{
-                Console.WriteLine($"Failed to save detail {SerialNo}");
-            }
-            
+
+            Console.WriteLine(saved
+                ? $"Detail {SerialNo} saved successfully"
+                : $"Failed to save detail {SerialNo}");
+
             return saved;
         }
-        catch(Exception ex){
+        catch (Exception ex)
+        {
             Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
             return false;
         }
     }
 
-
-    private void UpdatePhysicalStock()
-    {
-        if (!string.IsNullOrEmpty(model.dict["StockID"]) && 
-            !string.IsNullOrEmpty(model.dict["Quantity"]) &&
-            !string.IsNullOrEmpty(model.dict["AdjustmentType"]))
-        {
-            try
-            {
-                float quantity = float.Parse(model.dict["Quantity"]);
-                string adjustmentType = model.dict["AdjustmentType"];
-                
-                string operation = (adjustmentType == "ADD") ? "+" : "-";
-                
-                string updateQuery = $@"
-                    UPDATE PhysicalStock 
-                    SET Quantity = Quantity {operation} {quantity}
-                    WHERE StockID = {model.dict["StockID"]}";
-                
-                db.ExecuteQuery(updateQuery);
-                Console.WriteLine($"Updated PhysicalStock for StockID: {model.dict["StockID"]}, Quantity: {operation}{quantity}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating physical stock: {ex.Message}");
-            }
-        }
-    }
-
-    private void Calculate(){
-        if (float.TryParse(model.dict["Rate"], out float rate) &&
-            float.TryParse(model.dict["Quantity"], out float quantity))
-        {
-            amount = rate * quantity;
-        }
-        else
-        {
-            amount = 0f;
-        }
-    }
-
-    public void OnChange(string value){
-        Console.WriteLine("Change In Details");
-        Calculate();
-        OnCalculationChanged.InvokeAsync();
-    }
-
-    // Public method for parent to get amount for calculations
     public float GetAmount() => amount;
-
-    protected override void OnInitialized()
-    {
-        // Initialize default values
-        if (string.IsNullOrEmpty(model.dict["Rate"])) model.dict["Rate"] = "0";
-        if (string.IsNullOrEmpty(model.dict["Quantity"])) model.dict["Quantity"] = "1";
-        if (string.IsNullOrEmpty(model.dict["AdjustmentType"])) model.dict["AdjustmentType"] = "LESS";
-        
-        Calculate();
-    }
-
-    public void Populate(int an, int sn){
-        DataRow row = db.GetDataTable($"select * from AdjustmentDetails where AdjustmentNo={an} and SrNo={sn}").Rows[0];
-        model.dict["StockID"] = row["StockID"].ToString();
-        model.dict["AdjustmentType"] = row["AdjustmentType"].ToString();
-        model.dict["SrNo"] = sn.ToString();
-        model.dict["Quantity"] = row["Quantity"].ToString();
-        model.dict["Rate"] = row["Quantity"].ToString();
-    }
 }

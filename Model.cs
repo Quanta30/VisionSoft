@@ -92,36 +92,36 @@ public class Model
 
             // INITIALIZE WITH APPROPRIATE VALUE FOR TESTING PURPOSE : TO BE REMOVED
             //TO BE REMOVED : DATA_TYPE FROM THE QUERY, string dataType, SwitchCase
-            switch (dataType)
-            {
-                case "int":
-                case "bigint":
-                case "smallint":
-                case "tinyint":
-                    dict[columnName] = "0";
-                    break;
-                case "float":
-                case "real":
-                case "decimal":
-                case "numeric":
-                case "money":
-                case "smallmoney":
-                    dict[columnName] = "0.0";
-                    break;
-                case "bit":
-                    dict[columnName] = "false";
-                    break;
-                case "datetime":
-                case "datetime2":
-                case "smalldatetime":
-                case "date":
-                case "time":
-                    dict[columnName] = DateTime.Now.ToString("yyyy-MM-dd");
-                    break;
-                default: // varchar, nvarchar, char, nchar, text, ntext, etc.
-                    dict[columnName] = "DemoValue";
-                    break;
-            }
+            // switch (dataType)
+            // {
+            //     case "int":
+            //     case "bigint":
+            //     case "smallint":
+            //     case "tinyint":
+            //         dict[columnName] = "0";
+            //         break;
+            //     case "float":
+            //     case "real":
+            //     case "decimal":
+            //     case "numeric":
+            //     case "money":
+            //     case "smallmoney":
+            //         dict[columnName] = "0.0";
+            //         break;
+            //     case "bit":
+            //         dict[columnName] = "false";
+            //         break;
+            //     case "datetime":
+            //     case "datetime2":
+            //     case "smalldatetime":
+            //     case "date":
+            //     case "time":
+            //         dict[columnName] = DateTime.Now.ToString("yyyy-MM-dd");
+            //         break;
+            //     default: // varchar, nvarchar, char, nchar, text, ntext, etc.
+            //         dict[columnName] = "DemoValue";
+            //         break;
+            // }
         }
     }
 
@@ -132,13 +132,26 @@ public class Model
         {
             if (dict.ContainsKey(column.ColumnName))
             {
-                if (column.DataType == typeof(DateTime))
+                var value = row[column.ColumnName];
+                
+                // Handle DBNull values
+                if (value == DBNull.Value || value == null)
                 {
-                    dict[column.ColumnName] = ((DateTime)row[column.ColumnName]).ToString("yyyy-MM-dd");
+                    dict[column.ColumnName] = "";
                 }
-                else dict[column.ColumnName] = row[column.ColumnName]?.ToString() ?? "";
+                else if (column.DataType == typeof(DateTime))
+                {
+                    dict[column.ColumnName] = ((DateTime)value).ToString("yyyy-MM-dd");
+                }
+                else 
+                {
+                    dict[column.ColumnName] = value.ToString() ?? "";
+                }
             }
-            else throw new Exception($"Column '{column.ColumnName}' does not exist. Populate Error");
+            else 
+            {
+                throw new Exception($"Column '{column.ColumnName}' does not exist. Populate Error");
+            }
         }
     }
 
@@ -247,7 +260,4 @@ public class Model
         PrimaryKeyPrefix = prefix;
         SetPrimaryKey(prefix);
     }
-    
-
-
 }

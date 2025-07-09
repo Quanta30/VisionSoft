@@ -46,37 +46,30 @@
     private Model model = new Model("AssetInwardDetails", "");
     public float amount = 0;
     private ClsDatabase db = new ClsDatabase();
+    private Utilities utilities = new Utilities();
     public string StockName = "";
 
     protected override void OnParametersSet(){
-        if (InitialDataRow != null)
-        {
-            model.Populate(InitialDataRow);
-            StockName = StockIdToName(model.dict["StockId"]);
-        }
-        else
-        {
+        
             model.dict["EntryNo"] = EntryNo;
             model.dict["SrNo"] = SerialNo.ToString();
-        }
+        
         Calculate();
     }
 
-    public string StockNameToId(string sn){
-        string pc = db.GetScalar($"Select ProductCode from ProductMaster where ProductName = '{sn}'");
-        string Id = db.GetScalar($"Select StockId from PhysicalStock where ProductCode = '{pc}'");
-        return Id;
+    protected override void OnAfterRender(bool firstRender){
+            if(firstRender && InitialDataRow != null){
+                model.Populate(InitialDataRow);
+                StockName = utilities.StockIdToName(model.dict["StockId"]);
+                StateHasChanged();
+            }
     }
-    public string StockIdToName(string Id){
-        string pc = db.GetScalar($"Select ProductCode from PhysicalStock where StockId = '{Id}'");
-        string name = db.GetScalar($"Select ProductName from ProductMaster where ProductCode = '{pc}'");
-        return name;
-    }
+
 
     private void OnStockChanged(string sname)
     {   
         StockName = sname;
-        model.dict["StockId"] = StockNameToId(sname);
+        model.dict["StockId"] = utilities.StockNameToId(sname);
         UpdateStockDetails();
         Calculate();
         StateHasChanged();

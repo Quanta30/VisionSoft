@@ -1,0 +1,72 @@
+<div class="col-md-3">
+    <label class="form-label">@Label</label>
+    <select class="form-control" @bind="Value" @bind:after="OnValueChanged">
+        @foreach (var option in options)
+        {
+            <option value="@option.Value" selected="@(option.Value == Value)">
+                @option.Text
+            </option>
+        }
+    </select>
+</div>
+
+@code {
+    [Parameter] public string Label {get; set;} = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string Options { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    
+    private List<SelectOption> options = new List<SelectOption>();
+    private string _lastOptions = "";
+    
+    protected override void OnParametersSet()
+    {
+        // Only parse if Options parameter actually changed
+        if (_lastOptions != Options)
+        {
+            Console.WriteLine("Options changed, re-parsing");
+            _lastOptions = Options;
+            ParseOptions();
+        }
+        else
+        {
+            Console.WriteLine("Options unchanged, skipping parse");
+        }
+    }
+    
+    private void ParseOptions()
+    {
+        options.Clear();
+        
+        if (!string.IsNullOrEmpty(Options))
+        {
+            // Format: "CASH:Cash,CARD:Card,UPI:UPI"
+            var pairs = Options.Split(',');
+            foreach (var pair in pairs)
+            {
+                var parts = pair.Split(':');
+                if (parts.Length == 2)
+                {
+                    options.Add(new SelectOption 
+                    { 
+                        Value = parts[0].Trim(), 
+                        Text = parts[1].Trim() 
+                    });
+                }
+            }
+        }
+    }
+    
+    private async Task OnValueChanged()
+    {
+        await ValueChanged.InvokeAsync(Value);
+    }
+    
+    private class SelectOption
+    {
+        public string Value { get; set; }
+        public string Text { get; set; }
+    }
+
+
+}

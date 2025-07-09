@@ -2,223 +2,258 @@
 @inject IJSRuntime JS
 @using System.Data
 @using VisionSoft.Components.Transactions.StockAdjustment
-@rendermode InteractiveServer 
+@rendermode InteractiveServer
 
-<T_Msg @ref="Msg"/>
-@if(isViewing){
-    <FrmView TableName="AdjustmentHead" OnClosed="HandleClose" EditClicked="HandleEdit"
-        DeleteClicked="HandleDelete"/>
+<T_Msg @ref="Msg" />
+
+@if (isViewing)
+{
+    <FrmView TableName="AdjustmentHead"
+             OnClosed="HandleClose"
+             EditClicked="HandleEdit"
+             DeleteClicked="HandleDelete" />
 }
+
 <T_Frm FormName="Stock Adjustment">
-<ChildContent>
-    <T_Row>
-        <T_Input Title="Adjustment No *" ReadOnly=true @bind-Value="@model.dict["AdjustmentNo"]" ColSize="col-md-3"/>
-        <T_Input Title="Adjustment Date" Type="date" @bind-Value="@model.dict["AdjustmentDate"]" ColSize="col-md-3"/>
-        <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
-    </T_Row>
-    <T_Row>
-        <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-9"/>
-    </T_Row>
-    <TableView TableName="Adjustment Details" HandleAdd="HandleAdd">
-        <TableHeads>
-            <th>Action</th>
-            <th>Sr. No.</th>
-            <th>Stock Item</th>
-            <th>Adjustment Type</th>
-            <th>Current Qty</th>
-            <th>Rate</th>
-            <th>Quantity</th>
-            <th>Amount</th>
-        </TableHeads>
-        <TableRows>
-            @for(int i = 0; i < detailComponents.Count; i++){
-                int index = i; // Capture index for closure
-                <StockAdjustmentDetail 
-                        SerialNo=@(index+1)
-                        AdjustmentNo=@Convert.ToInt32(model.dict["AdjustmentNo"]) 
-                        OnRemove="@((idx) => HandleRemove(idx))" 
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Adjustment No *" ReadOnly="true"
+                     @bind-Value="@model.dict["AdjustmentNo"]"
+                     ColSize="col-md-3" />
+
+            <T_Input Title="Adjustment Date" Type="date"
+                     @bind-Value="@model.dict["AdjustmentDate"]"
+                     ColSize="col-md-3" />
+
+            <T_Checkbox Title="Cancelled"
+                        @bind-Value="@model.dict["Cancelled"]"
+                        ColSize="col-md-3" />
+        </T_Row>
+
+        <T_Row>
+            <T_Textarea Title="Narration"
+                        @bind-Value="@model.dict["Narration"]"
+                        ColSize="col-md-9" />
+        </T_Row>
+
+        <TableView TableName="Adjustment Details" HandleAdd="HandleAdd">
+            <TableHeads>
+                <th>Action</th>
+                <th>Sr. No.</th>
+                <th>Stock Item</th>
+                <th>Adjustment Type</th>
+                <th>Current Qty</th>
+                <th>Rate</th>
+                <th>Quantity</th>
+                <th>Amount</th>
+            </TableHeads>
+
+            <TableRows>
+                @for (int i = 0; i < detailComponents.Count; i++)
+                {
+                    int index = i;
+                    <StockAdjustmentDetail
+                        SerialNo="@(index + 1)"
+                        AdjustmentNo="@Convert.ToInt32(model.dict["AdjustmentNo"])"
+                        OnRemove="@((idx) => HandleRemove(idx))"
                         OnCalculationChanged="CalculateTotals"
-                        InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                        InitialDataRow="@(detailRows.Count > index ? detailRows[index] : null)"
                         @ref="detailComponents[index]" />
-  
-                    //if(isEditing)detailComponents[index].Populate(AdjustmentNo, i); 
-            }
-        </TableRows>
-        <TableFooter>
-            Total Count : @detailComponents.Count
-        </TableFooter>
-    </TableView>
-    <T_SummaryCard >
-        <T_Input Title="Net Amount" Layout=2 ReadOnly @bind-Value="@model.dict["NetAmount"]" Placeholder="-"/>
-    </T_SummaryCard>
-</ChildContent>
+                }
+            </TableRows>
 
-<CardFooterContent>
-    <T_Button Text="Save" Style="" OnClick="HandleSave"/>
-    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
-    <T_Button Text="View" Style="" OnClick="HandleView"/>
-    <T_Button Text="Print" Style=""/>
-</CardFooterContent>
+            <TableFooter>
+                Total Count : @detailComponents.Count
+            </TableFooter>
+        </TableView>
 
+        <T_SummaryCard>
+            <T_Input Title="Net Amount" Layout="2" ReadOnly
+                     @bind-Value="@model.dict["NetAmount"]"
+                     Placeholder="-" />
+        </T_SummaryCard>
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" OnClick="HandleSave" />
+        <T_Button Text="Clear" OnClick="HandleClear" />
+        <T_Button Text="View" OnClick="HandleView" />
+        <T_Button Text="Print" />
+    </CardFooterContent>
 </T_Frm>
 
-@code{
-    //ELEMENT REFERENCES
+@code {
+    // ---------- Element References ----------
     private T_Msg Msg;
     public DotNetObjectReference<StockAdjustment> dotNetRef;
-    
-    // Component references - let each child manage its own model
-    private List<StockAdjustmentDetail> detailComponents = new List<StockAdjustmentDetail>();
-    public List<DataRow> detailRows = new List<DataRow>();
-   
-    //Models and Class Objects
-    Model model = new Model("AdjustmentHead", "AdjustmentNo");
-    ClsDatabase db = new ClsDatabase();
-   
-    //BooleanValues and Integers
+
+    // ---------- Model & Data ----------
+    private Model model = new("AdjustmentHead", "AdjustmentNo");
+    private ClsDatabase db = new();
+    private List<StockAdjustmentDetail> detailComponents = new();
+    public List<DataRow> detailRows = new();
+    public int AdjustmentNo;
+
+    // ---------- State Flags ----------
     private bool isViewing = false;
     private bool isAddClicked = false;
     private bool isEditing = false;
-    public int AdjustmentNo;
+    private bool flagEdit = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender){
-        if(firstRender){
+    // ---------- Lifecycle ----------
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
             Console.WriteLine("First Render");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
 
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(model.dict["AdjustmentDate"]))
+            model.dict["AdjustmentDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+
+        AdjustmentNo = Convert.ToInt32(model.dict["AdjustmentNo"]);
+    }
+
+    // ---------- Event Handlers ----------
     [JSInvokable]
-    public void HandleView(){
+    public void HandleView()
+    {
         isViewing = !isViewing;
         StateHasChanged();
     }
 
     [JSInvokable]
-    public void HandleAdd(){
-        // Add a null placeholder for component reference
-        detailComponents.Add(null);
+    public void HandleAdd()
+    {
+        detailComponents.Add(null); // Placeholder
         StateHasChanged();
     }
 
     public void HandleEdit(DataRow row)
     {
-        HandleClear(); // This will clear detailComponents and detailDataRows
+        HandleClear(); // Reset state
+
         isEditing = true;
+        flagEdit = true;
+
         model.Populate(row);
         AdjustmentNo = Convert.ToInt32(model.dict["AdjustmentNo"]);
 
-        DataTable dataTable = db.GetDataTable($"Select * from AdjustmentDetails where AdjustmentNo={model.dict["AdjustmentNo"]}");
-        
-        // Populate the data list and add component placeholders
+        DataTable dataTable = db.GetDataTable($"SELECT * FROM AdjustmentDetails WHERE AdjustmentNo = {AdjustmentNo}");
+
         foreach (DataRow detailRow in dataTable.Rows)
         {
             detailRows.Add(detailRow);
-            detailComponents.Add(new()); // Add a placeholder. The @ref will populate it.
+            detailComponents.Add(new()); // Placeholder, will be linked by @ref
         }
-        
-        isViewing = false; // Close the view form
-        StateHasChanged(); // Trigger render
+
+        isViewing = false;
+        StateHasChanged();
     }
 
     [JSInvokable]
-    public void HandleSave(){
+    public void HandleSave()
+    {
         Console.WriteLine("Saving");
-        
-        try{
-            // First save all detail components
+
+        try
+        {
             bool allDetailsSaved = true;
-            if(isEditing)db.ExecuteQuery($"Delete From AdjustmentDetails where AdjustmentNo={AdjustmentNo}");
-            foreach(var detail in detailComponents){
-                if(detail != null){
-                    bool saved = detail.SaveDetail();
-                    if(!saved) allDetailsSaved = false;
+
+            if (isEditing)
+                db.ExecuteQuery($"DELETE FROM AdjustmentDetails WHERE AdjustmentNo = {AdjustmentNo}");
+
+            foreach (var detail in detailComponents)
+            {
+                if (detail != null && !detail.SaveDetail())
+                {
+                    allDetailsSaved = false;
                 }
             }
-            
-            if(!allDetailsSaved){
+
+            if (!allDetailsSaved)
                 throw new Exception("Failed to save some details");
-            }
-            
-            // Then save the parent
-            bool er;
-            if(isEditing)er = model.Update();
-            else er = model.Save();
-            
-            if(!er) throw new Exception("Failed to save header");
-            
+
+            bool headerSaved = isEditing ? model.Update() : model.Save();
+            if (!headerSaved)
+                throw new Exception("Failed to save header");
+
             Msg.Success();
         }
-        catch(Exception e){
+        catch (Exception e)
+        {
             Console.WriteLine($"Save error: {e.Message}");
             Msg.SaveError();
         }
     }
 
     [JSInvokable]
-    public void HandleClear(){
+    public void HandleClear()
+    {
         Console.WriteLine("Clear Form");
+
         model.Clear();
         detailComponents.Clear();
         detailRows.Clear();
+
         isEditing = false;
         isAddClicked = false;
-        isViewing = false;  
+        isViewing = false;
+
         StateHasChanged();
     }
 
-    public void HandleClose(){
+    public void HandleClose()
+    {
         isAddClicked = false;
         isViewing = false;
     }
 
-    public void HandleDelete(DataRow row){
+    public void HandleDelete(DataRow row)
+    {
         int pk = Convert.ToInt32(row["AdjustmentNo"]);
-        db.ExecuteQuery($"Delete From AdjustmentHead where AdjustmentNo={pk}");
-        db.ExecuteQuery($"Delete From AdjustmentDetails where AdjustmentNo={pk}");
+
+        db.ExecuteQuery($"DELETE FROM AdjustmentHead WHERE AdjustmentNo = {pk}");
+        db.ExecuteQuery($"DELETE FROM AdjustmentDetails WHERE AdjustmentNo = {pk}");
     }
 
-    public void HandleRemove(int serialNo){
-        Console.WriteLine($"Removing Row with SerialNo {serialNo}");
-        int index = serialNo - 1; // Convert serial number to index
-        
+    public void HandleRemove(int serialNo)
+    {
+        int index = serialNo - 1;
+
         if (index >= 0 && index < detailComponents.Count)
         {
-            Console.WriteLine($"Here {index} {detailComponents.Count}");
             detailComponents.RemoveAt(index);
-            Console.WriteLine("Success");
-            if(detailRows.Count > index)detailRows.RemoveAt(index);
-            Console.WriteLine($"Removed item at index {index}. New count: {detailComponents.Count}");
+            if (detailRows.Count > index)
+                detailRows.RemoveAt(index);
+
+            Console.WriteLine($"Removed row at index {index}. Remaining: {detailComponents.Count}");
             CalculateTotals();
             StateHasChanged();
         }
         else
         {
-            Console.WriteLine($"Invalid index {index} for removal. Count: {detailComponents.Count}");
+            Console.WriteLine($"Invalid index {index}. Count: {detailComponents.Count}");
         }
     }
 
-    // Calculate totals method
+    // ---------- Calculation ----------
     private void CalculateTotals()
     {
         float netAmount = 0;
 
-        foreach(var detail in detailComponents){
-            if(detail != null){
+        foreach (var detail in detailComponents)
+        {
+            if (detail != null)
                 netAmount += detail.GetAmount();
-            }
         }
 
         model.dict["NetAmount"] = netAmount.ToString("F2");
         StateHasChanged();
-    }
-
-    protected override void OnInitialized()
-    {
-        // Initialize default values
-        if (string.IsNullOrEmpty(model.dict["AdjustmentDate"])) 
-            model.dict["AdjustmentDate"] = DateTime.Now.ToString("yyyy-MM-dd");
-        AdjustmentNo = Convert.ToInt32(model.dict["AdjustmentNo"]);
     }
 }

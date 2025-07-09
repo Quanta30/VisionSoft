@@ -37,17 +37,20 @@
     public float amount = 0;
     private ClsDatabase db = new ClsDatabase();
 
-    protected override void OnParametersSet(){
+    protected override void OnParametersSet()
+    {
+            model.dict["PONumber"] = PONumber;
+            model.dict["POSrNo"] = SerialNo.ToString();
+
+            Calculate();
+    }
+
+    protected override void OnAfterRender(bool firstRender){
         if (InitialDataRow != null)
         {
             model.Populate(InitialDataRow);
+            StateHasChanged();
         }
-        else
-        {
-            model.dict["PONumber"] = PONumber;
-            model.dict["POSrNo"] = SerialNo.ToString();
-        }
-        Calculate();
     }
 
     private void OnProductChanged(string productCode)

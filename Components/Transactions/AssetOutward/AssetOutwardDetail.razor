@@ -31,13 +31,14 @@
 
     private Model model = new Model("AssetOutwardDetails", "");
     private ClsDatabase db = new ClsDatabase();
+    private Utilities utilities = new Utilities();
     public string StockName = "";
 
     protected override void OnParametersSet(){
         if (InitialDataRow != null)
         {
             model.Populate(InitialDataRow);
-            StockName = StockIdToName(model.dict["StockId"]);
+            StockName = utilities.StockIdToName(model.dict["StockId"]);
         }
         else
         {
@@ -46,19 +47,19 @@
         }
     }
 
-    public string StockNameToId(string sn){
-        string pc = db.GetScalar($"Select ProductCode from ProductMaster where ProductName = '{sn}'");
-        string Id = db.GetScalar($"Select StockId from PhysicalStock where ProductCode = '{pc}'");
-        return Id;
+    protected override void OnAfterRender(bool firstRender){
+        if (firstRender && InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
+            StockName = utilities.StockIdToName(model.dict["StockId"]);
+            StateHasChanged();
+        }
     }
-    public string StockIdToName(string Id){
-        string pc = db.GetScalar($"Select ProductCode from PhysicalStock where StockId = '{Id}'");
-        string name = db.GetScalar($"Select ProductName from ProductMaster where ProductCode = '{pc}'");
-        return name;
-    }
+
+
     private void OnStockChanged(string sname)
     {   
-        model.dict["StockId"] = StockNameToId(sname);
+        model.dict["StockId"] = utilities.StockNameToId(sname);
         StockName = sname;
         UpdateStockDetails();
         StateHasChanged();
@@ -69,7 +70,7 @@
         if (!string.IsNullOrEmpty(model.dict["StockId"]) && model.dict["StockId"] != "0")
         {
 
-                model.dict["ItemName"] = StockIdToName(model.dict["StockId"]);
+                model.dict["ItemName"] = utilities.StockIdToName(model.dict["StockId"]);
 
         }
     }

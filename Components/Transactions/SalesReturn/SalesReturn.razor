@@ -17,7 +17,7 @@
         <div class="col-md-3">
             <label class="form-label">Mode of Pay</label>
             <select class="form-control" @bind="@model.dict["ModeOfPay"]">
-                <option value="CASH">Cash</option>
+                <option selected value="CASH">Cash</option>
                 <option value="CARD">Card</option>
                 <option value="UPI">UPI</option>
                 <option value="CHEQUE">Cheque</option>
@@ -47,7 +47,12 @@
             <th>Discount</th>
             <th>GST%</th>
             <th>Taxable Amount</th>
-            <th>CGST/SGST</th>
+            @if(GstStateCode == 27){
+                <th>CGST/SGST</th>
+            }
+            else{
+                <th>IGST</th>
+            }
             <th>Total GST</th>
             <th>Net Amount</th>
         </TableHeads>
@@ -60,6 +65,7 @@
                     OnRemove="@((idx) => HandleRemove(idx))"
                     OnCalculationChanged="CalculateTotals"
                     InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                    GstStateCode=@GstStateCode
                     @ref="detailComponents[index]" />
             }
         </TableRows>
@@ -94,6 +100,8 @@
     public List<DataRow> detailRows = new();
     ClsDatabase db = new ClsDatabase();
 
+    public int GstStateCode;
+
     private bool isViewing = false;
     private bool isAddClicked = false;
     private bool isEditing = false;
@@ -109,7 +117,12 @@
     private void OnCustomerChanged(string customerCode)
     {
         model.dict["CustomerCode"] = customerCode;
+        UpdateGstStateCode();
         StateHasChanged();
+    }
+
+    private void UpdateGstStateCode(){
+        GstStateCode = Convert.ToInt32(db.GetScalar($"Select CustomerStateCode from CustomerMaster where CustomerCode = {model.dict["CustomerCode"]}"));
     }
 
     [JSInvokable]
@@ -129,6 +142,8 @@
         HandleClear();
         isEditing = true;
         model.Populate(row);
+        UpdateGstStateCode();
+
         DataTable dataTable = db.GetDataTable($"Select * from SalesReturnDetails where SalesReturnNo='{model.dict["SalesReturnNo"]}'");
         foreach(DataRow detailRow in dataTable.Rows)
         {
@@ -255,5 +270,6 @@
             model.dict["ConsiderInAccounts"] = "true";
         if (string.IsNullOrEmpty(model.dict["Cancelled"]))
             model.dict["Cancelled"] = "false";
+        model.dict["ModeOfPay"] = "CASH";
     }
 }

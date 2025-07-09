@@ -192,6 +192,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wbGF0ZXNcVF9Sb3cucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Templates/T_Select.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wbGF0ZXNcVF9TZWxlY3QucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Templates/T_SummaryCard.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wbGF0ZXNcVF9TdW1tYXJ5Q2FyZC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 

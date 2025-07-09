@@ -19,7 +19,9 @@
                    min="@Min"
                    max="@Max"
                    style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
-                   maxlength="@(MaxLength > 0 && MaxLength < int.MaxValue ? MaxLength.ToString() : null)"/>
+                   maxlength="@(MaxLength > 0 && MaxLength < int.MaxValue ? MaxLength.ToString() : null)"
+                   @ref="reference"
+                   />
             
 
         @if  (_internalValue.Length == MaxLength)
@@ -56,6 +58,7 @@ else if(Layout == 2){
                        disabled="@ReadOnly"
                        style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
                        maxlength="@(MaxLength > 0 && MaxLength < int.MaxValue ? MaxLength.ToString() : null)"
+                       @ref="reference"
                        />
             }
         </div>
@@ -75,13 +78,15 @@ else if(Layout == 3){
            disabled="@ReadOnly"
            style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
            maxlength="@(MaxLength > 0 && MaxLength < int.MaxValue ? MaxLength.ToString() : null)"
+           @ref="reference"
            />
 }
 
 <style>
     .readonly-input {
-        background-color: #f8f9fa !important;
-        color: #6c757d !important;
+    using System.Reflection.Emit;
+#line default
+    color: #6c757d !important;
         cursor: not-allowed !important;
         border-color: #dee2e6 !important;
     }
@@ -135,13 +140,15 @@ else if(Layout == 3){
     [Parameter] public bool ReadOnly { get; set; } = false;
     [Parameter] public bool isValid{get; set;} = true;
     [Parameter] public bool Required{get; set;} = false;
+    [Parameter] public String FocusOn{get; set;}
 
 
     //EventCallbacks and RenderFragments
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public EventCallback<string> ChangeFunction{get; set;}
     [Parameter] public RenderFragment? DisplayContent { get; set; }
-
+    
+    private ElementReference reference;
 
 
     //Runs During (When Edit is clicked and variable is changed, it automatically updates the UI)
@@ -149,6 +156,14 @@ else if(Layout == 3){
     protected override void OnParametersSet()
     {
         _internalValue = Value ?? string.Empty;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!string.IsNullOrEmpty(FocusOn) && FocusOn == Title)
+        {
+            await Focus();
+        }
     }
 
     //Runs When Input is Changed In Input Area
@@ -183,6 +198,38 @@ else if(Layout == 3){
             isValid = false;
         }
     }
+
+        public async Task Focus()
+        {
+            try
+            {
+                Console.WriteLine($"Focus requested for: {FocusOn}, Title: {Title}, Layout: {Layout}");
+                
+                if (!string.IsNullOrEmpty(FocusOn) && FocusOn == Title)
+                {
+                    // All layouts now have @ref="reference", so we can focus any of them
+                    if (reference.Id != null)
+                    {
+                        Console.WriteLine($"Focusing Layout {Layout} element: {Title}");
+                        await reference.FocusAsync();
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Element reference not ready for {Title}");
+                        // Try again after a small delay
+                        await Task.Delay(50);
+                        if (reference.Id != null)
+                        {
+                            await reference.FocusAsync();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error focusing element {Title}: {ex.Message}");
+            }
+        }
 
 
 }

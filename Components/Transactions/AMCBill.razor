@@ -13,7 +13,7 @@
     <ChildContent>
         <T_Row>
             <T_Input Title="Entry No *" ReadOnly="true" @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-4" />
-            <T_Input Title="Entry Date" Type="datetime-local" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-4" />
+            <T_Input Title="Entry Date" Type="date" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-4" />
             <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-4" />
         </T_Row>
         <T_Row>
@@ -21,9 +21,9 @@
             <T_RInput Title="Product *" Layout="1" TableName="ProductMaster" PrimaryColumn="ProductCode" DisplayColumn="ProductName" Value="@model.dict["ProductCode"]" ValueChanged="OnProductChanged" ColSize="col-md-6"/>
         </T_Row>
         <T_Row>
-            <T_Input Title="Installation Date" Type="datetime-local" @bind-Value="@model.dict["InstallationDate"]" ColSize="col-md-4" />
-            <T_Input Title="AMC From Date" Type="datetime-local" @bind-Value="@model.dict["AMCFromDate"]" ColSize="col-md-4" />
-            <T_Input Title="AMC To Date" Type="datetime-local" @bind-Value="@model.dict["AMCToDate"]" ColSize="col-md-4" />
+            <T_Input Title="Installation Date" Type="date" @bind-Value="@model.dict["InstallationDate"]" ColSize="col-md-4" />
+            <T_Input Title="AMC From Date" Type="date" @bind-Value="@model.dict["AMCFromDate"]" ColSize="col-md-4" />
+            <T_Input Title="AMC To Date" Type="date" @bind-Value="@model.dict["AMCToDate"]" ColSize="col-md-4" />
         </T_Row>
         <T_Row>
             <T_Input Title="AMC Amount *" Type="number" Step="0.01" @bind-Value="@model.dict["AMCAmount"]" ColSize="col-md-3" />
@@ -62,7 +62,7 @@
             
             // Initialize dates
             if (string.IsNullOrEmpty(model.dict["EntryDate"]))
-                model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-ddTHH:mm");
+                model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
         }
     }
 
@@ -119,7 +119,7 @@
         isEditing = false;
         
         // Reset entry date to today
-        model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-ddTHH:mm");
+        model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
         
         StateHasChanged();
     }
@@ -248,7 +248,7 @@
     {
         // Initialize default values
         if (string.IsNullOrEmpty(model.dict["EntryDate"]))
-            model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-ddTHH:mm");
+            model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
         if (string.IsNullOrEmpty(model.dict["Cancelled"]))
             model.dict["Cancelled"] = "0";
         if (string.IsNullOrEmpty(model.dict["CustomerCode"]))

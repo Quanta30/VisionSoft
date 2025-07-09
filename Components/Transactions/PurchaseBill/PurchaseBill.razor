@@ -47,7 +47,12 @@
             <th>Discount</th>
             <th>GST%</th>
             <th>Taxable Amount</th>
-            <th>CGST/SGST</th>
+            @if(GstStateCode == 27){
+                <th>CGST/SGST</th>
+            }
+            else{
+                <th>IGST</th>
+            }
             <th>Total GST</th>
             <th>Net Amount</th>
         </TableHeads>
@@ -59,6 +64,7 @@
                                     OnRemove="HandleRemove" 
                                     OnCalculationChanged="CalculateTotals"
                                     InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                                    GstStateCode=@GstStateCode
                                     @ref="detailComponents[index]" />
             }
         </TableRows>
@@ -95,6 +101,7 @@
 
     Model model = new Model("PurchaseBillHead", "PurchaseBillNo", "A");
     ClsDatabase db = new ClsDatabase();
+    public int GstStateCode;
 
     private bool isViewing = false;
     private bool isEditing = false;
@@ -109,7 +116,12 @@
     private void OnSupplierChanged(string supplierCode)
     {
         model.dict["SupplierCode"] = supplierCode;
+        UpdateGstStateCode();
         StateHasChanged();
+    }
+
+    private void UpdateGstStateCode(){
+        GstStateCode = Convert.ToInt32(db.GetScalar($"Select SupplierStateCode from SupplierMaster where SupplierCode = {model.dict["SupplierCode"]}"));
     }
 
     [JSInvokable]
@@ -129,6 +141,7 @@
         HandleClear();
         isEditing = true;
         model.Populate(row);
+        UpdateGstStateCode();
 
         DataTable dataTable = db.GetDataTable($"Select * from PurchaseBillDetails where PurchaseBillNo='{model.dict["PurchaseBillNo"]}'");
         foreach(DataRow detailRow in dataTable.Rows){

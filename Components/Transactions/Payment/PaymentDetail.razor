@@ -41,14 +41,15 @@
     private ClsDatabase db = new ClsDatabase();
 
     protected override void OnParametersSet(){
-        if (InitialDataRow != null)
-        {
-            model.Populate(InitialDataRow);
-        }
-        else
-        {
             model.dict["PaymentNo"] = PaymentNo;
             model.dict["SrNo"] = SerialNo.ToString();
+        
+    }
+
+    protected override void OnAfterRender(bool firstRender){
+        if (firstRender && InitialDataRow != null)
+        {
+            model.Populate(InitialDataRow);
         }
     }
 

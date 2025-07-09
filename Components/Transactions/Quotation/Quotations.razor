@@ -2,219 +2,306 @@
 @inject IJSRuntime JS
 @using System.Data
 @using VisionSoft.Components.Transactions.Quotation
-@rendermode InteractiveServer 
+@rendermode InteractiveServer
 
-<T_Msg @ref="Msg"/>
-@if(isViewing){
-    <FrmView TableName="QuotationHead" OnClosed="HandleClose" EditClicked="HandleEdit" DeleteClicked="HandleDelete"/>
+<!-- Message Component -->
+<T_Msg @ref="Msg" />
+
+<!-- View Mode: Renders when 'isViewing' is true -->
+@if (isViewing)
+{
+    <FrmView TableName="QuotationHead" OnClosed="HandleCloseView" EditClicked="HandleEdit" DeleteClicked="HandleDelete" />
 }
-<T_Frm FormName="Quotation">
-<ChildContent>
-    <T_Row>
-        <T_Input Title="Quotation No *" ReadOnly=true @bind-Value="@model.dict["QuotationNo"]" ColSize="col-md-3"/>
-        <T_Input Title="Quotation Date" Type="date" @bind-Value="@model.dict["Quotationdate"]" ColSize="col-md-3"/>
-        <T_Input Title="Customer Name" @bind-Value="@model.dict["CustomerName"]" MaxLength=100 ColSize="col-md-3"/>
-        <T_Input Title="City" @bind-Value="@model.dict["City"]" MaxLength=50 ColSize="col-md-3"/>
-    </T_Row>
-    <T_Row>
-        <T_Input Title="Mobile No." @bind-Value="@model.dict["Mobileno"]" MaxLength="50" ColSize="col-md-3"/>
-        <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
-        <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-6"/>
-    </T_Row>
-    <TableView TableName="Quotation Details" HandleAdd="HandleAdd">
-        <TableHeads>
-            <th>Action</th>
-            <th>Sr. No.</th>
-            <th>Product</th>
-            <th>Rate</th>
-            <th>Quantity</th>
-            <th>Discount</th>
-            <th>Free</th>
-            <th>GST%</th>
-            <th>Taxable Amount</th>
-            <th>CGST/SGST</th>
-            <th>Total GST</th>
-            <th>Net Amount</th>
-        </TableHeads>
-        <TableRows>
-            @for(int i = 0; i < detailComponents.Count; i++){
-                int index = i;
-                <QuotationDetail 
-                    SerialNo="@(index+1)" 
-                    QuotationNo="@Convert.ToInt32(model.dict["QuotationNo"])" 
-                    OnRemove="@((idx) => HandleRemove(idx))"
-                    OnCalculationChanged="CalculateTotals"
-                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
-                    @ref="detailComponents[index]" />
-            }
-        </TableRows>
-        <TableFooter>
-            Total Count : @detailComponents.Count
-        </TableFooter>
-    </TableView>
-    <T_SummaryCard >
-        <T_Input Title="Total Amount" Layout=2 ReadOnly @bind-Value="@model.dict["TotalAmount"]" Placeholder="-"/>
-        <T_Input Title="GST Amount" Layout=2 ReadOnly @bind-Value="@model.dict["GstAmount"]" Placeholder="-"/>
-        <T_Input Title="Discount" Layout=2 @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Add/Less" Layout=2 @bind-Value="@model.dict["AddLess"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Rounding" Layout=2 @bind-Value="@model.dict["Rounding"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Net Amount" Layout=2 ReadOnly @bind-Value="@model.dict["NetAmount"]" Placeholder="-"/>
-    </T_SummaryCard>
-</ChildContent>
 
-<CardFooterContent>
-    <T_Button Text="Save" Style="" OnClick="HandleSave"/>
-    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
-    <T_Button Text="View" Style="" OnClick="HandleView"/>
-    <T_Button Text="Print" Style=""/>
-</CardFooterContent>
+<!-- Quotation Form -->
+<T_Frm FormName="Quotation">
+    <ChildContent>
+        <!-- Header Fields -->
+        <T_Row>
+            <T_Input Title="Quotation No *" ReadOnly=true @bind-Value="@(model.dict["QuotationNo"])" ColSize="col-md-3" />
+            <T_Input Title="Quotation Date" Type="date" @bind-Value="@(model.dict["Quotationdate"])" ColSize="col-md-3" />
+            <T_Input Title="Customer Name" @bind-Value="@(model.dict["CustomerName"])" MaxLength=100 ColSize="col-md-3" />
+            <T_Input Title="City" @bind-Value="@(model.dict["City"])" MaxLength=50 ColSize="col-md-3" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Mobile No." @bind-Value="@(model.dict["Mobileno"])" MaxLength="50" ColSize="col-md-3" />
+            <T_Checkbox Title="Cancelled" @bind-Value="@(model.dict["Cancelled"])" ColSize="col-md-3" />
+            <T_Textarea Title="Narration" @bind-Value="@(model.dict["Narration"])" ColSize="col-md-6" />
+        </T_Row>
+
+        <!-- Details Table -->
+        <TableView TableName="Quotation Details" HandleAdd="HandleAddDetail">
+            <TableHeads>
+                <th>Action</th>
+                <th>Sr. No.</th>
+                <th>Product</th>
+                <th>Rate</th>
+                <th>Quantity</th>
+                <th>Discount</th>
+                <th>Free</th>
+                <th>GST%</th>
+                <th>Taxable Amount</th>
+                <th>CGST/SGST</th>
+                <th>Total GST</th>
+                <th>Net Amount</th>
+            </TableHeads>
+            <TableRows>
+                @for (int i = 0; i < detailComponents.Count; i++)
+                {
+                    int index = i;
+                    <QuotationDetail @ref="detailComponents[index]"
+                                     SerialNo="@(index + 1)"
+                                     QuotationNo="@(Convert.ToInt32(model.dict["QuotationNo"]))"
+                                     InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
+                                     OnRemove="@((idx) => HandleRemoveDetail(idx))"
+                                     OnCalculationChanged="CalculateTotals" />
+                }
+            </TableRows>
+            <TableFooter>
+                Total Count : @detailComponents.Count
+            </TableFooter>
+        </TableView>
+
+        <!-- Summary Section -->
+        <T_SummaryCard>
+            <T_Input Title="Total Amount" Layout=2 ReadOnly @bind-Value="@(model.dict["TotalAmount"])" Placeholder="-" />
+            <T_Input Title="GST Amount" Layout=2 ReadOnly @bind-Value="@(model.dict["GstAmount"])" Placeholder="-" />
+            <T_Input Title="Discount" Layout=2 @bind-Value="@(model.dict["Discount"])" ChangeFunction="CalculateTotals" />
+            <T_Input Title="Add/Less" Layout=2 @bind-Value="@(model.dict["AddLess"])" ChangeFunction="CalculateTotals" />
+            <T_Input Title="Rounding" Layout=2 @bind-Value="@(model.dict["Rounding"])" ChangeFunction="CalculateTotals" />
+            <T_Input Title="Net Amount" Layout=2 ReadOnly @bind-Value="@(model.dict["NetAmount"])" Placeholder="-" />
+        </T_SummaryCard>
+    </ChildContent>
+
+    <!-- Footer Buttons -->
+    <CardFooterContent>
+        <T_Button Text="Save" OnClick="HandleSave" />
+        <T_Button Text="Clear" OnClick="HandleClear" />
+        <T_Button Text="View" OnClick="HandleView" />
+        <T_Button Text="Print" />
+    </CardFooterContent>
 </T_Frm>
 
 @code {
+    #region Component References & Injected Services
     private T_Msg Msg;
-    public DotNetObjectReference<Quotations> dotNetRef;
+    private DotNetObjectReference<Quotations> dotNetRef;
+    private ClsDatabase db = new();
+    #endregion
 
-    Model model = new Model("QuotationHead", "QuotationNo");
+    #region Data Models & State Management
+    private Model model = new("QuotationHead", "QuotationNo");
     private List<QuotationDetail> detailComponents = new();
-    public List<DataRow> detailRows = new();
-    ClsDatabase db = new ClsDatabase();
+    private List<DataRow> detailRows = new();
 
     private bool isViewing = false;
-    private bool isAddClicked = false;
     private bool isEditing = false;
+    #endregion
 
-    protected override async Task OnAfterRenderAsync(bool firstRender){
-        if(firstRender){
-            Console.WriteLine("First Render");
+    #region Blazor Lifecycle Methods
+    /// <summary>
+    /// Sets the default quotation date on initial load.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(model.dict["Quotationdate"]))
+        {
+            model.dict["Quotationdate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        }
+    }
+
+    /// <summary>
+    /// Establishes JS interop reference after the first render.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
+    #endregion
 
+    #region Main UI Event Handlers
+    /// <summary>
+    /// Saves the quotation header and all detail lines to the database.
+    /// Handles both new records and updates to existing ones.
+    /// </summary>
     [JSInvokable]
-    public void HandleView(){
-        isViewing = !isViewing;
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public void HandleAdd(){
-        detailComponents.Add(null);
-        StateHasChanged();
-    }
-
-    public void HandleEdit(DataRow row)
+    public void HandleSave()
     {
-        HandleClear();
-        isEditing = true;
-        model.Populate(row);
-        DataTable dataTable = db.GetDataTable($"Select * from QuotationDetails where QuotationNo={model.dict["QuotationNo"]}");
-        foreach(DataRow detailRow in dataTable.Rows)
+        try
         {
-            detailRows.Add(detailRow);
-            detailComponents.Add(null);
-        }
-        isViewing = false;
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public void HandleSave(){
-        Console.WriteLine("Saving");
-        try{
-            bool allDetailsSaved = true;
-            if(isEditing){
-                db.ExecuteQuery($"Delete From QuotationDetails where QuotationNo={model.dict["QuotationNo"]}");
+            if (isEditing)
+            {
+                // Clear existing details before saving updated ones
+                db.ExecuteQuery($"DELETE FROM QuotationDetails WHERE QuotationNo={model.dict["QuotationNo"]}");
             }
-            foreach(var detail in detailComponents){
-                if(detail != null){
-                    bool saved = detail.SaveDetail();
-                    if(!saved) allDetailsSaved = false;
+
+            // Save each detail component
+            bool allDetailsSaved = true;
+            foreach (var detail in detailComponents.Where(d => d != null))
+            {
+                if (!detail.SaveDetail())
+                {
+                    allDetailsSaved = false;
                 }
             }
-            if(!allDetailsSaved){
-                throw new Exception("Failed to save some details");
-            }
-            bool er;
-            if(isEditing) er = model.Update();
-            else er = model.Save();
-            if(!er) throw new Exception("Failed to save header");
+
+            if (!allDetailsSaved) throw new Exception("Failed to save one or more detail lines.");
+
+            // Save the header
+            bool headerSaved = isEditing ? model.Update() : model.Save();
+            if (!headerSaved) throw new Exception("Failed to save the quotation header.");
+
             Msg.Success();
+            HandleClear(); // Optionally clear form after successful save
         }
-        catch(Exception e){
-            Console.WriteLine($"Save error: {e.Message}");
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Save Error: {ex.Message}");
             Msg.SaveError();
         }
     }
 
+    /// <summary>
+    /// Resets the form to its initial state, clearing all data.
+    /// </summary>
     [JSInvokable]
-    public void HandleClear(){
-        Console.WriteLine("Clear Form");
+    public void HandleClear()
+    {
         model.Clear();
         detailComponents.Clear();
         detailRows.Clear();
         isEditing = false;
-        isAddClicked = false;
         isViewing = false;
+
+        // Reset date to today after clearing
+        OnInitialized();
         StateHasChanged();
     }
 
-    public void HandleClose(){
-        isAddClicked = false;
+    /// <summary>
+    /// Toggles the visibility of the data viewing component.
+    /// </summary>
+    [JSInvokable]
+    public void HandleView()
+    {
+        isViewing = !isViewing;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Loads an existing quotation's data into the form for editing.
+    /// </summary>
+    public void HandleEdit(DataRow rowToEdit)
+    {
+        HandleClear();
+        isEditing = true;
         isViewing = false;
+
+        // Populate header fields
+        model.Populate(rowToEdit);
+
+        // Fetch and populate detail lines
+        DataTable detailsTable = db.GetDataTable($"SELECT * FROM QuotationDetails WHERE QuotationNo={model.dict["QuotationNo"]}");
+        foreach (DataRow detailRow in detailsTable.Rows)
+        {
+            detailRows.Add(detailRow);
+            detailComponents.Add(null); // Add a placeholder for the component to be rendered
+        }
+
+        StateHasChanged();
     }
 
-    public void HandleDelete(DataRow row){
-        int pk = Convert.ToInt32(row["QuotationNo"]);
-        db.ExecuteQuery($"Delete From QuotationHead where QuotationNo={pk}");
-        db.ExecuteQuery($"Delete From QuotationDetails where QuotationNo={pk}");
+    /// <summary>
+    /// Deletes a quotation and its associated detail lines from the database.
+    /// </summary>
+    public void HandleDelete(DataRow rowToDelete)
+    {
+        try
+        {
+            int pk = Convert.ToInt32(rowToDelete["QuotationNo"]);
+            db.ExecuteQuery($"DELETE FROM QuotationDetails WHERE QuotationNo={pk}");
+            db.ExecuteQuery($"DELETE FROM QuotationHead WHERE QuotationNo={pk}");
+            Msg.Success();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Delete Error: {ex.Message}");
+            Msg.Error("Failed to delete the quotation.");
+        }
     }
 
-    public void HandleRemove(int serialNo){
-        Console.WriteLine($"Removing Row with SerialNo {serialNo}");
-        int index = serialNo - 1;
+    /// <summary>
+    /// Closes the data viewing component.
+    /// </summary>
+    public void HandleCloseView()
+    {
+        isViewing = false;
+        StateHasChanged();
+    }
+    #endregion
+
+    #region Detail Line Handlers
+    /// <summary>
+    /// Adds a new, empty detail line to the quotation.
+    /// </summary>
+    [JSInvokable]
+    public void HandleAddDetail()
+    {
+        detailComponents.Add(null); // Add a placeholder; the new component will be created on re-render
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Removes a specific detail line from the quotation by its 1-based serial number.
+    /// </summary>
+    public void HandleRemoveDetail(int serialNo)
+    {
+        int index = serialNo - 1; // Convert 1-based serial to 0-based index
         if (index >= 0 && index < detailComponents.Count)
         {
             detailComponents.RemoveAt(index);
-            if(detailRows.Count > index)detailRows.RemoveAt(index);
-            Console.WriteLine($"Removed item at index {index}. New count: {detailComponents.Count}");
-            CalculateTotals();
+            if (detailRows.Count > index)
+            {
+                detailRows.RemoveAt(index);
+            }
+            CalculateTotals(); // Recalculate totals after removal
             StateHasChanged();
         }
         else
         {
-            Console.WriteLine($"Invalid index {index} for removal. Count: {detailComponents.Count}");
+            Console.WriteLine($"Error: Invalid index {index} for removal. Component count: {detailComponents.Count}");
         }
     }
+    #endregion
 
+    #region Calculation Logic
+    /// <summary>
+    /// Calculates all summary totals based on detail lines and header-level adjustments.
+    /// </summary>
     private void CalculateTotals()
     {
-        float totalAmount = 0;
-        float gstAmount = 0;
+        // Sum values from all detail components
+        float totalAmount = detailComponents.Where(d => d != null).Sum(d => d.GetTotalAmount());
+        float gstAmount = detailComponents.Where(d => d != null).Sum(d => d.GetGstAmount());
 
-        foreach(var detail in detailComponents){
-            if(detail != null){
-                totalAmount += detail.GetTotalAmount();
-                gstAmount += detail.GetGstAmount();
-            }
-        }
+        // Get header-level adjustments
+        float.TryParse(model.dict["Discount"], out float discount);
+        float.TryParse(model.dict["AddLess"], out float addLess);
+        float.TryParse(model.dict["Rounding"], out float rounding);
 
+        // Calculate final net amount
+        float netAmount = totalAmount + gstAmount - discount + addLess + rounding;
+
+        // Update model dictionary with calculated values
         model.dict["TotalAmount"] = totalAmount.ToString("F2");
         model.dict["GstAmount"] = gstAmount.ToString("F2");
-
-        float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
-        float addLess = float.TryParse(model.dict["AddLess"], out float al) ? al : 0;
-        float rounding = float.TryParse(model.dict["Rounding"], out float r) ? r : 0;
-
-        float netAmount = totalAmount + gstAmount - discount + addLess + rounding;
         model.dict["NetAmount"] = netAmount.ToString("F2");
 
-        StateHasChanged();
+        // No StateHasChanged() is needed here as it's typically called by the invoking event handler
     }
-
-    protected override void OnInitialized()
-    {
-        if (string.IsNullOrEmpty(model.dict["Quotationdate"]))
-            model.dict["Quotationdate"] = DateTime.Now.ToString("yyyy-MM-dd");
-    }
+    #endregion
 }

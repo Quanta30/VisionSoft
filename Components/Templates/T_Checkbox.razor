@@ -3,8 +3,9 @@
         <div class="form-check" style="padding-top: 35px;">
 
             <label class="form-check-label" @onclick="ToggleCheckBox">@Title</label>
-            <input class="form-check-input" type="checkbox" @onkeydown="HandleKeyboardInput" 
-                   @bind="IsChecked" />
+            <input class="form-check-input" value=@Value type="checkbox" @onkeydown="HandleKeyboardInput" 
+                  checked=@IsChecked
+                  @onchange="HandleChange" />
             
         </div>
     </div>
@@ -15,28 +16,40 @@
     [Parameter] public string Value { get; set; } = "0";
     [Parameter] public string ColSize { get; set; } = "col-md-4";
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    
+    private bool IsChecked = false;
 
-
-    //Getter Setter To bind string to checkbox
-    private bool IsChecked
+    protected override void OnInitialized()
     {
-        get => Value == "1";
-        set
-        {
-            var newValue = value ? "1" : "0";
-            ValueChanged.InvokeAsync(newValue);
-        }
+        ChangeCheckBoxValue(Value);
+    }
+    
+    protected override void OnParametersSet()
+    {
+        ChangeCheckBoxValue(Value);
     }
 
+    private void HandleChange(ChangeEventArgs e){
+        string newValue = e.Value.ToString() == "True"?"1":"0";
+        ChangeCheckBoxValue(newValue);
+        ValueChanged.InvokeAsync(newValue);
+    }
 
     //ToggleCheckBox
     private void ToggleCheckBox(){
         Console.WriteLine("Here Again");
-        IsChecked = !IsChecked;
+        string  newValue = Value == "0"?"1":"0";
+        ChangeCheckBoxValue(newValue);
+        ValueChanged.InvokeAsync(newValue);
     }
 
     private void HandleKeyboardInput(KeyboardEventArgs e){
         if(e.Key == "T" || e.Key == "t")ToggleCheckBox();
+    }
+
+    private void ChangeCheckBoxValue(string newValue){
+        if(newValue == "1")IsChecked=true;
+        else IsChecked =false;
     }
 
 }
