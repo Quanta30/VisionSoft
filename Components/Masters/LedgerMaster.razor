@@ -6,138 +6,224 @@
 <T_Msg @ref="Msg" />
 @if (isViewing)
 {
-    <FrmView TableName="LedgerMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+    <FrmView TableName="LedgerMaster" OnClosed="HandleClose" EditClicked="HandleEdit" />
 }
 
-<T_Frm FormName="Ledger Master">
-    <ChildContent>
-        <T_Row>
-            <T_Input Title="Ledger Code *" ReadOnly="true" @bind-Value="@model.dict["LedgerCode"]" ColSize="col-md-3" />
-            <T_Input Title="Ledger Name *" @bind-Value="@model.dict["LedgerName"]" MaxLength="1000" ColSize="col-md-6" />
-            <T_RInput Title="Group" @bind-Value="@model.dict["GroupCode"]" ColSize="col-md-3"
-                      TableName="GroupMaster" PrimaryColumn="GroupCode" DisplayColumn="GroupName" />
-        </T_Row>
-        <T_Row>
-            <T_Input Title="Debit Opening Balance" Type="number" Step="0.01" @bind-Value="@model.dict["DebitOpeningBalance"]" ColSize="col-md-3" />
-            <T_Input Title="Credit Opening Balance" Type="number" Step="0.01" @bind-Value="@model.dict["CreditOpeningBalance"]" ColSize="col-md-3" />
-            <T_Input Title="Closing Balance" Type="number" Step="0.01" @bind-Value="@model.dict["ClosingBalance"]" ColSize="col-md-3" />
-        </T_Row>
-    </ChildContent>
+<T_Frm FormName="Ledger Master + Customer Details">
+  <ChildContent>
+    <!-- LedgerMaster fields -->
+    <T_Row>
+      <T_Input Title="Ledger Code *" ReadOnly="true"
+               @bind-Value="@ledgerModel.dict["LedgerCode"]"
+               ColSize="col-md-3" />
+      <T_Input Title="Ledger Name *"
+               @bind-Value="@ledgerModel.dict["LedgerName"]"
+               MaxLength="1000" ColSize="col-md-6" />
+      <T_RInput Title="Group"
+               @bind-Value="@ledgerModel.dict["GroupCode"]"
+               ColSize="col-md-3"
+               TableName="GroupMaster"
+               PrimaryColumn="GroupCode"
+               DisplayColumn="GroupName" />
+    </T_Row>
+    <T_Row>
+      <T_Input Title="Debit Opening Balance" Type="number" Step="0.01"
+               @bind-Value="@ledgerModel.dict["DebitOpeningBalance"]"
+               ColSize="col-md-3" />
+      <T_Input Title="Credit Opening Balance" Type="number" Step="0.01"
+               @bind-Value="@ledgerModel.dict["CreditOpeningBalance"]"
+               ColSize="col-md-3" />
+      <T_Input Title="Closing Balance" Type="number" Step="0.01"
+               @bind-Value="@ledgerModel.dict["ClosingBalance"]"
+               ColSize="col-md-3" />
+    </T_Row>
+    <hr class="fade-divider my-4" />
+    <!-- CustomerMaster fields -->
+    <T_Row>
+      <T_Input Title="Customer Code *" ReadOnly="true"
+               @bind-Value="@customerModel.dict["CustomerCode"]"
+               ColSize="col-md-3" />
+      <T_RInput Title="Ledger (for customer)"
+               @bind-Value="@customerModel.dict["LedgerCode"]"
+               ColSize="col-md-3"
+               TableName="LedgerMaster"
+               PrimaryColumn="LedgerCode"
+               DisplayColumn="LedgerName" />
+      <T_Input Title="Customer Name *"
+               @bind-Value="@customerModel.dict["CustomerName"]"
+               MaxLength="1000" ColSize="col-md-6" />
+    </T_Row>
+    <T_Row>
+      <T_Input Title="City" @bind-Value="@customerModel.dict["CustomerCity"]" MaxLength="100" ColSize="col-md-3" />
+      <T_Input Title="District" @bind-Value="@customerModel.dict["CustomerDistrict"]" MaxLength="100" ColSize="col-md-3" />
+      <T_Input Title="Phone No." @bind-Value="@customerModel.dict["CustomerPhoneNo"]" MaxLength="50" ColSize="col-md-3" />
+      <T_Input Title="Mobile No." @bind-Value="@customerModel.dict["CustomerMobileNo"]" MaxLength="50" ColSize="col-md-3" />
+    </T_Row>
+    <T_Row>
+      <T_Input Title="Email" @bind-Value="@customerModel.dict["CustomerEmail"]" MaxLength="100" ColSize="col-md-4" />
+      <T_Input Title="GST No." @bind-Value="@customerModel.dict["CustomerGSTNo"]" MaxLength="50" ColSize="col-md-4" />
+      <T_Input Title="PAN No." @bind-Value="@customerModel.dict["CustomerPanNo"]" MaxLength="50" ColSize="col-md-4" />
+    </T_Row>
+    <T_Row>
+      <T_Input Title="State Code" @bind-Value="@customerModel.dict["CustomerStateCode"]" MaxLength="10" ColSize="col-md-3" />
+      <T_Input Title="Bill Mode" @bind-Value="@customerModel.dict["CustomerBillMode"]" MaxLength="50" ColSize="col-md-3" />
+      <T_Input Title="Credit Days" Type="number" @bind-Value="@customerModel.dict["CustomerCreditDays"]" ColSize="col-md-3" />
+      <T_Input Title="In-Charge Person" @bind-Value="@customerModel.dict["PersonIncharge"]" MaxLength="100" ColSize="col-md-3" />
+    </T_Row>
+    <T_Row>
+      <T_RInput Title="Engineer"
+               @bind-Value="@customerModel.dict["EngineerCode"]"
+               ColSize="col-md-4"
+               TableName="EngineerMaster"
+               PrimaryColumn="EngineerCode"
+               DisplayColumn="EngineerName" />
+      <T_Input Title="Custom Dist." @bind-Value="@customerModel.dict["CustomertDistrict"]" MaxLength="100" ColSize="col-md-4" />
+      <T_Checkbox Title="Don't Show In Debtors List"
+                  @bind-Value="@customerModel.dict["DontShowInDebtorsList"]"
+                  ColSize="col-md-2" />
+      <T_Checkbox Title="Discontinue Party"
+                  @bind-Value="@customerModel.dict["DiscontinueParty"]"
+                  ColSize="col-md-2" />
+    </T_Row>
+    <T_Row>
+      <T_Input Title="Grade" @bind-Value="@customerModel.dict["CustomerGrade"]" MaxLength="50" ColSize="col-md-3" />
+      <T_Input Title="Address" @bind-Value="@customerModel.dict["CustomerAddress"]" MaxLength="500" ColSize="col-md-5" />
+      <T_RInput Title="Route"
+               @bind-Value="@customerModel.dict["RouteCode"]"
+               ColSize="col-md-2"
+               TableName="RouteMaster"
+               PrimaryColumn="RouteCode"
+               DisplayColumn="RouteName" />
+      <T_RInput Title="Area"
+               @bind-Value="@customerModel.dict["AreaCode"]"
+               ColSize="col-md-2"
+               TableName="AreaMaster"
+               PrimaryColumn="AreaCode"
+               DisplayColumn="AreaName" />
+    </T_Row>
+    <T_Row>
+      <T_Input Title="Password" @bind-Value="@customerModel.dict["Password"]" MaxLength="100" ColSize="col-md-3" />
+      <T_Input Title="FCM Token" @bind-Value="@customerModel.dict["FCMToken"]" MaxLength="500" ColSize="col-md-6" />
+      <T_Checkbox Title="Login Flag"
+                  @bind-Value="@customerModel.dict["Loginflag"]"
+                  ColSize="col-md-3" />
+    </T_Row>
+  </ChildContent>
 
-    <CardFooterContent>
-        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
-        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
-        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
-    </CardFooterContent>
+  <CardFooterContent>
+    <T_Button Text="Save" btnType="Save" OnClick="HandleSave" />
+    <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" />
+    <T_Button Text="View" btnType="View" OnClick="HandleView" />
+  </CardFooterContent>
 </T_Frm>
 
 @code {
-    private T_Msg Msg;
-    public DotNetObjectReference<LedgerMaster> dotNetRef;
+  private T_Msg Msg;
+  private DotNetObjectReference<LedgerMaster> dotNetRef;
 
-    Model model = new Model("LedgerMaster", "LedgerCode");
-    private bool isViewing = false;
-    private bool isEditing = false;
+  ClsDatabase db = new ClsDatabase();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+  Model ledgerModel   = new Model("LedgerMaster",   "LedgerCode");
+  Model customerModel = new Model("CustomerMaster", "CustomerCode");
+
+  private bool isViewing  = false;
+  private bool isEditing  = false;
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (firstRender)
     {
-        if(firstRender)
-        {
-            dotNetRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
-        }
+      dotNetRef = DotNetObjectReference.Create(this);
+      await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
     }
+  }
 
-    [JSInvokable]
-    public async Task HandleSave()
+  [JSInvokable]
+  public async Task HandleSave()
+  {
+    if (!ValidateForm()) return;
+
+    try
     {
-        try
-        {
-            if (!ValidateForm()) return;
+      var ok1 = isEditing
+        ? ledgerModel.Update()
+        : ledgerModel.Save();
+      var ok2 = isEditing
+        ? customerModel.Update()
+        : customerModel.Save();
 
-            bool success = isEditing
-                ? model.Update()
-                : model.Save();
-
-            if (success)
-            {
-                await Msg.Success();
-
-                if (!isEditing)
-                {
-                    HandleClear();
-                }
-
-                isEditing = false;
-            }
-            else
-            {
-                await Msg.SaveError();
-            }
-        }
-        catch (Exception ex)
-        {
-            await Msg.SaveError();
-            Console.WriteLine($"Error saving Ledger Master record: {ex.Message}");
-        }
-        HandleClear();
-    }
-
-    [JSInvokable]
-    public void HandleClear()
-    {
-        model.Clear();
+      if (ok1 && ok2)
+      {
+        await Msg.Success();
+        if (!isEditing) HandleClear();
         isEditing = false;
-        StateHasChanged();
+      }
+      else
+      {
+        await Msg.SaveError();
+      }
     }
-
-    [JSInvokable]
-    public void HandleView()
+    catch
     {
-        isViewing = !isViewing;
-        StateHasChanged();
+      await Msg.SaveError();
     }
 
-    public async Task HandleEdit(DataRow row)
+    HandleClear();
+  }
+
+  [JSInvokable]
+  public void HandleClear()
+  {
+    ledgerModel.Clear();
+    customerModel.Clear();
+    isEditing = false;
+    StateHasChanged();
+  }
+
+  [JSInvokable]
+  public void HandleView()
+  {
+    isViewing = !isViewing;
+    StateHasChanged();
+  }
+
+  public async Task HandleEdit(DataRow row)
+  {
+    isEditing = true;
+    isViewing = false;
+
+    ledgerModel.Populate(row);
+
+    var dt = db.GetDataTable(
+      $"SELECT * FROM CustomerMaster WHERE LedgerCode = '{ledgerModel.dict["LedgerCode"]}'");
+    if (dt.Rows.Count > 0)
+      customerModel.Populate(dt.Rows[0]);
+
+    StateHasChanged();
+  }
+
+  public void HandleClose()
+  {
+    isViewing = false;
+    StateHasChanged();
+  }
+
+  private bool ValidateForm()
+  {
+    var errors = new List<string>();
+    if (string.IsNullOrWhiteSpace(ledgerModel.dict["LedgerName"]))
+      errors.Add("Ledger Name is required");
+    if (string.IsNullOrWhiteSpace(customerModel.dict["CustomerName"]))
+      errors.Add("Customer Name is required");
+
+    if (errors.Any())
     {
-        try
-        {
-            isEditing = true;
-            isViewing = false;
-            model.Populate(row);
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading Ledger Master record: {ex.Message}");
-        }
+      Msg.Show(string.Join(", ", errors), "danger", "bi-exclamation-triangle");
+      return false;
     }
 
-    public void HandleClose()
-    {
-        isViewing = false;
-        StateHasChanged();
-    }
+    return true;
+  }
 
-    private bool ValidateForm()
-    {
-        var errors = new List<string>();
-
-        if (string.IsNullOrWhiteSpace(model.dict["LedgerName"])) 
-            errors.Add("Ledger Name is required");
-
-        if (errors.Any())
-        {
-            var message = string.Join(", ", errors);
-            Msg.Show(message, "danger", "bi-exclamation-triangle");
-            return false;
-        }
-
-        return true;
-    }
-
-    public void Dispose()
-    {
-        dotNetRef?.Dispose();
-    }
+  public void Dispose() => dotNetRef?.Dispose();
 }

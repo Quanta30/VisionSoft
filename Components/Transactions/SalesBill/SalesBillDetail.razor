@@ -7,68 +7,91 @@
     <td>
         <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
     </td>
+    
+    <!-- Serial Number -->
     <td>
         @SerialNo
     </td>
 
     <!-- Product Selection -->
     <td>
-        <T_RInput Title="" Layout="3" TableName="PhysicalStockView" PrimaryColumn="ProductName" DisplayColumn="ProductName" Value=@StockName ValueChanged="OnStockChanged"/>
+        <T_RInput Title="" Layout="3" TableName="PhysicalStockView" 
+                  PrimaryColumn="ProductName" DisplayColumn="ProductName" 
+                  Value=@StockName ValueChanged="OnStockChanged"
+                  GetInputReference="getInputReferences" NextReference=@(GetRef(1)) 
+                  @ref="firstReference"/>
     </td>
-
+    
+    <!-- HSN CODE (ReadOnly) -->
+    <td>
+        <div style="width:70px">
+            <T_Input Title="" Layout="3" Value="@HsnCode" ReadOnly="true" Placeholder=""/>
+        </div>
+    </td>
+    
     <!-- Rate Input -->
     <td>
         <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" Placeholder="" ChangeFunction="OnChange" Type="Number"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" 
+                     Placeholder="" ChangeFunction="OnChange" Type="Number" 
+                     GetInputReference="getInputReferences" NextReference=@(GetRef(2))/>
         </div>
     </td>
 
     <!-- Quantity Input -->
     <td>
         <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" Placeholder="" ChangeFunction="OnChange" Type="Number"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" 
+                     Placeholder="" ChangeFunction="OnChange" Type="Number" 
+                     GetInputReference="getInputReferences" NextReference=@(GetRef(3))/>
         </div>
     </td>
 
     <!-- Discount Input -->
     <td>
         <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" Placeholder="" ChangeFunction="OnChange" Type="Number"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" 
+                     Placeholder="" ChangeFunction="OnChange" Type="Number" 
+                     GetInputReference="getInputReferences" NextReference=@(GetRef(4))/>
         </div>
     </td>
 
     <!-- Free Quantity -->
     <td>
         <div style="width:70px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Free"]" Placeholder="" ChangeFunction="OnChange" Type="Number"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["Free"]" 
+                     Placeholder="" ChangeFunction="OnChange" Type="Number"
+                     GetInputReference="getInputReferences" NextReference=@(GetRef(5))/>
         </div>
     </td>
 
     <!-- GST Category Dropdown -->
     <td>
         <div style="width:70px">
-            <T_Select 
-                    Value="@GstCategoryCode.ToString()" 
-                    Options="1:0% GST,2:5% GST,3:12% GST,4:18% GST,5:28% GST"
-                    ValueChanged="OnGstCategoryChanged"
-                    ColSize="col-md-3" 
-                    Layout="2"/>
+            <T_Select Value="@GstCategoryCode.ToString()" 
+                      Options="1:0% GST,2:5% GST,3:12% GST,4:18% GST,5:28% GST"
+                      ValueChanged="OnGstCategoryChanged"
+                      ColSize="col-md-3" Layout="2"
+                      GetInputReference="getInputReferences" NextReference=@(GetRef(6))/>
         </div>
     </td>
 
     <!-- Taxable Amount (ReadOnly) -->
     <td>
         <div style="width:70px">
-            <T_Input Title="" Layout="3" Value="@taxableAmount.ToString("F2")" ReadOnly="true" Placeholder=""/>
+            <T_Input Title="" Layout="3" Value="@taxableAmount.ToString("F2")" 
+                     ReadOnly="true" Placeholder=""/>
         </div>
     </td>
 
-    <!-- CGST/SGST -->
+    <!-- CGST/SGST or IGST Display -->
     <td>
-        @if(GstStateCode == 27){
+        @if(GstStateCode == 27)
+        {
             @(gst > 0 ? (gst / 2).ToString("F2") : "0.00")
         }
-        else{
+        else
+        {
             @(gst > 0 ? gst.ToString("F2") : "0.00")
         }
     </td>
@@ -86,58 +109,117 @@
     <!-- Warranty Date -->
     <td>
         <div style="width:100px">
-            <T_Input Title="" Layout="3"  @bind-Value="@model.dict["WarrantyTillDate"]" Placeholder="" Type="month"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["WarrantyTillDate"]" 
+                     Placeholder="" Type="month"
+                     GetInputReference="getInputReferences" NextReference=@(GetRef(0))
+                     OnEnterPressed="OnEnterPressed"/>
         </div>
     </td>
 </tr>
 
 @code {
-    // Parameters passed from parent
+    // ============================= PARAMETERS =============================
+    
     [Parameter] public EventCallback<int> OnRemove { get; set; }
     [Parameter] public int SerialNo { get; set; }
     [Parameter] public string SalesBillNo { get; set; }
     [Parameter] public EventCallback OnCalculationChanged { get; set; }
     [Parameter] public DataRow InitialDataRow { get; set; }
-    [Parameter] public int GstStateCode{get; set;}
+    [Parameter] public int GstStateCode { get; set; }
+    [Parameter] public ElementReference endReference { get; set; }
+    [Parameter] public Transaction transaction{get; set;}
 
-    // Model & helpers
+    // ============================= MODEL & HELPERS =============================
+    
     public Model model = new("SalesBillDetails", "");
     private ClsDatabase db = new();
     private Utilities utilities = new();
 
-    // Calculation Fields
+    // ============================= CALCULATION FIELDS =============================
+    
     public float taxableAmount = 0;
     public float gst = 0;
     public float netAmount = 0;
     public int GstCategoryCode = 1;
     public string StockName;
+    public string HsnCode;
+
+    // ============================= UI REFERENCES =============================
+    
+    public T_RInput firstReference;
+    public List<ElementReference> references = new List<ElementReference>();
+
+    // ============================= COMPONENT LIFECYCLE METHODS =============================
+    
+    protected override void OnInitialized()
+    {
+        // Set default values
+        model.dict["Rate"] ??= "0";
+        model.dict["Quantity"] ??= "1";
+        model.dict["Discount"] ??= "0";
+        model.dict["Free"] ??= "0";
+        model.dict["WarrantyTillDate"] ??= DateTime.Now.AddYears(1).ToString("yyyy-MM-dd");
+        Calculate();
+    }
 
     protected override void OnParametersSet()
     {
-        // Set sales bill ref & serial no
+        // Set sales bill reference & serial number
         model.dict["SalesBillNo"] = SalesBillNo;
         model.dict["SrNo"] = SerialNo.ToString();
     }
 
-    protected override void OnAfterRender(bool firstRender)
+    protected async override Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender) 
+            await firstReference.Focus();
+            
         // Populate initial values if passed from edit/view
         if (InitialDataRow != null && firstRender)
-        {
+        {  
             model.Populate(InitialDataRow);
             StockName = utilities.StockIdToName(model.dict["StockId"]);
+            HsnCode = db.GetScalar($"Select HSNCode from ProductMaster where ProductName = '{StockName}'");
             Calculate();
             InitialDataRow = null;
             StateHasChanged();
         }
     }
 
+
+    // ============================= ELEMENT REFERENCE METHODS =============================
+    
+    public void getInputReferences(ElementReference eref)
+    {
+        references.Add(eref);
+        Console.WriteLine("Here");
+    }
+    
+    private ElementReference GetRef(int idx) 
+    {
+        //Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
+        
+        // Safe check - return default if index is out of bounds
+        if (idx >= 0 && idx < references.Count)
+            return references[idx];
+        else
+            return default(ElementReference);
+    }
+
+    public void OnEnterPressed()
+    {
+        endReference.FocusAsync();
+    }
+
+    // ============================= STOCK & PRODUCT METHODS =============================
+    
     public void OnStockChanged(string sname)
     {
         try
         {
             StockName = sname;
             model.dict["StockId"] = utilities.StockNameToId(sname);
+            HsnCode = db.GetScalar($"Select HSNCode from ProductMaster where ProductName = '{sname}'");
             UpdateStockDetails();
             Calculate();
             StateHasChanged();
@@ -150,7 +232,7 @@
 
     private void UpdateStockDetails()
     {
-        // Load default rate & GST category
+        // Load default rate & GST category from database
         try
         {
             if (!string.IsNullOrEmpty(model.dict["StockId"]) && model.dict["StockId"] != "0")
@@ -168,39 +250,98 @@
         {
             Console.WriteLine($"Error getting stock details: {ex.Message}");
             model.dict["Rate"] = "0";
-            GstCategoryCode = 2;
+            GstCategoryCode = 2; // Default to 5% GST
         }
     }
 
+    private void UpdatePhysicalStock()
+    {
+        utilities.AdjustStock(model.dict["StockId"], "LESS", model.dict["Quantity"], transaction);
+    }
+
+    // ============================= CALCULATION METHODS =============================
+    
+    private void Calculate()
+    {
+        // Parse values from model
+        float rate = float.TryParse(model.dict["Rate"], out float r) ? r : 0;
+        float qty = float.TryParse(model.dict["Quantity"], out float q) ? q : 0;
+        float disc = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
+        float free = float.TryParse(model.dict["Free"], out float f) ? f : 0;
+
+        // Calculate amounts
+        float gross = rate * qty;
+        taxableAmount = gross - disc - (rate * free);
+        gst = taxableAmount * GetGstPercent() / 100f;
+        netAmount = taxableAmount + gst;
+    }
+
+    private float GetGstPercent() => GstCategoryCode switch
+    {
+        1 => 0f,    // 0% GST
+        2 => 5f,    // 5% GST
+        3 => 12f,   // 12% GST
+        4 => 18f,   // 18% GST
+        5 => 28f,   // 28% GST
+        _ => 0f     // Default to 0%
+    };
+
+    public void OnGstCategoryChanged(String Value)
+    {
+        GstCategoryCode = Convert.ToInt32(Value);
+        OnChange("");
+    }
+
+    public void OnChange(string _) 
+    {
+        Calculate();
+        OnCalculationChanged.InvokeAsync();
+    }
+
+    // ============================= CRUD OPERATIONS =============================
+    
     public async Task HandleRemove() => await OnRemove.InvokeAsync(SerialNo);
 
     public bool SaveDetail()
     {
         try
         {
+            // Set required fields
             model.dict["SalesBillNo"] = SalesBillNo;
             model.dict["SrNo"] = SerialNo.ToString();
 
+            // Validate required data
             if (string.IsNullOrEmpty(model.dict["StockId"]) || model.dict["StockId"] == "0")
                 return false;
 
+            // Recalculate before saving
             Calculate();
 
+            // Set GST fields based on state
             float percent = GetGstPercent();
             string pct = percent.ToString("F0");
 
-            if(GstStateCode == 27){
+            if (GstStateCode == 27) // Same state - CGST/SGST
+            {
                 model.dict[$"GST{pct}APPAMOUNT"] = taxableAmount.ToString("F2");
                 model.dict[$"CGST{pct}AMOUNT"] = (gst / 2).ToString("F2");
                 model.dict[$"SGST{pct}AMOUNT"] = (gst / 2).ToString("F2");
             }
-            else{
+            else // Different state - IGST
+            {
                 model.dict[$"IGST{pct}APPAMOUNT"] = taxableAmount.ToString("F2");
                 model.dict[$"IGST{pct}AMOUNT"] = (gst).ToString("F2");
             }
 
+            // Update physical stock
             UpdatePhysicalStock();
-            return model.Save();
+            
+            // Save to database
+            if(transaction != null){
+                model.Save(transaction);
+                return true;
+            }
+            else return model.Save();
         }
         catch (Exception ex)
         {
@@ -209,53 +350,8 @@
         }
     }
 
-    private void UpdatePhysicalStock() => utilities.AdjustStock(model.dict["StockId"], "LESS", model.dict["Quantity"]);
-
-    private float GetGstPercent() => GstCategoryCode switch
-    {
-        1 => 0f,
-        2 => 5f,
-        3 => 12f,
-        4 => 18f,
-        5 => 28f,
-        _ => 0f
-    };
-
-    private void Calculate()
-    {
-        float rate = float.TryParse(model.dict["Rate"], out float r) ? r : 0;
-        float qty = float.TryParse(model.dict["Quantity"], out float q) ? q : 0;
-        float disc = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
-        float free = float.TryParse(model.dict["Free"], out float f) ? f : 0;
-
-        float gross = rate * qty;
-        taxableAmount = gross - disc - (rate * free);
-        gst = taxableAmount * GetGstPercent() / 100f;
-        netAmount = taxableAmount + gst;
-    }
-
-    public void OnGstCategoryChanged(String Value)
-    {
-        GstCategoryCode = Convert.ToInt32(Value);
-        OnChange("");
-    }
-
-    public void OnChange(string _) {
-        Calculate();
-        OnCalculationChanged.InvokeAsync();
-    }
-
+    // ============================= PUBLIC GETTER METHODS =============================
+    
     public float GetTotalAmount() => netAmount;
     public float GetGstAmount() => gst;
-
-    protected override void OnInitialized()
-    {
-        // Set defaults
-        model.dict["Rate"] ??= "0";
-        model.dict["Quantity"] ??= "1";
-        model.dict["Discount"] ??= "0";
-        model.dict["Free"] ??= "0";
-        model.dict["WarrantyTillDate"] ??= DateTime.Now.AddYears(1).ToString("yyyy-MM-dd");
-        Calculate();
-    }
 }

@@ -1,21 +1,23 @@
 @using Microsoft.AspNetCore.Components
 
-<div class="container-fluid p-0"  tabindex="0">
-    <div class="card border shadow-sm h-100 d-flex flex-column">
+<div class="container-fluid p-0" tabindex="0">
+    <div class="card border-0 shadow-sm h-100 d-flex flex-column" style="background-color: #f8fafc; border-radius: 16px;">
         @if (!string.IsNullOrEmpty(FormName))
         {
-            <div class="card-header bg-light border-bottom flex-shrink-0">
+            <div class="card-header border-0 flex-shrink-0" style="background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); border-radius: 16px 16px 0 0;">
                 <div class="row align-items-center">
                     <div class="col">
-                        <h5 class="mb-0 text-secondary fw-normal">
-                            <i class="bi bi-file-earmark-text me-2 text-muted"></i>
+                        <h5 class="mb-0 fw-light" style="color: #475569; font-size: 1.1rem; letter-spacing: 0.5px;">
+                            <i class="bi bi-file-earmark-text me-2" style="color: #64748b; font-size: 1rem;"></i>
                             @FormName
                         </h5>
                     </div>
                     @if(OnFormTypeChange.HasDelegate)
                     {
                         <div class="col-auto">
-                            <select class="form-select form-select-sm" @onchange="HandleFormTypeChange">
+                            <select class="form-select form-select-sm border-0 shadow-sm" 
+                                    style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: #475569; border-radius: 10px; font-size: 0.85rem;"
+                                    @onchange="HandleFormTypeChange">
                                 <option value="">Empty</option>
                                 <option selected value="A">Type A</option>
                                 <option value="B">Type B</option>
@@ -26,13 +28,15 @@
             </div>
         }
         
-        <div class="card-body p-4 flex-grow-1 overflow-auto" style="max-height:75vh;overflow:hidden">
+        <div class="card-body p-4 flex-grow-1 overflow-auto" 
+             style="max-height:75vh; overflow-y: auto; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #334155;">
             @ChildContent
         </div>
  
         @if (CardFooterContent != null)
         {
-            <div class="card-footer bg-light border-top flex-shrink-0 py-1 px-3">
+            <div class="card-footer border-0 flex-shrink-0" 
+                 style="background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); border-radius: 0 0 16px 16px;">
                 <div class="d-flex justify-content-end gap-2">
                     @CardFooterContent
                 </div>

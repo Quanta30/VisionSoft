@@ -8,6 +8,7 @@
             @oninput="OnInputChanged"
             readonly="@ReadOnly" 
             @ref="reference"
+            @onkeydown="HandleEnter"
             />
         <button class="btn btn-outline-secondary" @onclick="OpenFrmViewHelper" @onclick:stopPropagation="true">?</button>
     </div>
@@ -24,6 +25,7 @@ else if(Layout == 1){
                     @oninput="OnInputChanged"
                     readonly="@ReadOnly" 
                     @ref="reference"
+                    @onkeydown="HandleEnter"
                     />
                 <button class="btn btn-outline-secondary" @onclick="OpenFrmViewHelper" @onclick:stopPropagation="true">?</button>
             </div>
@@ -55,7 +57,10 @@ else if(Layout == 1){
     //Event CallBacks
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public string FocusOn{get; set;}
-    private ElementReference reference;
+    public ElementReference reference;
+    [Parameter] public ElementReference NextReference{get; set;}
+    [Parameter] public EventCallback<ElementReference> GetInputReference{get; set;}
+    [Parameter] public bool FocusDefault{get; set;} = false;
 
     //Runs when parameters change - load display value based on bound Value
     protected override async Task OnParametersSetAsync()
@@ -71,10 +76,10 @@ else if(Layout == 1){
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!string.IsNullOrEmpty(FocusOn) && FocusOn == Title)
-        {
-            await Focus();
+    {   
+        if(firstRender && FocusDefault)await reference.FocusAsync();
+        if(firstRender && GetInputReference.HasDelegate){
+            await GetInputReference.InvokeAsync(reference);
         }
     }
 
@@ -135,40 +140,21 @@ else if(Layout == 1){
         
         // Update the bound Value and notify parent
         await ValueChanged.InvokeAsync(newValue);
+        await reference.FocusAsync();
         
         StateHasChanged();
     }
 
-    public async Task Focus()
-    {
-        try
-        {
-            Console.WriteLine($"Focus requested for: {FocusOn}, Title: {Title}, Layout: {Layout}");
-            
-            if (!string.IsNullOrEmpty(FocusOn) && FocusOn == Title)
-            {
-                // All layouts now have @ref="reference", so we can focus any of them
-                if (reference.Id != null)
-                {
-                    Console.WriteLine($"Focusing Layout {Layout} element: {Title}");
-                    await reference.FocusAsync();
-                }
-                else
-                {
-                    Console.WriteLine($"Element reference not ready for {Title}");
-                    // Try again after a small delay
-                    await Task.Delay(50);
-                    if (reference.Id != null)
-                    {
-                        await reference.FocusAsync();
-                    }
-                }
-            }
+    public async void HandleEnter(KeyboardEventArgs e){
+        if(e.Key == "Enter" && !NextReference.Equals(default(ElementReference))){
+
+                Console.WriteLine("Valid Input. Focusing on Next Input");
+                await NextReference.FocusAsync();
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error focusing element {Title}: {ex.Message}");
-        }
+    }
+
+    public async Task Focus(){
+        await reference.FocusAsync();
     }
     public void Closed()
     {

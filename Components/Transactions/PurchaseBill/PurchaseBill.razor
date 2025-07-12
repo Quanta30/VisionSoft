@@ -4,245 +4,432 @@
 @using VisionSoft.Components.Transactions.PurchaseBill
 @rendermode InteractiveServer 
 
-<T_Msg @ref="Msg"/>
-@if(isViewing){
-    <FrmView TableName="PurchaseBillHead" OnClosed="HandleClose" EditClicked="HandleEdit"
-        DeleteClicked="HandleDelete"/>
+<!-- Message Dialog -->
+<T_Msg @ref="Msg" />
+
+<!-- View Mode Form -->
+@if (isViewing)
+{
+    <FrmView TableName="PurchaseBillHead"
+             OnClosed="HandleClose"
+             EditClicked="HandleEdit"
+             DeleteClicked="HandleDelete" />
 }
-<T_Frm FormName="Purchase Bill">
-<ChildContent>
-    <T_Row>
-        <T_Input Title="Purchase Bill No *" ReadOnly=true @bind-Value="@model.dict["PurchaseBillNo"]" ColSize="col-md-3"/>
-        <T_Input Title="Supplier Bill No" @bind-Value="@model.dict["SupplierBillNo"]" ColSize="col-md-3"/>
-        <T_Input Title="Purchase Date" Type="date" @bind-Value="@model.dict["PurchaseBillDate"]" ColSize="col-md-3"/>
-        <T_Input Title="Due Date" Type="date" @bind-Value="@model.dict["DueDate"]" ColSize="col-md-3"/>
-    </T_Row>
-    <T_Row>
-        <T_RInput Title="Supplier *" Layout="1" TableName="SupplierMaster" PrimaryColumn="SupplierCode" DisplayColumn="SupplierName" Value="@model.dict["SupplierCode"]" ValueChanged="OnSupplierChanged" ColSize="col-md-6"/>
-        <div class="col-md-3">
-            <label class="form-label">Mode of Pay</label>
-            <select class="form-control" @bind="@model.dict["ModeOfPay"]">
-                <option value="CASH">Cash</option>
-                <option value="CARD">Card</option>
-                <option value="UPI">UPI</option>
-                <option value="CHEQUE">Cheque</option>
-                <option value="CREDIT">Credit</option>
-                <option value="NEFT">NEFT</option>
-                <option value="RTGS">RTGS</option>
-            </select>
-        </div>
-        <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
-    </T_Row>
-    <T_Row>
-        <T_Checkbox Title="Consider In Accounts" @bind-Value="@model.dict["ConsiderInAccounts"]" ColSize="col-md-6"/>
-        <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-6"/>
-    </T_Row>
-    <TableView TableName="Purchase Bill Details" HandleAdd="HandleAdd">
-        <TableHeads>
-            <th>Action</th>
-            <th>Sr. No.</th>
-            <th>Product</th>
-            <th>Rate</th>
-            <th>Quantity</th>
-            <th>Discount</th>
-            <th>GST%</th>
-            <th>Taxable Amount</th>
-            @if(GstStateCode == 27){
-                <th>CGST/SGST</th>
-            }
-            else{
-                <th>IGST</th>
-            }
-            <th>Total GST</th>
-            <th>Net Amount</th>
-        </TableHeads>
-        <TableRows>
-            @for(int i = 0; i < detailComponents.Count; i++){
-                int index = i;
-                <PurchaseBillDetail SerialNo="@(index+1)" 
-                                    PurchaseBillNo="@model.dict["PurchaseBillNo"]" 
-                                    OnRemove="HandleRemove" 
-                                    OnCalculationChanged="CalculateTotals"
-                                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
-                                    GstStateCode=@GstStateCode
-                                    @ref="detailComponents[index]" />
-            }
-        </TableRows>
-        <TableFooter>
-            Total Count : @detailComponents.Count
-        </TableFooter>
-    </TableView>
-    <T_SummaryCard >
-        <T_Input Title="Total Amount" Layout=2 ReadOnly @bind-Value="@model.dict["TotalAmount"]" Placeholder="-"/>
-        <T_Input Title="GST Amount" Layout=2 ReadOnly @bind-Value="@model.dict["GSTAmount"]" Placeholder="-"/>
-        <T_Input Title="Discount" Layout=2 @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Add/Less" Layout=2 @bind-Value="@model.dict["AddLess"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Rounding" Layout=2 @bind-Value="@model.dict["Rounding"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Net Amount" Layout=2 ReadOnly @bind-Value="@model.dict["NetAmount"]" Placeholder="-"/>
-    </T_SummaryCard>
-</ChildContent>
 
-<CardFooterContent>
-    <T_Button Text="Save" Style="" OnClick="HandleSave"/>
-    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
-    <T_Button Text="View" Style="" OnClick="HandleView"/>
-    <T_Button Text="Print" Style=""/>
-</CardFooterContent>
+<!-- Main Purchase Bill Form -->
+<T_Frm FormName="Purchase Bill" OnFormTypeChange="HandleFormTypeChange">
+    <ChildContent>
+        <!-- Header Inputs -->
+        <T_Row>
+            <T_Input Title="Purchase Bill No *" ReadOnly="true"
+                     @bind-Value="@model.dict["PurchaseBillNo"]"
+                     ColSize="col-md-3" />
 
+            <T_Input Title="Supplier Bill No"
+                     @bind-Value="@model.dict["SupplierBillNo"]"
+                     ColSize="col-md-3"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(1))
+                     @ref="firstReference"/>
+
+            <T_Input Title="Purchase Date" Type="date"
+                     @bind-Value="@model.dict["PurchaseBillDate"]"
+                     ColSize="col-md-3"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(2)) />
+
+            <T_Input Title="Due Date" Type="date"
+                     @bind-Value="@model.dict["DueDate"]"
+                     ColSize="col-md-3"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(3)) />
+        </T_Row>
+
+        <!-- Supplier & Payment Info -->
+        <T_Row>
+            <T_RInput Title="Supplier *" Layout="1"
+                      TableName="SupplierMaster"
+                      PrimaryColumn="SupplierCode"
+                      DisplayColumn="SupplierName"
+                      Value="@model.dict["SupplierCode"]"
+                      ValueChanged="OnSupplierChanged"
+                      ColSize="col-md-4"
+                      GetInputReference="getInputReferences"
+                      NextReference=@(GetRef(4)) />
+
+            <T_Select @bind-Value="@model.dict["ModeOfPay"]" Label="Mode Of Pay"
+                      Options="CASH:Cash,CARD:Card,UPI:UPI,CHEQUE:Cheque,CREDIT:Credit,NEFT:NEFT,RTGS:RTGS"
+                      ColSize="col-md-4"
+                      GetInputReference="getInputReferences"
+                      NextReference=@(GetRef(5)) />
+
+            <T_Checkbox Title="Cancelled"
+                        @bind-Value="@model.dict["Cancelled"]"
+                        ColSize="col-md-4"
+                        GetInputReference="getInputReferences"
+                        NextReference=@(GetRef(6)) />
+        </T_Row>
+
+        <!-- Options and Narration -->
+        <T_Row>
+            <T_Checkbox Title="Consider In Accounts"
+                        @bind-Value="@model.dict["ConsiderInAccounts"]"
+                        ColSize="col-md-6"
+                        GetInputReference="getInputReferences"
+                        NextReference=@(GetRef(7)) />
+
+            <T_Textarea Title="Narration"
+                        @bind-Value="@model.dict["Narration"]"
+                        ColSize="col-md-6"
+                        GetInputReference="getInputReferences"
+                        NextReference=@(GetRef(8)) />
+        </T_Row>
+
+        <!-- Purchase Details Table -->
+        <TableView TableName="Purchase Bill Details" HandleAdd="HandleAdd">
+            <TableHeads>
+                <th>Action</th>
+                <th>Sr. No.</th>
+                <th>Product</th>
+                <th>Rate</th>
+                <th>Quantity</th>
+                <th>Discount</th>
+                <th>GST%</th>
+                <th>Taxable Amount</th>
+                @if(GstStateCode == 27)
+                {
+                    <th>CGST/SGST</th>
+                }
+                else
+                {
+                    <th>IGST</th>
+                }
+                <th>Total GST</th>
+                <th>Net Amount</th>
+            </TableHeads>
+
+            <TableRows>
+                @for (int i = 0; i < detailComponents.Count; i++)
+                {
+                    int index = i;
+                    <PurchaseBillDetail 
+                        SerialNo="@(index+1)"
+                        PurchaseBillNo="@model.dict["PurchaseBillNo"]"
+                        OnRemove="@((idx) => HandleRemove(idx))"
+                        OnCalculationChanged="CalculateTotals"
+                        InitialDataRow="@(detailRows.Count > index ? detailRows[index] : null)"
+                        GstStateCode=@GstStateCode
+                        endReference=@(GetRef(8))
+                        @ref="detailComponents[index]" />
+                }
+            </TableRows>
+
+            <TableFooter>
+                Total Count: @detailComponents.Count 
+            </TableFooter>
+        </TableView>
+
+        <!-- Summary Section -->
+        <T_SummaryCard>
+            <T_Input Title="Total Amount" Layout="2" ReadOnly
+                     @bind-Value="@model.dict["TotalAmount"]" Placeholder="-" Type="Number"/>
+
+            <T_Input Title="GST Amount" Layout="2" ReadOnly
+                     @bind-Value="@model.dict["GSTAmount"]" Placeholder="-" Type="Number"/>
+
+            <T_Input Title="Discount" Layout="2"
+                     @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals" Type="Number"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(9)) />
+
+            <T_Input Title="Add/Less" Layout="2"
+                     @bind-Value="@model.dict["AddLess"]" ChangeFunction="CalculateTotals" Type="Number"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(10)) />
+
+            <T_Input Title="Rounding" Layout="2"
+                     @bind-Value="@model.dict["Rounding"]" ChangeFunction="CalculateTotals" Type="Number"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(0)) />
+
+            <T_Input Title="Net Amount" Layout="2" ReadOnly
+                     @bind-Value="@model.dict["NetAmount"]" Placeholder="-" Type="Number"/>
+        </T_SummaryCard>
+    </ChildContent>
+
+    <!-- Footer Buttons -->
+    <CardFooterContent>
+        <T_Button Text="Save" OnClick="HandleSave" />
+        <T_Button Text="Clear" OnClick="HandleClear" />
+        <T_Button Text="View" OnClick="HandleView" />
+        <T_Button Text="Print" />
+    </CardFooterContent>
 </T_Frm>
 
-@code{
+@code {
+    // ============================= VARIABLES & REFERENCES =============================
+    
+    // UI References
     private T_Msg Msg;
+    private T_Input firstReference;
     public DotNetObjectReference<PurchaseBill> dotNetRef;
 
-    // Component references and data rows
+    // Model and Data
+    private Model model = new("PurchaseBillHead", "PurchaseBillNo", "A");
     private List<PurchaseBillDetail> detailComponents = new();
     public List<DataRow> detailRows = new();
+    private ClsDatabase db = new();
 
-    Model model = new Model("PurchaseBillHead", "PurchaseBillNo", "A");
-    ClsDatabase db = new ClsDatabase();
-    public int GstStateCode;
-
+    // State Variables
+    public int GstStateCode = 27;
     private bool isViewing = false;
+    private bool isAddClicked = false;
     private bool isEditing = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender){
-        if(firstRender){
+    // Element References Management
+    public List<ElementReference> references = new List<ElementReference>();
+
+    // ============================= ELEMENT REFERENCE METHODS =============================
+    
+    public void getInputReferences(ElementReference eref)
+    {
+        references.Add(eref);
+        Console.WriteLine($"Added reference #{references.Count - 1} for element");
+    }
+
+    private ElementReference GetRef(int idx) 
+    {
+        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
+        return (idx >= 0 && idx < references.Count) 
+            ? references[idx] 
+            : default;
+    }
+
+    // ============================= COMPONENT LIFECYCLE METHODS =============================
+    
+    protected override void OnInitialized()
+    {
+        // Set default values
+        if (string.IsNullOrEmpty(model.dict["PurchaseBillDate"]))
+            model.dict["PurchaseBillDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+
+        if (string.IsNullOrEmpty(model.dict["DueDate"]))
+            model.dict["DueDate"] = DateTime.Now.AddDays(30).ToString("yyyy-MM-dd");
+
+        model.dict["ModeOfPay"] ??= "CASH";
+        model.dict["ConsiderInAccounts"] ??= "1";
+        model.dict["Cancelled"] ??= "0";
+
+        GstStateCode = 27;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {   
+            await firstReference.Focus();
+            Console.WriteLine("First Render");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
 
+    // ============================= SUPPLIER DATA METHODS =============================
+    
     private void OnSupplierChanged(string supplierCode)
     {
         model.dict["SupplierCode"] = supplierCode;
-        UpdateGstStateCode();
+        UpdateSupplierDetails();
         StateHasChanged();
     }
 
-    private void UpdateGstStateCode(){
-        GstStateCode = Convert.ToInt32(db.GetScalar($"Select SupplierStateCode from SupplierMaster where SupplierCode = {model.dict["SupplierCode"]}"));
+    private void UpdateSupplierDetails()
+    {
+        if (!string.IsNullOrEmpty(model.dict["SupplierCode"]))
+        {
+            try
+            {
+                string query = $"SELECT SupplierStateCode FROM SupplierMaster WHERE SupplierCode = '{model.dict["SupplierCode"]}'";
+                var result = db.GetScalar(query);
+                if (result != null)
+                {
+                    GstStateCode = Convert.ToInt32(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting supplier details: {ex.Message}");
+                GstStateCode = 27; // Default value
+            }
+        }
+        StateHasChanged();
     }
 
+    // ============================= FORM ACTION METHODS =============================
+    
     [JSInvokable]
-    public void HandleView(){
+    public void HandleView()
+    {
         isViewing = !isViewing;
         StateHasChanged();
     }
 
     [JSInvokable]
-    public void HandleAdd(){
-        detailComponents.Add(null); // Placeholder for @ref
-        detailRows.Add(null); // Placeholder for new row
-        StateHasChanged();
-    }
-
-    public void HandleEdit(DataRow row){
-        HandleClear();
-        isEditing = true;
-        model.Populate(row);
-        UpdateGstStateCode();
-
-        DataTable dataTable = db.GetDataTable($"Select * from PurchaseBillDetails where PurchaseBillNo='{model.dict["PurchaseBillNo"]}'");
-        foreach(DataRow detailRow in dataTable.Rows){
-            detailRows.Add(detailRow);
-            detailComponents.Add(null); // @ref will be set after render
-        }
+    public void HandleAdd()
+    {
+        detailComponents.Add(null);
         StateHasChanged();
     }
 
     [JSInvokable]
-    public async Task HandleSave(){
-        try{
-            // Save all detail components
-            bool allDetailsSaved = true;
-            if(isEditing)
-                db.ExecuteQuery($"Delete From PurchaseBillDetails where PurchaseBillNo='{model.dict["PurchaseBillNo"]}'");
-            for(int i=0; i<detailComponents.Count; i++){
-                var detail = detailComponents[i];
-                if(detail != null){
-                    bool saved = detail.SaveDetail();
-                    if(!saved) allDetailsSaved = false;
-                }
-            }
-            if(!allDetailsSaved){
-                throw new Exception("Failed to save some details");
-            }
-
-            // Save the parent
-            bool er;
-            if(isEditing) er = model.Update();
-            else er = model.Save();
-
-            if(!er) throw new Exception("Failed to save header");
-
-            await Msg.Success();
-        }
-        catch(Exception e){
-            await Msg.SaveError();
-        }
-    }
-
-    [JSInvokable]
-    public void HandleClear(){
+    public void HandleClear()
+    {
         model.Clear();
         detailComponents.Clear();
         detailRows.Clear();
         isEditing = false;
+        isAddClicked = false;
         isViewing = false;
         StateHasChanged();
     }
 
-    public void HandleClose(){
+    public void HandleClose()
+    {
+        isAddClicked = false;
         isViewing = false;
     }
 
-    public void HandleDelete(DataRow row){
-        string pk = row["PurchaseBillNo"].ToString();
-        db.ExecuteQuery($"Delete From PurchaseBillHead where PurchaseBillNo='{pk}'");
-        db.ExecuteQuery($"Delete From PurchaseBillDetails where PurchaseBillNo='{pk}'");
+    public void HandleFormTypeChange(string s)
+    {
+        model.SetPrimaryKey(s);
     }
 
-    public void HandleRemove(int serialNo){
+    // ============================= CRUD OPERATIONS =============================
+    
+    public async Task HandleEdit(DataRow row)
+    {
+        HandleClear();
+        await Task.Delay(50);
+        isEditing = true;
+        model.Populate(row);
+        UpdateSupplierDetails();
+
+        var dataTable = db.GetDataTable($"SELECT * FROM PurchaseBillDetails WHERE PurchaseBillNo = '{model.dict["PurchaseBillNo"]}'");
+        foreach (DataRow detailRow in dataTable.Rows)
+        {
+            detailRows.Add(detailRow);
+            detailComponents.Add(null);
+        }
+
+        isViewing = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            // Validation
+            if (string.IsNullOrEmpty(model.dict["SupplierCode"]) || model.dict["SupplierCode"] == "0")
+            {
+                await Msg.Error("Please select a supplier.");
+                return;
+            }
+
+            if (detailComponents.Count == 0)
+            {
+                await Msg.Error("Please add at least one purchase item.");
+                return;
+            }
+
+            // Save Details
+            bool allDetailsSaved = true;
+
+            if (isEditing)
+                db.ExecuteQuery($"DELETE FROM PurchaseBillDetails WHERE PurchaseBillNo = '{model.dict["PurchaseBillNo"]}'");
+
+            foreach (var detail in detailComponents)
+            {
+                if (detail != null && !detail.SaveDetail())
+                    allDetailsSaved = false;
+            }
+
+            if (!allDetailsSaved)
+                throw new Exception("Failed to save some details");
+
+            // Save Header
+            bool result = isEditing ? model.Update() : model.Save();
+            if (!result)
+                throw new Exception("Failed to save header");
+
+            await Msg.Success();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Save error: {e.Message}");
+            await Msg.SaveError();
+        }
+    }
+
+    public void HandleDelete(DataRow row)
+    {
+        string pk = row["PurchaseBillNo"].ToString();
+        db.ExecuteQuery($"DELETE FROM PurchaseBillHead WHERE PurchaseBillNo = '{pk}'");
+        db.ExecuteQuery($"DELETE FROM PurchaseBillDetails WHERE PurchaseBillNo = '{pk}'");
+    }
+
+    // ============================= DETAIL MANAGEMENT METHODS =============================
+    
+    public void HandleRemove(int serialNo)
+    {
         int index = serialNo - 1;
+
         if (index >= 0 && index < detailComponents.Count)
         {
             detailComponents.RemoveAt(index);
-            if(detailRows.Count > index)detailRows.RemoveAt(index);
+            if (detailRows.Count > index)
+                detailRows.RemoveAt(index);
+
             CalculateTotals();
             StateHasChanged();
         }
+        else
+        {
+            Console.WriteLine($"Invalid index {index} for removal.");
+        }
     }
 
+    // ============================= CALCULATION METHODS =============================
+    
     private void CalculateTotals()
     {
-        float totalAmount = 0;
-        float gstAmount = 0;
+        float totalAmount = 0, gstAmount = 0, totalQty = 0;
 
-        foreach(var detail in detailComponents){
-            if(detail != null){
+        // Calculate totals from all detail components
+        foreach (var detail in detailComponents)
+        {
+            if (detail != null)
+            {
                 totalAmount += detail.GetTotalAmount();
                 gstAmount += detail.GetGstAmount();
+                totalQty += float.TryParse(detail.model.dict["Quantity"], out float qty) ? qty : 0;
             }
         }
 
+        // Update model with calculated values
         model.dict["TotalAmount"] = totalAmount.ToString("F2");
         model.dict["GSTAmount"] = gstAmount.ToString("F2");
         
-        // Calculate net amount
-        float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
-        float addLess = float.TryParse(model.dict["AddLess"], out float al) ? al : 0;
-        float rounding = float.TryParse(model.dict["Rounding"], out float r) ? r : 0;
-        
+        // Parse adjustment values
+        float discount = float.TryParse(model.dict["Discount"], out var d) ? d : 0;
+        float addLess = float.TryParse(model.dict["AddLess"], out var al) ? al : 0;
+        float rounding = float.TryParse(model.dict["Rounding"], out var r) ? r : 0;
+
+        // Calculate final net amount
         float netAmount = totalAmount + gstAmount - discount + addLess + rounding;
         model.dict["NetAmount"] = netAmount.ToString("F2");
 
         StateHasChanged();
-    }
-
-    protected override void OnInitialized()
-    {
-        if (string.IsNullOrEmpty(model.dict["ModeOfPay"])) model.dict["ModeOfPay"] = "CASH";
-        if (string.IsNullOrEmpty(model.dict["ConsiderInAccounts"])) model.dict["ConsiderInAccounts"] = "1";
     }
 }

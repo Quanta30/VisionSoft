@@ -26,8 +26,24 @@ public class Utilities
             Console.WriteLine($"Error updating physical stock: {ex.Message}");
         }
     }
+    public void AdjustStock(String StockId, String AdjustmentType, String value, Transaction transaction)
+    {
+  
+            float quantity = float.Parse(value);
 
-    public string StockIdToName(string id){
+            string operation = (AdjustmentType == "ADD") ? "+" : "-";
+
+            string updateQuery = $@"
+                    UPDATE PhysicalStock 
+                    SET Quantity = Quantity {operation} {quantity}
+                    WHERE StockID = {StockId}";
+
+            transaction.AddQuery(updateQuery);
+        
+    }
+
+    public string StockIdToName(string id)
+    {
         string code = db.GetScalar($"select ProductCode from PhysicalStock where StockID=3");
         string name = db.GetScalar($"select ProductName from ProductMaster where ProductCode={code}");
         Console.WriteLine($"{code} {name}");

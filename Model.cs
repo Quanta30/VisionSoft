@@ -37,6 +37,12 @@ public class Model
         return db.SaveRecord(TableName, GetColumnString(), GetValueString());
     }
 
+    public void Save(Transaction transaction)
+    {
+        string query = "INSERT INTO " + TableName + " (" + GetColumnString() + ") VALUES (" + GetValueString() + ");";
+        transaction.AddQuery(query);
+    }
+
 
     //Update
     public bool Update()
@@ -64,6 +70,31 @@ public class Model
         return db.ExecuteQuery(Query);
     }
 
+    public void Update(Transaction transaction)
+    {
+        StringBuilder setQuantity = new StringBuilder();
+        bool start = true;
+        foreach (var kvp in dict)
+        {
+
+            if (kvp.Key != PrimaryKeyColumn)
+            {
+                if (start)
+                {
+                    setQuantity.Append($"{kvp.Key}='{kvp.Value}'");
+                    start = false;
+                }
+                else setQuantity.Append($",{kvp.Key}='{kvp.Value}'");
+            }
+        }
+        string Query = $@"
+                UPDATE {TableName}
+                SET {setQuantity} 
+                WHERE {PrimaryKeyColumn}='{dict[PrimaryKeyColumn]}'";
+
+        transaction.AddQuery(Query);
+    }
+
 
     //Delete
     public bool Delete(int code)
@@ -87,7 +118,7 @@ public class Model
         {
             string columnName = row["COLUMN_NAME"].ToString();
             string dataType = row["DATA_TYPE"].ToString().ToLower();
-            //Console.WriteLine(row["COLUMN_NAME"]);
+           
             dict[row["COLUMN_NAME"].ToString()] = "";
 
             // INITIALIZE WITH APPROPRIATE VALUE FOR TESTING PURPOSE : TO BE REMOVED

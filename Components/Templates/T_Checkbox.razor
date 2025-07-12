@@ -1,12 +1,11 @@
 <div class=@ColSize >
     <div>
         <div class="form-check" style="padding-top: 35px;">
-
             <label @onclick="ToggleCheckBox">@Title</label>
             <input class="form-check-input" value=@Value type="checkbox" @onkeydown="HandleKeyboardInput" 
                   checked=@IsChecked
-                  @onchange="HandleChange" />
-            
+                  @onchange="HandleChange"
+                  @ref="reference" />
         </div>
     </div>
 </div>
@@ -16,6 +15,12 @@
     [Parameter] public string Value { get; set; } = "0";
     [Parameter] public string ColSize { get; set; } = "col-md-4";
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    
+    // Add reference support
+    [Parameter] public EventCallback<ElementReference> GetInputReference{get; set;}
+    [Parameter] public ElementReference NextReference{get; set;}
+    [Parameter] public bool FocusDefault{get; set;} = false;
+    public ElementReference reference;
     
     private bool IsChecked = false;
 
@@ -27,6 +32,15 @@
     protected override void OnParametersSet()
     {
         ChangeCheckBoxValue(Value);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {   
+        if(firstRender && FocusDefault) await reference.FocusAsync();
+        if(firstRender && GetInputReference.HasDelegate){
+            Console.WriteLine("T_Checkbox: Sending reference to parent");
+            await GetInputReference.InvokeAsync(reference);
+        }
     }
 
     private void HandleChange(ChangeEventArgs e){
@@ -43,13 +57,20 @@
         ValueChanged.InvokeAsync(newValue);
     }
 
-    private void HandleKeyboardInput(KeyboardEventArgs e){
-        if(e.Key == "T" || e.Key == "t")ToggleCheckBox();
+    private async Task HandleKeyboardInput(KeyboardEventArgs e){
+        if(e.Key == "T" || e.Key == "t")
+        {
+            ToggleCheckBox();
+        }
+        else if(e.Key == "Enter" && !NextReference.Equals(default(ElementReference)))
+        {
+            Console.WriteLine("T_Checkbox: Enter pressed. Focusing on Next Input");
+            await NextReference.FocusAsync();
+        }
     }
 
     private void ChangeCheckBoxValue(string newValue){
         if(newValue == "1")IsChecked=true;
         else IsChecked =false;
     }
-
 }

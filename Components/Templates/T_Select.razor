@@ -1,9 +1,9 @@
-
 @if(Layout == "1"){
     <div class="@ColSize">
         <div class="mb-3">
             <label >@Label</label>
-            <select class="form-control" @bind="Value" @bind:after="OnValueChanged">
+            <select class="form-control" @bind="Value" @bind:after="OnValueChanged" 
+                    @ref="reference" @onkeydown="HandleEnter">
                 @foreach (var option in options)
                 {
                     <option value="@option.Value" selected="@(option.Value == Value)">
@@ -15,7 +15,8 @@
     </div>
 }
 else if(Layout == "2"){
-    <select class="form-control form-control-sm" @bind="Value" @bind:after="OnValueChanged">
+    <select class="form-control form-control-sm" @bind="Value" @bind:after="OnValueChanged"
+            @ref="reference" @onkeydown="HandleEnter">
         @foreach (var option in options)
         {
             <option value="@option.Value" selected="@(option.Value == Value)">
@@ -34,6 +35,13 @@ else if(Layout == "2"){
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public EventCallback OnChange{get; set;}
     
+    // Add reference support
+    [Parameter] public EventCallback<ElementReference> GetInputReference{get; set;}
+    [Parameter] public ElementReference NextReference{get; set;}
+    [Parameter] public bool FocusDefault{get; set;} = false;
+    [Parameter] public EventCallback OnEnterPressed{get; set;}
+    public ElementReference reference;
+    
     private List<SelectOption> options = new List<SelectOption>();
     private string _lastOptions = "";
     
@@ -49,6 +57,16 @@ else if(Layout == "2"){
         else
         {
             Console.WriteLine("Options unchanged, skipping parse");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {   
+       
+        if(firstRender && GetInputReference.HasDelegate)
+        {
+            Console.WriteLine("T_Select: Sending reference to parent");
+            await GetInputReference.InvokeAsync(reference);
         }
     }
     
@@ -77,8 +95,17 @@ else if(Layout == "2"){
     
     private async Task OnValueChanged()
     {
-        if(OnChange.HasDelegate)await OnChange.InvokeAsync();
+        if(OnChange.HasDelegate) await OnChange.InvokeAsync();
         await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task HandleEnter(KeyboardEventArgs e)
+    {
+        if(e.Key == "Enter" && !NextReference.Equals(default(ElementReference)))
+        {
+            Console.WriteLine("T_Select: Valid Input. Focusing on Next Input");
+            await NextReference.FocusAsync();
+        }
     }
     
     private class SelectOption
@@ -86,6 +113,4 @@ else if(Layout == "2"){
         public string Value { get; set; }
         public string Text { get; set; }
     }
-
-
 }
