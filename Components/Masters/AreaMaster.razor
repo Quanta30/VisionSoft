@@ -12,10 +12,23 @@
 <T_Frm FormName="Area Master">
     <ChildContent>
         <T_Row>
-            <T_Input Title="Area Code *" ReadOnly="true" @bind-Value="@model.dict["AreaCode"]" ColSize="col-md-4" />
-            <T_Input Title="Area Name *" @bind-Value="@model.dict["AreaName"]" MaxLength="500" ColSize="col-md-4" />
-            <T_RInput Title="Route" TableName="RouteMaster" DisplayColumn="RouteName" PrimaryColumn="RouteCode"
-                      @bind-Value="@model.dict["RouteCode"]" ColSize="col-md-4" />
+            <T_Input Title="Area Code *" ReadOnly="true" 
+                     @bind-Value="@model.dict["AreaCode"]" 
+                     ColSize="col-md-4" />
+            <T_Input Title="Area Name *" 
+                     @bind-Value="@model.dict["AreaName"]" 
+                     MaxLength="500" ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(1))
+                     @ref="firstReference" />
+            <T_RInput Title="Route" 
+                      TableName="RouteMaster" 
+                      DisplayColumn="RouteName" 
+                      PrimaryColumn="RouteCode"
+                      @bind-Value="@model.dict["RouteCode"]" 
+                      ColSize="col-md-4"
+                      GetInputReference="getInputReferences"
+                      NextReference=@(GetRef(0)) />
         </T_Row>
     </ChildContent>
 
@@ -28,53 +41,82 @@
 
 @code {
     private T_Msg Msg;
-    public DotNetObjectReference<AreaMaster> dotNetRef;
+    private DotNetObjectReference<AreaMaster> dotNetRef;
+    private T_Input firstReference;
 
     Model model = new Model("AreaMaster", "AreaCode");
     private bool isViewing = false;
     private bool isEditing = false;
 
+    // ============================= ELEMENT REFERENCES MANAGEMENT =============================
+    
+    public List<ElementReference> references = new List<ElementReference>();
+    
+    public void getInputReferences(ElementReference eref)
+    {
+        references.Add(eref);
+        Console.WriteLine($"Added reference #{references.Count - 1} for element");
+    }
+    
+    private ElementReference GetRef(int idx) 
+    {
+        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
+        return (idx >= 0 && idx < references.Count) 
+            ? references[idx] 
+            : default;
+    }
+
+    // ============================= COMPONENT LIFECYCLE METHODS =============================
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(firstRender)
         {
+            await firstReference.Focus();
             Console.WriteLine("AreaMaster OnAfterRenderAsync executed");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
 
+    // ============================= CRUD OPERATIONS =============================
+
     [JSInvokable]
     public async Task HandleSave()
     {
-        try
-        {
-            if (!ValidateForm()) return;
-
-            bool success = isEditing
-                ? model.Update()
-                : model.Save();
-
-            if (success)
-            {
-                await Msg.Success();
-
-                if (!isEditing)
-                {
-                    HandleClear();
-                }
-
-                isEditing = false;
-            }
-            else
-            {
-                await Msg.SaveError();
-            }
-        }
-        catch (Exception ex)
+        if (!ValidateForm())
         {
             await Msg.SaveError();
-            Console.WriteLine($"Error saving Area record: {ex.Message}");
+        }
+        else
+        {
+            try
+            {
+                bool success = isEditing
+                    ? model.Update()
+                    : model.Save();
+
+                if (success)
+                {
+                    await Msg.Success();
+
+                    if (!isEditing)
+                    {
+                        HandleClear();
+                    }
+
+                    isEditing = false;
+                }
+                else
+                {
+                    await Msg.SaveError();
+                }
+            }
+            catch (Exception ex)
+            {
+                await Msg.SaveError();
+                Console.WriteLine($"Error saving Area record: {ex.Message}");
+            }
         }
     }
 
@@ -83,6 +125,10 @@
     {
         model.Clear();
         isEditing = false;
+        
+        // Clear references
+        references.Clear();
+        
         StateHasChanged();
     }
 
@@ -108,10 +154,7 @@
             isEditing = true;
             isViewing = false;
 
-            foreach (var key in model.dict.Keys.ToList())
-            {
-                model.dict[key] = row[key]?.ToString() ?? model.dict[key];
-            }
+            model.Populate(row);
 
             StateHasChanged();
         }
@@ -126,6 +169,8 @@
         isViewing = false;
         StateHasChanged();
     }
+
+    // ============================= VALIDATION =============================
 
     private bool ValidateForm()
     {
@@ -161,6 +206,8 @@
 
         return true;
     }
+
+    // ============================= CLEANUP =============================
 
     public void Dispose()
     {

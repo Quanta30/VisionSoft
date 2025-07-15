@@ -55,6 +55,7 @@
     {
         if (OnFormTypeChange.HasDelegate)
         {   
+            Console.WriteLine("Changing Form Type");
             Console.WriteLine(e.Value.ToString());
             await OnFormTypeChange.InvokeAsync(e.Value.ToString());
         }

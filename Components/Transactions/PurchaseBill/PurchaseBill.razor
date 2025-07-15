@@ -108,19 +108,23 @@
                 <th>Net Amount</th>
             </TableHeads>
 
+            <!-- Updated TableRows with proper key implementation -->
             <TableRows>
                 @for (int i = 0; i < detailComponents.Count; i++)
                 {
                     int index = i;
+                    int detailId = detailIds.Count > index ? detailIds[index] : index;
+
                     <PurchaseBillDetail 
-                        SerialNo="@(index+1)"
+                        @key="@($"detail-{detailId}")"
+                        SerialNo="@(index + 1)"
                         PurchaseBillNo="@model.dict["PurchaseBillNo"]"
-                        OnRemove="@((idx) => HandleRemove(idx))"
+                        OnRemove="HandleRemove"
                         OnCalculationChanged="CalculateTotals"
                         InitialDataRow="@(detailRows.Count > index ? detailRows[index] : null)"
-                        GstStateCode=@GstStateCode
-                        endReference=@(GetRef(8))
-                        @ref="detailComponents[index]" />
+                        GstStateCode="@GstStateCode"
+                        endReference="@(GetRef(8))"
+                        @ref="@detailComponents[index]" />
                 }
             </TableRows>
 
@@ -205,6 +209,10 @@
             : default;
     }
 
+    //================================Component Tracking===================================
+    private List<int> detailIds = new();
+    private int nextDetailId = 1;
+
     // ============================= COMPONENT LIFECYCLE METHODS =============================
     
     protected override void OnInitialized()
@@ -221,6 +229,12 @@
         model.dict["Cancelled"] ??= "0";
 
         GstStateCode = 27;
+
+        // Initialize component tracking
+        detailComponents = new List<PurchaseBillDetail>();
+        detailIds = new List<int>();
+        detailRows = new List<DataRow>();
+        nextDetailId = 1;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -275,9 +289,10 @@
     }
 
     [JSInvokable]
-    public void HandleAdd()
+    public async Task HandleAdd()
     {
         detailComponents.Add(null);
+        detailIds.Add(nextDetailId++);
         StateHasChanged();
     }
 
@@ -287,6 +302,8 @@
         model.Clear();
         detailComponents.Clear();
         detailRows.Clear();
+        detailIds.Clear();
+        nextDetailId = 1;
         isEditing = false;
         isAddClicked = false;
         isViewing = false;
@@ -319,6 +336,7 @@
         {
             detailRows.Add(detailRow);
             detailComponents.Add(null);
+            detailIds.Add(nextDetailId++);
         }
 
         isViewing = false;
@@ -388,6 +406,8 @@
         if (index >= 0 && index < detailComponents.Count)
         {
             detailComponents.RemoveAt(index);
+            detailIds.RemoveAt(index);
+            
             if (detailRows.Count > index)
                 detailRows.RemoveAt(index);
 

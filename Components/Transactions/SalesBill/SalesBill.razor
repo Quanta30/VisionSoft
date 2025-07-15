@@ -13,7 +13,9 @@
     <FrmView TableName="SalesBillHead"
              OnClosed="HandleClose"
              EditClicked="HandleEdit"
-             DeleteClicked="HandleDelete" />
+             DeleteClicked="HandleDelete" 
+             PrimaryKeyColumn="SalesBillNo"
+             />
 }
 
 <!-- Main Sales Bill Form -->
@@ -104,11 +106,11 @@
                         @bind-Value="@model.dict["Narration"]"
                         ColSize="col-md-6"
                         GetInputReference="getInputReferences"
-                        NextReference=@(GetRef(10)) />
+                        NextReference=@(GetRef(0)) />
         </T_Row>
 
         <!-- Sales Details Table -->
-        <TableView TableName="Sales Bill Details" HandleAdd="HandleAdd">
+        <TableView TableName="Sales Bill Details" HandleAdd="HandleAdd" Info="(Press : ALT + A)">
             <TableHeads>
                 <th>Action</th>
                 <th>Sr. No.</th>
@@ -189,7 +191,7 @@
             <T_Input Title="Oct Re Emb Amount" Layout="2"
                      @bind-Value="@model.dict["OctReEmbAmount"]" ChangeFunction="CalculateTotals" Type="Number"
                      GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(0)) />
+                     NextReference=@(GetRef(10)) />
 
             <T_Input Title="Net Amount" Layout="2" ReadOnly
                      @bind-Value="@model.dict["NetAmount"]" Placeholder="-" Type="Number"/>
@@ -198,10 +200,10 @@
 
     <!-- Footer Buttons -->
     <CardFooterContent>
-        <T_Button Text="Save" OnClick="HandleSave" />
-        <T_Button Text="Clear" OnClick="HandleClear" />
-        <T_Button Text="View" OnClick="HandleView" />
-        <T_Button Text="Print" />
+        <T_Button Text="Save" OnClick="HandleSave" Info="(ALT + S)"/>
+        <T_Button Text="Clear" OnClick="HandleClear" Info="(ALT + C)"/>
+        <T_Button Text="View" OnClick="HandleView" Info="(ALT + V)"/>
+        <T_Button Text="Print" Info="(ALT + P)"/>
     </CardFooterContent>
 </T_Frm>
 
@@ -338,6 +340,7 @@
         detailComponents.Clear();
         detailRows.Clear();
         detailIds.Clear();
+        transaction.ClearQuery();
         nextDetailId = 1;
         isEditing = false;
         isAddClicked = false;
@@ -361,9 +364,11 @@
     public async Task HandleEdit(DataRow row)
     {
         HandleClear();
+        nextDetailId += 10;
         await Task.Delay(50);
         isEditing = true;
         model.Populate(row);
+        model.dict2["SalesBillNo"] = model.dict["SalesBillNo"];//Dictionary2 used to store primary key if primary key is to be changed
 
         var dataTable = db.GetDataTable($"SELECT * FROM SalesBillDetails WHERE SalesBillNo = '{model.dict["SalesBillNo"]}'");
         foreach (DataRow detailRow in dataTable.Rows)
@@ -375,6 +380,7 @@
 
         isViewing = false;
         StateHasChanged();
+        await firstReference.Focus();
     }
 
     [JSInvokable]
@@ -395,24 +401,23 @@
                 return;
             }
 
-            // Save Details
-            bool allDetailsSaved = true;
 
-            if (isEditing)
-                db.ExecuteQuery($"DELETE FROM SalesBillDetails WHERE SalesBillNo = '{model.dict["SalesBillNo"]}'");
+            //Revert and Delete Stock if Editing
+            if(isEditing){
+                reverStock();
+                transaction.AddQuery($"DELETE FROM SalesBillDetails WHERE SalesBillNo = '{model.dict2["SalesBillNo"]}'");
+            }  
 
+            //Save Details
             foreach (var detail in detailComponents)
             {
-                if (detail != null && !detail.SaveDetail())
-                    allDetailsSaved = false;
+                if (detail != null)detail.SaveDetail();
             }
-
-            if (!allDetailsSaved)
-                throw new Exception("Failed to save some details");
 
             // Save Header
             if(isEditing)model.Update(transaction);
             else model.Save(transaction);
+           
 
             bool result = transaction.Execute();
             if (!result)
@@ -424,6 +429,21 @@
         {
             Console.WriteLine($"Save error: {e.Message}");
             await Msg.SaveError();
+        }
+    }
+
+    public void reverStock()
+    {
+        Utilities utilities = new Utilities();
+        string key = model.dict2["SalesBillNo"];
+        DataTable dt = db.GetDataTable($"Select StockId, Quantity from SalesBillDetails where SalesBillNo = '{key}'");
+
+        foreach(DataRow row in dt.Rows)
+        {
+            string stId = row["StockId"].ToString();
+            string qty = row["Quantity"].ToString();
+            
+            utilities.AdjustStock(stId, "ADD", qty, transaction);
         }
     }
 
@@ -489,7 +509,7 @@
         float octReEmb = float.TryParse(model.dict["OctReEmbAmount"], out var ore) ? ore : 0;
 
         // Calculate final net amount
-        float netAmount = totalAmount + gstAmount - discount + addLess + rounding + octReEmb;
+        float netAmount = totalAmount - discount + addLess + rounding + octReEmb;
         model.dict["NetAmount"] = netAmount.ToString("F2");
 
         StateHasChanged();

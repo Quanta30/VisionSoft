@@ -12,26 +12,77 @@
 <T_Frm FormName="Product Master">
     <ChildContent>
         <T_Row>
-            <T_Input Title="Product Code *" ReadOnly="true" @bind-Value="@model.dict["ProductCode"]" ColSize="col-md-2" />
-            <T_Input Title="Product Name *" @bind-Value="@model.dict["ProductName"]" MaxLength="50" ColSize="col-md-4" />
-            <T_RInput Title="Company" @bind-Value="@model.dict["CompanyCode"]" ColSize="col-md-3"
-                      TableName="CompanyMaster" PrimaryColumn="CompanyCode" DisplayColumn="CompanyName" />
-            <T_RInput Title="GST Category" @bind-Value="@model.dict["GSTCategoryCode"]" ColSize="col-md-3"
-                      TableName="GstCategoryMaster" PrimaryColumn="GSTCategoryCode" DisplayColumn="GSTCategoryName" />
+            <T_Input Title="Product Code *" ReadOnly="true" 
+                     @bind-Value="@model.dict["ProductCode"]" 
+                     ColSize="col-md-2" />
+            <T_Input Title="Product Name *" 
+                     @bind-Value="@model.dict["ProductName"]" 
+                     MaxLength="50" ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(1))
+                     @ref="firstReference" />
+            <T_RInput Title="Company" 
+                      @bind-Value="@model.dict["CompanyCode"]" 
+                      ColSize="col-md-3"
+                      TableName="CompanyMaster" 
+                      PrimaryColumn="CompanyCode" 
+                      DisplayColumn="CompanyName"
+                      GetInputReference="getInputReferences"
+                      NextReference=@(GetRef(2)) />
+            <T_RInput Title="GST Category" 
+                      @bind-Value="@model.dict["GSTCategoryCode"]" 
+                      ColSize="col-md-3"
+                      TableName="GstCategoryMaster" 
+                      PrimaryColumn="GSTCategoryCode" 
+                      DisplayColumn="GSTCategoryName"
+                      GetInputReference="getInputReferences"
+                      NextReference=@(GetRef(3)) />
         </T_Row>
         <T_Row>
-            <T_Input Title="HSN Code" @bind-Value="@model.dict["HSNCode"]" MaxLength="50" ColSize="col-md-3" />
-            <T_Input Title="Description" @bind-Value="@model.dict["Description"]" MaxLength="500" ColSize="col-md-6" />
-            <T_Input Title="Warranty (Months)" Type="number" @bind-Value="@model.dict["Warranty"]" ColSize="col-md-3" />
+            <T_Input Title="HSN Code" 
+                     @bind-Value="@model.dict["HSNCode"]" 
+                     MaxLength="50" ColSize="col-md-3"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(4)) />
+            <T_Input Title="Description" 
+                     @bind-Value="@model.dict["Description"]" 
+                     MaxLength="500" ColSize="col-md-6"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(5)) />
+            <T_Input Title="Warranty (Months)" Type="number" 
+                     @bind-Value="@model.dict["Warranty"]" 
+                     ColSize="col-md-3"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(6)) />
         </T_Row>
         <T_Row>
-            <T_Checkbox Title="Maintain Stock" @bind-Value="@model.dict["MaintainStock"]" ColSize="col-md-3" />
-            <T_Input Title="Online Calls" Type="number" @bind-Value="@model.dict["OnlineCalls"]" ColSize="col-md-3" />
-            <T_Input Title="Onsite Calls" Type="number" @bind-Value="@model.dict["OnsiteCalls"]" ColSize="col-md-3" />
-            <T_Input Title="Training Calls" Type="number" @bind-Value="@model.dict["TrainingCalls"]" ColSize="col-md-3" />
+            <T_Checkbox Title="Maintain Stock" 
+                        @bind-Value="@model.dict["MaintainStock"]" 
+                        ColSize="col-md-3"
+                        GetInputReference="getInputReferences"
+                        NextReference=@(GetRef(7)) />
+            <T_Input Title="Online Calls" Type="number" 
+                     @bind-Value="@model.dict["OnlineCalls"]" 
+                     ColSize="col-md-3"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(8)) />
+            <T_Input Title="Onsite Calls" Type="number" 
+                     @bind-Value="@model.dict["OnsiteCalls"]" 
+                     ColSize="col-md-3"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(9)) />
+            <T_Input Title="Training Calls" Type="number" 
+                     @bind-Value="@model.dict["TrainingCalls"]" 
+                     ColSize="col-md-3"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(10)) />
         </T_Row>
         <T_Row>
-            <T_Input Title="Maximum Booking Stock" Type="number" @bind-Value="@model.dict["MaximumBookingStock"]" ColSize="col-md-3" />
+            <T_Input Title="Maximum Booking Stock" Type="number" 
+                     @bind-Value="@model.dict["MaximumBookingStock"]" 
+                     ColSize="col-md-3"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(0)) />
         </T_Row>
     </ChildContent>
 
@@ -44,54 +95,83 @@
 
 @code {
     private T_Msg Msg;
-    public DotNetObjectReference<ProductMaster> dotNetRef;
+    private DotNetObjectReference<ProductMaster> dotNetRef;
+    private T_Input firstReference;
 
     Model model = new Model("ProductMaster", "ProductCode");
     private bool isViewing = false;
     private bool isEditing = false;
 
+    // ============================= ELEMENT REFERENCES MANAGEMENT =============================
+    
+    public List<ElementReference> references = new List<ElementReference>();
+    
+    public void getInputReferences(ElementReference eref)
+    {
+        references.Add(eref);
+        Console.WriteLine($"Added reference #{references.Count - 1} for element");
+    }
+    
+    private ElementReference GetRef(int idx) 
+    {
+        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
+        return (idx >= 0 && idx < references.Count) 
+            ? references[idx] 
+            : default;
+    }
+
+    // ============================= COMPONENT LIFECYCLE METHODS =============================
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(firstRender)
         {
+            await firstReference.Focus();
+            Console.WriteLine("ProductMaster OnAfterRenderAsync executed");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
 
+    // ============================= CRUD OPERATIONS =============================
+
     [JSInvokable]
     public async Task HandleSave()
     {
-        try
-        {
-            if (!ValidateForm()) return;
-
-            bool success = isEditing
-                ? model.Update()
-                : model.Save();
-
-            if (success)
-            {
-                await Msg.Success();
-
-                if (!isEditing)
-                {
-                    HandleClear();
-                }
-
-                isEditing = false;
-            }
-            else
-            {
-                await Msg.SaveError();
-            }
-        }
-        catch (Exception ex)
+        if (!ValidateForm())
         {
             await Msg.SaveError();
-            Console.WriteLine($"Error saving Product Master record: {ex.Message}");
         }
-        HandleClear();
+        else
+        {
+            try
+            {
+                bool success = isEditing
+                    ? model.Update()
+                    : model.Save();
+
+                if (success)
+                {
+                    await Msg.Success();
+
+                    if (!isEditing)
+                    {
+                        HandleClear();
+                    }
+
+                    isEditing = false;
+                }
+                else
+                {
+                    await Msg.SaveError();
+                }
+            }
+            catch (Exception ex)
+            {
+                await Msg.SaveError();
+                Console.WriteLine($"Error saving Product Master record: {ex.Message}");
+            }
+        }
     }
 
     [JSInvokable]
@@ -99,6 +179,10 @@
     {
         model.Clear();
         isEditing = false;
+        
+        // Clear references
+        references.Clear();
+        
         StateHasChanged();
     }
 
@@ -115,7 +199,9 @@
         {
             isEditing = true;
             isViewing = false;
+
             model.Populate(row);
+
             StateHasChanged();
         }
         catch (Exception ex)
@@ -130,12 +216,62 @@
         StateHasChanged();
     }
 
+    // ============================= VALIDATION =============================
+
     private bool ValidateForm()
     {
         var errors = new List<string>();
 
+        // Required field validations
+        if (string.IsNullOrWhiteSpace(model.dict["ProductCode"])) 
+            errors.Add("Product Code is required");
+
         if (string.IsNullOrWhiteSpace(model.dict["ProductName"])) 
             errors.Add("Product Name is required");
+
+        // Length validations
+        if (!string.IsNullOrWhiteSpace(model.dict["ProductName"]) && model.dict["ProductName"].Length > 50)
+            errors.Add("Product Name cannot exceed 50 characters");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["HSNCode"]) && model.dict["HSNCode"].Length > 50)
+            errors.Add("HSN Code cannot exceed 50 characters");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["Description"]) && model.dict["Description"].Length > 500)
+            errors.Add("Description cannot exceed 500 characters");
+
+        // Numeric validations
+        if (!string.IsNullOrWhiteSpace(model.dict["Warranty"]) && 
+            (!int.TryParse(model.dict["Warranty"], out var warranty) || warranty < 0))
+            errors.Add("Warranty must be a valid positive number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["OnlineCalls"]) && 
+            (!int.TryParse(model.dict["OnlineCalls"], out var onlineCalls) || onlineCalls < 0))
+            errors.Add("Online Calls must be a valid positive number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["OnsiteCalls"]) && 
+            (!int.TryParse(model.dict["OnsiteCalls"], out var onsiteCalls) || onsiteCalls < 0))
+            errors.Add("Onsite Calls must be a valid positive number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["TrainingCalls"]) && 
+            (!int.TryParse(model.dict["TrainingCalls"], out var trainingCalls) || trainingCalls < 0))
+            errors.Add("Training Calls must be a valid positive number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["MaximumBookingStock"]) && 
+            (!int.TryParse(model.dict["MaximumBookingStock"], out var maxStock) || maxStock < 0))
+            errors.Add("Maximum Booking Stock must be a valid positive number");
+
+        // Code validations
+        if (!string.IsNullOrWhiteSpace(model.dict["ProductCode"]) && 
+            !int.TryParse(model.dict["ProductCode"], out _))
+            errors.Add("Product Code must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["CompanyCode"]) && 
+            !int.TryParse(model.dict["CompanyCode"], out _))
+            errors.Add("Company Code must be a valid number");
+
+        if (!string.IsNullOrWhiteSpace(model.dict["GSTCategoryCode"]) && 
+            !int.TryParse(model.dict["GSTCategoryCode"], out _))
+            errors.Add("GST Category Code must be a valid number");
 
         if (errors.Any())
         {
@@ -146,6 +282,8 @@
 
         return true;
     }
+
+    // ============================= CLEANUP =============================
 
     public void Dispose()
     {

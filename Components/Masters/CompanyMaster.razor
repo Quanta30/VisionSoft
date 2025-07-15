@@ -12,12 +12,27 @@
 <T_Frm FormName="Company Master">
     <ChildContent>
         <T_Row>
-            <T_Input Title="Company Code *" ReadOnly="true" @bind-Value="@model.dict["CompanyCode"]" ColSize="col-md-4" />
-            <T_Input Title="Company Name *" @bind-Value="@model.dict["CompanyName"]" MaxLength="50" ColSize="col-md-4" />
-            <T_Checkbox Title="Permanant Lock" @bind-Value="@model.dict["CompanyPermanantLock"]" ColSize="col-md-4" />
+            <T_Input Title="Company Code *" ReadOnly="true" 
+                     @bind-Value="@model.dict["CompanyCode"]" 
+                     ColSize="col-md-4" />
+            <T_Input Title="Company Name *" 
+                     @bind-Value="@model.dict["CompanyName"]" 
+                     MaxLength="50" ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(1))
+                     @ref="firstReference" />
+            <T_Checkbox Title="Permanant Lock" 
+                        @bind-Value="@model.dict["CompanyPermanantLock"]" 
+                        ColSize="col-md-4"
+                        GetInputReference="getInputReferences"
+                        NextReference=@(GetRef(2)) />
         </T_Row>
         <T_Row>
-            <T_Input Title="Owner Mobile No" @bind-Value="@model.dict["OwnerMobileNo"]" MaxLength="50" ColSize="col-md-4" />
+            <T_Input Title="Owner Mobile No" 
+                     @bind-Value="@model.dict["OwnerMobileNo"]" 
+                     MaxLength="50" ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(0)) />
         </T_Row>
     </ChildContent>
 
@@ -30,54 +45,83 @@
 
 @code {
     private T_Msg Msg;
-    public DotNetObjectReference<CompanyMaster> dotNetRef;
+    private DotNetObjectReference<CompanyMaster> dotNetRef;
+    private T_Input firstReference;
 
     Model model = new Model("CompanyMaster", "CompanyCode");
     private bool isViewing = false;
     private bool isEditing = false;
 
+    // ============================= ELEMENT REFERENCES MANAGEMENT =============================
+    
+    public List<ElementReference> references = new List<ElementReference>();
+    
+    public void getInputReferences(ElementReference eref)
+    {
+        references.Add(eref);
+        Console.WriteLine($"Added reference #{references.Count - 1} for element");
+    }
+    
+    private ElementReference GetRef(int idx) 
+    {
+        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
+        return (idx >= 0 && idx < references.Count) 
+            ? references[idx] 
+            : default;
+    }
+
+    // ============================= COMPONENT LIFECYCLE METHODS =============================
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(firstRender)
         {
+            await firstReference.Focus();
+            Console.WriteLine("CompanyMaster OnAfterRenderAsync executed");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
 
+    // ============================= CRUD OPERATIONS =============================
+
     [JSInvokable]
     public async Task HandleSave()
     {
-        try
-        {
-            if (!ValidateForm()) return;
-
-            bool success = isEditing
-                ? model.Update()
-                : model.Save();
-
-            if (success)
-            {
-                await Msg.Success();
-
-                if (!isEditing)
-                {
-                    HandleClear();
-                }
-
-                isEditing = false;
-            }
-            else
-            {
-                await Msg.SaveError();
-            }
-        }
-        catch (Exception ex)
+        if (!ValidateForm())
         {
             await Msg.SaveError();
-            Console.WriteLine($"Error saving Company Master record: {ex.Message}");
         }
-        HandleClear();
+        else
+        {
+            try
+            {
+                bool success = isEditing
+                    ? model.Update()
+                    : model.Save();
+
+                if (success)
+                {
+                    await Msg.Success();
+
+                    if (!isEditing)
+                    {
+                        HandleClear();
+                    }
+
+                    isEditing = false;
+                }
+                else
+                {
+                    await Msg.SaveError();
+                }
+            }
+            catch (Exception ex)
+            {
+                await Msg.SaveError();
+                Console.WriteLine($"Error saving Company Master record: {ex.Message}");
+            }
+        }
     }
 
     [JSInvokable]
@@ -85,6 +129,10 @@
     {
         model.Clear();
         isEditing = false;
+        
+        // Clear references
+        references.Clear();
+        
         StateHasChanged();
     }
 
@@ -101,7 +149,9 @@
         {
             isEditing = true;
             isViewing = false;
+
             model.Populate(row);
+
             StateHasChanged();
         }
         catch (Exception ex)
@@ -116,18 +166,39 @@
         StateHasChanged();
     }
 
+    // ============================= VALIDATION =============================
+
     private bool ValidateForm()
     {
         var errors = new List<string>();
 
+        // Required field validations
+        if (string.IsNullOrWhiteSpace(model.dict["CompanyCode"])) 
+            errors.Add("Company Code is required");
+
         if (string.IsNullOrWhiteSpace(model.dict["CompanyName"])) 
             errors.Add("Company Name is required");
 
+        // Length validations
         if (!string.IsNullOrWhiteSpace(model.dict["CompanyName"]) && model.dict["CompanyName"].Length > 50)
             errors.Add("Company Name cannot exceed 50 characters");
 
         if (!string.IsNullOrWhiteSpace(model.dict["OwnerMobileNo"]) && model.dict["OwnerMobileNo"].Length > 50)
             errors.Add("Owner Mobile No cannot exceed 50 characters");
+
+        // Mobile number format validation (optional but recommended)
+        if (!string.IsNullOrWhiteSpace(model.dict["OwnerMobileNo"]) && 
+            !System.Text.RegularExpressions.Regex.IsMatch(model.dict["OwnerMobileNo"], @"^[0-9]{10}$"))
+        {
+            errors.Add("Owner Mobile No must be a valid 10-digit number");
+        }
+
+        // Numeric validation for CompanyCode
+        if (!string.IsNullOrWhiteSpace(model.dict["CompanyCode"]) && 
+            !int.TryParse(model.dict["CompanyCode"], out _))
+        {
+            errors.Add("Company Code must be a valid number");
+        }
 
         if (errors.Any())
         {
@@ -138,6 +209,8 @@
 
         return true;
     }
+
+    // ============================= CLEANUP =============================
 
     public void Dispose()
     {

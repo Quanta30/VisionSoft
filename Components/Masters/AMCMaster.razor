@@ -12,27 +12,76 @@
 <T_Frm FormName="AMC Master">
     <ChildContent>
         <T_Row>
-            <T_Input Title="Entry No *" ReadOnly="true" @bind-Value="@model.dict["EntryNo"]"  />
-            <T_Input Title="Entry Date" Type="date" @bind-Value="@model.dict["EntryDate"]" />
-            <T_Input Title="Party Code"  Type="number" @bind-Value="@model.dict["PartyCode"]" />
+            <T_Input Title="Entry No *" ReadOnly="true" 
+                     @bind-Value="@model.dict["EntryNo"]"
+                     ColSize="col-md-4" />
+            <T_Input Title="Entry Date" Type="date" 
+                     @bind-Value="@model.dict["EntryDate"]"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(1))
+                     @ref="firstReference" />
+            <T_Input Title="Party Code" Type="number" 
+                     @bind-Value="@model.dict["PartyCode"]"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(2)) />
         </T_Row>    
         <T_Row>
-            <T_Input Title="City" @bind-Value="@model.dict["City"]" MaxLength="50" />
-            <T_RInput Title="Product" TableName="ProductMaster" DisplayColumn="ProductName" PrimaryColumn="ProductCode"
-                      @bind-Value="@model.dict["ProductCode"]"  />
-            <T_Input Title="Installation Date" Type="date" @bind-Value="@model.dict["InstallationDate"]"  />
+            <T_Input Title="City" 
+                     @bind-Value="@model.dict["City"]" 
+                     MaxLength="50"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(3)) />
+            <T_RInput Title="Product" 
+                      TableName="ProductMaster" 
+                      DisplayColumn="ProductName" 
+                      PrimaryColumn="ProductCode"
+                      @bind-Value="@model.dict["ProductCode"]"
+                      ColSize="col-md-4"
+                      GetInputReference="getInputReferences"
+                      NextReference=@(GetRef(4)) />
+            <T_Input Title="Installation Date" Type="date" 
+                     @bind-Value="@model.dict["InstallationDate"]"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(5)) />
         </T_Row>
         <T_Row>
-            <T_Input Title="No of Nodes" Type="number" Min="0" @bind-Value="@model.dict["NoOfNode"]"  />
-            <T_Input Title="AMC From Date" Type="date" @bind-Value="@model.dict["AMCFromDate"]"  />
-            <T_Input Title="AMC To Date" Type="date" @bind-Value="@model.dict["AMCToDate"]"  />
+            <T_Input Title="No of Nodes" Type="number" Min="0" 
+                     @bind-Value="@model.dict["NoOfNode"]"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(6)) />
+            <T_Input Title="AMC From Date" Type="date" 
+                     @bind-Value="@model.dict["AMCFromDate"]"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(7)) />
+            <T_Input Title="AMC To Date" Type="date" 
+                     @bind-Value="@model.dict["AMCToDate"]"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(8)) />
         </T_Row>
         <T_Row>
-            <T_Input Title="Online Calls" Type="number" Min="0" @bind-Value="@model.dict["OnlineCall"]"  />
-            <T_Input Title="Onsite Calls" Type="number" Min="0" @bind-Value="@model.dict["OnsiteCall"]"  />
-            <T_Input Title="AMCAmount" Type="number" Min="0" @bind-Value="@model.dict["AMCAmount"]"  />
+            <T_Input Title="Online Calls" Type="number" Min="0" 
+                     @bind-Value="@model.dict["OnlineCall"]"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(9)) />
+            <T_Input Title="Onsite Calls" Type="number" Min="0" 
+                     @bind-Value="@model.dict["OnsiteCall"]"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(10)) />
+            <T_Input Title="AMC Amount" Type="number" Min="0" Step="0.01"
+                     @bind-Value="@model.dict["AMCAmount"]"
+                     ColSize="col-md-4"
+                     GetInputReference="getInputReferences"
+                     NextReference=@(GetRef(0)) />
         </T_Row>    
-
     </ChildContent>
 
     <CardFooterContent>
@@ -44,51 +93,82 @@
 
 @code {
     private T_Msg Msg;
-    public DotNetObjectReference<AMCMaster> dotNetRef;
+    private DotNetObjectReference<AMCMaster> dotNetRef;
+    private T_Input firstReference;
 
     Model model = new Model("AMCMaster", "EntryNo");
     private bool isViewing = false;
     private bool isEditing = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender){
-        if(firstRender){
-            Console.WriteLine("OnAfterRenderAsync executed");
+    // ============================= ELEMENT REFERENCES MANAGEMENT =============================
+    
+    public List<ElementReference> references = new List<ElementReference>();
+    
+    public void getInputReferences(ElementReference eref)
+    {
+        references.Add(eref);
+        Console.WriteLine($"Added reference #{references.Count - 1} for element");
+    }
+    
+    private ElementReference GetRef(int idx) 
+    {
+        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
+        return (idx >= 0 && idx < references.Count) 
+            ? references[idx] 
+            : default;
+    }
+
+    // ============================= COMPONENT LIFECYCLE METHODS =============================
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            await firstReference.Focus();
+            Console.WriteLine("AMCMaster OnAfterRenderAsync executed");
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
 
+    // ============================= CRUD OPERATIONS =============================
+
     [JSInvokable]
     public async Task HandleSave()
     {
-        try
-        {
-            if (!ValidateForm()) return;
-
-            bool success = isEditing
-                ?  model.Update()
-                :  model.Save();
-
-            if (success)
-            {
-                await Msg.Success();
-
-                if (!isEditing)
-                {
-                    HandleClear();
-                }
-
-                isEditing = false;
-            }
-            else
-            {
-                await Msg.SaveError();
-            }
-        }
-        catch (Exception ex)
+        if (!ValidateForm())
         {
             await Msg.SaveError();
-            Console.WriteLine($"Error saving AMC record: {ex.Message}");
+        }
+        else
+        {
+            try
+            {
+                bool success = isEditing
+                    ? model.Update()
+                    : model.Save();
+
+                if (success)
+                {
+                    await Msg.Success();
+
+                    if (!isEditing)
+                    {
+                        HandleClear();
+                    }
+
+                    isEditing = false;
+                }
+                else
+                {
+                    await Msg.SaveError();
+                }
+            }
+            catch (Exception ex)
+            {
+                await Msg.SaveError();
+                Console.WriteLine($"Error saving AMC record: {ex.Message}");
+            }
         }
     }
 
@@ -97,6 +177,10 @@
     {
         model.Clear();
         isEditing = false;
+        
+        // Clear references
+        references.Clear();
+        
         StateHasChanged();
     }
 
@@ -111,7 +195,6 @@
     public void HandlePrint()
     {
         Console.WriteLine("Print AMC Master");
-        
         // implement printing logic if needed
         StateHasChanged();
     }
@@ -123,16 +206,15 @@
             isEditing = true;
             isViewing = false;
 
-            foreach (var key in model.dict.Keys.ToList())
-            {
-                model.dict[key] = row[key]?.ToString() ?? model.dict[key];
-            }
+            model.Populate(row);
 
             // Convert known dates to formatted string
             model.dict["EntryDate"] = ConvertDate(row["EntryDate"]);
             model.dict["InstallationDate"] = ConvertDate(row["InstallationDate"]);
             model.dict["AMCFromDate"] = ConvertDate(row["AMCFromDate"]);
             model.dict["AMCToDate"] = ConvertDate(row["AMCToDate"]);
+
+            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -150,19 +232,26 @@
     public void HandleClose()
     {
         isViewing = false;
+        StateHasChanged();
     }
 
-
+    // ============================= VALIDATION =============================
 
     private bool ValidateForm()
     {
         var errors = new List<string>();
 
-        if (string.IsNullOrWhiteSpace(model.dict["EntryNo"])) errors.Add("Entry No is required");
-        if (string.IsNullOrWhiteSpace(model.dict["PartyCode"])) errors.Add("Party is required");
-        if (string.IsNullOrWhiteSpace(model.dict["ProductCode"])) errors.Add("Product is required");
-        if (string.IsNullOrWhiteSpace(model.dict["City"])) errors.Add("City is required");
+        // Required field validations
+        if (string.IsNullOrWhiteSpace(model.dict["EntryNo"])) 
+            errors.Add("Entry No is required");
+        if (string.IsNullOrWhiteSpace(model.dict["PartyCode"])) 
+            errors.Add("Party Code is required");
+        if (string.IsNullOrWhiteSpace(model.dict["ProductCode"])) 
+            errors.Add("Product is required");
+        if (string.IsNullOrWhiteSpace(model.dict["City"])) 
+            errors.Add("City is required");
 
+        // Numeric validations
         if (!decimal.TryParse(model.dict["AMCAmount"], out var amcAmount) || amcAmount < 0)
             errors.Add("AMC Amount must be a valid positive number");
 
@@ -175,12 +264,20 @@
         if (!int.TryParse(model.dict["NoOfNode"], out var noOfNode) || noOfNode < 1)
             errors.Add("Number of Nodes must be at least 1");
 
+        if (!int.TryParse(model.dict["PartyCode"], out var partyCode) || partyCode < 1)
+            errors.Add("Party Code must be a valid positive number");
+
+        // Date validations
         if (DateTime.TryParse(model.dict["AMCFromDate"], out var fromDate) &&
             DateTime.TryParse(model.dict["AMCToDate"], out var toDate) &&
             fromDate > toDate)
         {
             errors.Add("AMC To Date must be after AMC From Date");
         }
+
+        // Length validations
+        if (!string.IsNullOrWhiteSpace(model.dict["City"]) && model.dict["City"].Length > 50)
+            errors.Add("City cannot exceed 50 characters");
 
         if (errors.Any())
         {
@@ -192,9 +289,10 @@
         return true;
     }
 
+    // ============================= CLEANUP =============================
+
     public void Dispose()
     {
         dotNetRef?.Dispose();
     }
-
 }

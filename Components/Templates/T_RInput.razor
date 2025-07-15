@@ -35,7 +35,9 @@ else if(Layout == 1){
 
 @if(isViewing){
 <FrmView TableName="@TableName" SelectClicked="HandleRowSelected" 
-              OnClosed="Closed"  searchText="@_displayValue"/>
+              OnClosed="Closed"  searchText="@_displayValue" PrimaryKeyColumn=@PrimaryColumn
+              InitialFilters=@($"{PrimaryColumn}:{DisplayColumn}")
+              />
 }
 
 @code {
@@ -50,6 +52,7 @@ else if(Layout == 1){
     [Parameter] public string PrimaryColumn { get; set; } = string.Empty;
     [Parameter] public string Placeholder { get; set; } = "Enter value";
     [Parameter] public string ColSize { get; set; } = "col-md-4";
+    [Parameter] public string InitialFilters{get; set;}
 
     //Boolean Parameter Variables
     [Parameter] public bool ReadOnly { get; set; } = false;
@@ -68,6 +71,7 @@ else if(Layout == 1){
         if (!string.IsNullOrWhiteSpace(Value) && !string.IsNullOrWhiteSpace(TableName) && !string.IsNullOrWhiteSpace(DisplayColumn))
         {
             await LoadDisplayValue();
+            InitialFilters = DisplayColumn;
         }
         else
         {

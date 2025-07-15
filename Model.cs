@@ -52,20 +52,17 @@ public class Model
         foreach (var kvp in dict)
         {
 
-            if (kvp.Key != PrimaryKeyColumn)
-            {
                 if (start)
                 {
                     setQuantity.Append($"{kvp.Key}='{kvp.Value}'");
                     start = false;
                 }
                 else setQuantity.Append($",{kvp.Key}='{kvp.Value}'");
-            }
         }
         string Query = $@"
                 UPDATE {TableName}
                 SET {setQuantity} 
-                WHERE {PrimaryKeyColumn}='{dict[PrimaryKeyColumn]}'";
+                WHERE {PrimaryKeyColumn}='{dict2[PrimaryKeyColumn]}'";
 
         return db.ExecuteQuery(Query);
     }
@@ -77,20 +74,18 @@ public class Model
         foreach (var kvp in dict)
         {
 
-            if (kvp.Key != PrimaryKeyColumn)
-            {
                 if (start)
                 {
                     setQuantity.Append($"{kvp.Key}='{kvp.Value}'");
                     start = false;
                 }
                 else setQuantity.Append($",{kvp.Key}='{kvp.Value}'");
-            }
+
         }
         string Query = $@"
                 UPDATE {TableName}
                 SET {setQuantity} 
-                WHERE {PrimaryKeyColumn}='{dict[PrimaryKeyColumn]}'";
+                WHERE {PrimaryKeyColumn}='{dict2[PrimaryKeyColumn]}'";
 
         transaction.AddQuery(Query);
     }
@@ -209,8 +204,9 @@ public class Model
         string query = $@"
             SELECT MAX(CAST(SUBSTRING({PrimaryKeyColumn}, {PrimaryKeyPrefix.Length + 1}, LEN({PrimaryKeyColumn})) AS INT))
             FROM {TableName}
-            WHERE {PrimaryKeyColumn} LIKE '{PrimaryKeyPrefix}%'";
+            WHERE {PrimaryKeyColumn} LIKE '{prefix}%'";
 
+        //For debuggin and getting the total count with given prefix
         string checkQuery = $@"
                     Select Count({PrimaryKeyColumn}) from {TableName} 
                     where {PrimaryKeyColumn} Like '{prefix}%'";

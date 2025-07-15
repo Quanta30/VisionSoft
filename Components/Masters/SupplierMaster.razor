@@ -1,153 +1,133 @@
-@page "/suppliermaster"
-@inject IJSRuntime JS
 @using System.Data
 @rendermode InteractiveServer
 
-<T_Msg @ref="Msg" />
-@if (isViewing)
-{
-    <FrmView TableName="SupplierMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
-}
-
-<T_Frm FormName="Supplier Master">
-    <ChildContent>
-        <T_Row>
-            <T_Input Title="Supplier Code *" ReadOnly="true" @bind-Value="@model.dict["SupplierCode"]" ColSize="col-md-2" />
-            <T_RInput Title="Ledger" @bind-Value="@model.dict["LedgerCode"]" ColSize="col-md-2"
-                      TableName="LedgerMaster" PrimaryColumn="LedgerCode" DisplayColumn="LedgerName" />
-            <T_Input Title="Supplier Name *" @bind-Value="@model.dict["SupplierName"]" MaxLength="50" ColSize="col-md-4" />
-            <T_Input Title="Supplier City" @bind-Value="@model.dict["SupplierCity"]" MaxLength="50" ColSize="col-md-2" />
-            <T_Input Title="Supplier Phone No" @bind-Value="@model.dict["SupplierPhoneNo"]" MaxLength="50" ColSize="col-md-2" />
-        </T_Row>
-        <T_Row>
-            <T_Input Title="Supplier Mobile No" @bind-Value="@model.dict["SupplierMobileNo"]" MaxLength="50" ColSize="col-md-2" />
-            <T_Input Title="Supplier Email" @bind-Value="@model.dict["SupplierEmail"]" MaxLength="50" ColSize="col-md-2" />
-            <T_Input Title="Supplier GST No" @bind-Value="@model.dict["SupplierGSTNo"]" MaxLength="50" ColSize="col-md-2" />
-            <T_Input Title="Supplier PAN No" @bind-Value="@model.dict["SupplierPanNo"]" MaxLength="50" ColSize="col-md-2" />
-            <T_Input Title="Bill Mode" @bind-Value="@model.dict["BillMode"]" MaxLength="50" ColSize="col-md-2" />
-            <T_Input Title="Supplier Series Name" @bind-Value="@model.dict["SupplierSeriesName"]" MaxLength="50" ColSize="col-md-2" />
-        </T_Row>
-        <T_Row>
-            <T_RInput Title="Supplier State" @bind-Value="@model.dict["SupplierStateCode"]" ColSize="col-md-2"
-                      TableName="GSTStateMaster" PrimaryColumn="StateCode" DisplayColumn="StateName" />
-            <T_Input Title="Credit Days" Type="number" @bind-Value="@model.dict["CreditDays"]" ColSize="col-md-2" />
-        </T_Row>
-    </ChildContent>
-
-    <CardFooterContent>
-        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
-        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
-        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
-    </CardFooterContent>
-</T_Frm>
+<div class="supplier-master-section">
+    <hr class="fade-divider my-4" />
+    <h5 class="mb-3">Supplier Details</h5>
+    
+    <!-- Supplier Master fields -->
+    <T_Row>
+        <T_Input Title="Supplier Code *" ReadOnly="true"
+                 @bind-Value="@supplierModel.dict["SupplierCode"]"
+                 ColSize="col-md-3" />
+        <T_Input Title="Supplier Name *"
+                 @bind-Value="@supplierModel.dict["SupplierName"]"
+                 MaxLength="50" ColSize="col-md-6"
+                 GetInputReference="GetInputReference"
+                 NextReference=@(GetRef(1))
+                 @ref = "firstSupplierReference"
+                  />
+        <T_Input Title="City" @bind-Value="@supplierModel.dict["SupplierCity"]" 
+                 MaxLength="50" ColSize="col-md-3"
+                 GetInputReference="GetInputReference"
+                 NextReference=@(GetRef(2)) />
+    </T_Row>
+    
+    <T_Row>
+        <T_Input Title="Phone No." @bind-Value="@supplierModel.dict["SupplierPhoneNo"]" 
+                 MaxLength="50" ColSize="col-md-3"
+                 GetInputReference="GetInputReference"
+                 NextReference=@(GetRef(3)) />
+        <T_Input Title="Mobile No." @bind-Value="@supplierModel.dict["SupplierMobileNo"]" 
+                 MaxLength="50" ColSize="col-md-3"
+                 GetInputReference="GetInputReference"
+                 NextReference=@(GetRef(4)) />
+        <T_Input Title="Email" @bind-Value="@supplierModel.dict["SupplierEmail"]" 
+                 MaxLength="50" ColSize="col-md-3"
+                 GetInputReference="GetInputReference"
+                 NextReference=@(GetRef(5)) />
+        <T_Input Title="GST No." @bind-Value="@supplierModel.dict["SupplierGSTNo"]" 
+                 MaxLength="50" ColSize="col-md-3"
+                 GetInputReference="GetInputReference"
+                 NextReference=@(GetRef(6)) />
+    </T_Row>
+    
+    <T_Row>
+        <T_Input Title="PAN No." @bind-Value="@supplierModel.dict["SupplierPanNo"]" 
+                 MaxLength="50" ColSize="col-md-4"
+                 GetInputReference="GetInputReference"
+                 NextReference=@(GetRef(7)) />
+        <T_Input Title="Credit Days" Type="number" 
+                 @bind-Value="@supplierModel.dict["CreditDays"]" ColSize="col-md-4"
+                 GetInputReference="GetInputReference"
+                 NextReference=@(GetRef(8)) />
+        <T_Input Title="State Code" Type="number" 
+                 @bind-Value="@supplierModel.dict["SupplierStateCode"]" ColSize="col-md-4"
+                 GetInputReference="GetInputReference"
+                 NextReference=@(GetRef(0)) />
+    </T_Row>
+</div>
 
 @code {
-    private T_Msg Msg;
-    public DotNetObjectReference<SupplierMaster> dotNetRef;
-
-    Model model = new Model("SupplierMaster", "SupplierCode");
-    private bool isViewing = false;
-    private bool isEditing = false;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    [Parameter] public Model supplierModel { get; set; }
+    [Parameter] public EventCallback<Model> supplierModelChanged { get; set; }
+    [Parameter] public EventCallback<T_Input> StartReference{ get; set; }
+    
+    private ClsDatabase db = new ClsDatabase();
+    public T_Input firstSupplierReference;
+    public List<ElementReference> references = new List<ElementReference>();
+    
+    protected override void OnInitialized()
     {
-        if(firstRender)
+        if (supplierModel == null)
         {
-            dotNetRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+            supplierModel = new Model("SupplierMaster", "SupplierCode");
         }
     }
 
-    [JSInvokable]
-    public async Task HandleSave()
-    {
-        try
-        {
-            if (!ValidateForm()) return;
-
-            bool success = isEditing
-                ? model.Update()
-                : model.Save();
-
-            if (success)
-            {
-                await Msg.Success();
-
-                if (!isEditing)
-                {
-                    HandleClear();
-                }
-
-                isEditing = false;
-            }
-            else
-            {
-                await Msg.SaveError();
-            }
-        }
-        catch (Exception ex)
-        {
-            await Msg.SaveError();
-            Console.WriteLine($"Error saving Supplier Master record: {ex.Message}");
-        }
-        HandleClear();
-    }
-
-    [JSInvokable]
-    public void HandleClear()
-    {
-        model.Clear();
-        isEditing = false;
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public void HandleView()
-    {
-        isViewing = !isViewing;
-        StateHasChanged();
-    }
-
-    public async Task HandleEdit(DataRow row)
-    {
-        try
-        {
-            isEditing = true;
-            isViewing = false;
-            model.Populate(row);
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading Supplier Master record: {ex.Message}");
+    protected override void OnAfterRender(bool firstRender){
+        if(firstRender){
+        StartReference.InvokeAsync(firstSupplierReference);
         }
     }
 
-    public void HandleClose()
+    public void GetInputReference(ElementReference eref)
     {
-        isViewing = false;
-        StateHasChanged();
+        references.Add(eref);
+        Console.WriteLine($"Added reference #{references.Count - 1} for element");
     }
 
-    private bool ValidateForm()
+
+    private ElementReference GetRef(int idx) 
+    {
+        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
+        return (idx >= 0 && idx < references.Count) 
+            ? references[idx] 
+            : default;
+    }
+    
+    // Method to validate supplier fields
+    public List<string> ValidateSupplier()
     {
         var errors = new List<string>();
-
-        if (string.IsNullOrWhiteSpace(model.dict["SupplierName"])) 
+        
+        if (string.IsNullOrWhiteSpace(supplierModel.dict["SupplierName"]))
             errors.Add("Supplier Name is required");
-
-        if (errors.Any())
-        {
-            var message = string.Join(", ", errors);
-            Msg.Show(message, "danger", "bi-exclamation-triangle");
-            return false;
-        }
-
-        return true;
+            
+        return errors;
     }
-
-    public void Dispose()
+    
+    // Method to clear supplier data
+    public void ClearSupplier()
     {
-        dotNetRef.Dispose();
+        supplierModel.Clear();
+    }
+    
+    // Method to populate supplier data
+    public void PopulateSupplier(DataRow row)
+    {
+        supplierModel.Populate(row);
+    }
+    
+    // Method to save supplier data
+    public bool SaveSupplier()
+    {
+        return supplierModel.Save();
+    }
+    
+    // Method to update supplier data
+    public bool UpdateSupplier()
+    {
+        return supplierModel.Update();
     }
 }

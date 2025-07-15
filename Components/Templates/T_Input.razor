@@ -170,10 +170,6 @@ else if(Layout == 3){
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {   
 
-        if(firstRender && FocusDefault){
-            Console.WriteLine("Calling FocusDefault");   
-            await reference.FocusAsync();
-        }
         if(firstRender && GetInputReference.HasDelegate){
             Console.WriteLine("After Render Async");
             await GetInputReference.InvokeAsync(reference);

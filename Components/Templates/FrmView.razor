@@ -200,6 +200,8 @@
     [Parameter] public string TableName { get; set; } = "";
     [Parameter] public string searchText{get; set;} = "";//Search Text is automatically inserted at the search input
     [Parameter] public string TableQuery{get; set;} = "";
+    [Parameter] public string InitialFilters{get; set;}
+    [Parameter] public string PrimaryKeyColumn{get; set;} = "";
 
     //EventCallback for Buttons Clicked
     [Parameter] public EventCallback OnClosed { get; set; }
@@ -207,6 +209,7 @@
     [Parameter] public EventCallback<DataRow> DeleteClicked {get; set; }
     
     [Parameter] public EventCallback<DataRow> SelectClicked {get; set; }
+    
     
     public string filterCondition = "like";
 
@@ -218,7 +221,7 @@
     private DataTable? TableData;
     private List<string> Columns = new();
     private HashSet<string> selectedColumns = new HashSet<string>();
-    private string PrimaryKeyColumn = "";
+    
     private bool IsLoading;
     
     private int selectedRowIndex = 0;//Row Index that is selected using keyboard
@@ -230,7 +233,11 @@
     private int totalRecords = 0;
     private Timer? searchTimer;
 
+    protected override void OnInitialized(){
+        if(InitialFilters== null){
 
+        }
+    }
 
     //Runs when Parameters are changed, First Render, Parent State Changed
     protected override async Task OnParametersSetAsync()
@@ -270,8 +277,20 @@
                             .Select(r => r["COLUMN_NAME"].ToString()!)
                             .ToList();
                 
-                PrimaryKeyColumn = Columns.FirstOrDefault() ?? "";
-                selectedColumns = new HashSet<string>(Columns);
+                if(PrimaryKeyColumn != null){
+                    selectedColumns = new HashSet<string>();
+                    selectedColumns.Add(PrimaryKeyColumn);
+                    if(InitialFilters != null){
+                        string[] filterArray = InitialFilters.Split(':');
+                        foreach(string filter in filterArray){
+                            selectedColumns.Add(filter);
+                        }
+                    }
+                }
+                else{
+                    PrimaryKeyColumn = Columns.FirstOrDefault() ?? "";
+                    selectedColumns = new HashSet<string>(Columns);
+                }
             }
             catch (Exception ex)
             {

@@ -4,7 +4,7 @@ using VisionSoft;
 
 public class Transaction
 {
-    private ConcurrentBag<string> queries = new ConcurrentBag<string>();
+    private List<string> queries = new List<string>();
     private ClsDatabase db = new ClsDatabase();
 
     public void AddQuery(string s)
@@ -15,7 +15,7 @@ public class Transaction
 
     public void ClearQuery()
     {
-        queries = new ConcurrentBag<string>(); // just reassign
+        queries.Clear();
     }
 
     public bool Execute()

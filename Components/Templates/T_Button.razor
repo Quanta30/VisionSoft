@@ -1,38 +1,39 @@
-<button  type="button" class="btn @bsCls" style="@Style" @onclick="Click" disabled="@Disabled">
-                @if (isClicked)
-                {
-                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                    <span>@spanText</span>
-                }
-                else
-                {
-                    <i class="bi bi-floppy"></i>
-                    <span>@Text</span>
-                }
+<button type="button" class="btn @bsCls" style="@Style; padding-top: 2px; padding-bottom: 2px;" @onclick="Click" disabled="@Disabled">
+    @if (isClicked)
+    {
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        <span>@spanText</span>
+    }
+    else
+    {
+        <div class="d-flex flex-column align-items-center p-1" style="line-height: 1;">
+            <div class="d-flex align-items-center">
+                <span style="line-height: 1;">@Text</span>
+            </div>
+            @if (!string.IsNullOrEmpty(Info))
+            {
+                <small class="@GetInfoTextClass()" style="font-size: 0.7rem; line-height: 0.9; margin-top:2px">@Info</small>
+            }
+        </div>
+    }
 </button>
-
-
 
 @code{
     [Parameter] public string Text {get; set;} = "";
-
     [Parameter] public string spanText{get; set;} = "";//Text to be shown when button is clicked
+    [Parameter] public string Info{get; set;} = "";//Info text to be shown below the main text
 
     //Properties
     [Parameter] public string btnType{get; set;} = "";//Blue, Save, Danger
     [Parameter] public int DelayTime{get; set;} = 0;
     [Parameter] public bool Disabled{get; set;} = false;
 
-  
     [Parameter] public string Style{get; set;} = "";
     //Event CallBack
     [Parameter] public EventCallback OnClick{get; set;}
 
-
     private bool isClicked = false; //Boolean to check whether button is Clicked
-
     private string bsCls = "btn-outline-secondary";//Bootstrap Css Code
-
 
     //Only run at the start first initializing the page/component
     protected override void OnInitialized(){
@@ -43,6 +44,18 @@
         if(spanText == "")spanText = Text;
     }
 
+    private string GetInfoTextClass()
+    {
+        if(btnType == "Save" || Text=="Save")
+            return "text-success-emphasis"; // Green for success buttons
+        else if(btnType == "Blue" || Text=="Edit" || Text == "Select")
+            return "text-primary-emphasis"; // Blue for primary buttons
+        else if(btnType == "Danger" || Text == "Cancel" || Text == "Remove" || Text == "Delete")
+            return "text-danger-emphasis"; // Red for danger buttons
+        else
+            return "text-secondary-emphasis"; // Gray for default buttons
+    }
+
     private async Task Click(){
         isClicked = true;
         Disabled=true;
@@ -51,5 +64,4 @@
         isClicked = false;
         Disabled=false;
     }
-    
 }

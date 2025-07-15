@@ -2,6 +2,7 @@
 @namespace VisionSoft.Components.Transactions.SalesBill
 @using Microsoft.AspNetCore.Components
 
+<T_Msg @ref="Msg"/>
 <tr>
     <!-- Remove Button -->
     <td>
@@ -42,7 +43,7 @@
     <td>
         <div style="width:70px">
             <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" 
-                     Placeholder="" ChangeFunction="OnChange" Type="Number" 
+                     Placeholder="" ChangeFunction="OnQuantityChange" Type="Number" 
                      GetInputReference="getInputReferences" NextReference=@(GetRef(3))/>
         </div>
     </td>
@@ -134,6 +135,7 @@
     public Model model = new("SalesBillDetails", "");
     private ClsDatabase db = new();
     private Utilities utilities = new();
+    private T_Msg Msg;
 
     // ============================= CALCULATION FIELDS =============================
     
@@ -272,8 +274,8 @@
         // Calculate amounts
         float gross = rate * qty;
         taxableAmount = gross - disc - (rate * free);
-        gst = taxableAmount * GetGstPercent() / 100f;
-        netAmount = taxableAmount + gst;
+        gst = taxableAmount - (taxableAmount * 100) / (100 + GetGstPercent());
+        netAmount = taxableAmount;
     }
 
     private float GetGstPercent() => GstCategoryCode switch
@@ -296,6 +298,15 @@
     {
         Calculate();
         OnCalculationChanged.InvokeAsync();
+    }
+
+    public void OnQuantityChange(string qty){
+        int CurrQty = Convert.ToInt32(db.GetScalar($"Select Quantity from PhysicalStock where StockId = {model.dict["StockId"]}"));
+        if(Convert.ToInt32(qty) > CurrQty){
+            Msg.Show($"Warning Insufficient Stock for\n{StockName}", "danger", "");
+        }
+        else Msg.Clear();
+        OnChange("");
     }
 
     // ============================= CRUD OPERATIONS =============================
@@ -352,6 +363,6 @@
 
     // ============================= PUBLIC GETTER METHODS =============================
     
-    public float GetTotalAmount() => netAmount;
+    public float GetTotalAmount() => taxableAmount;
     public float GetGstAmount() => gst;
 }
