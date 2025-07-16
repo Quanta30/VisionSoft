@@ -1,3 +1,4 @@
+# Template Documentation
 ### Component Revisions & API Usage
 
 Here is a summary of the purpose and functionality of each of your custom Blazor components, along with a quick guide to their key API usage based on the Sales Bill form.
@@ -84,3 +85,6 @@ Here is a summary of the purpose and functionality of each of your custom Blazor
         - `TableRows`: A `RenderFragment` to define the content of the table's body (`<tbody>`), which should contain the logic for rendering the `<tr>` and `<td>` elements for the data rows.
         - `TableFooter`: A `RenderFragment` to define the content of the card's footer, typically used for summary information like item counts or total quantity.
         - `Info`: Optional informational text displayed in the top-right of the card header, often used for hotkey hints or other contextual information.
+     
+
+
