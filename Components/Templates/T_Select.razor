@@ -1,116 +1,218 @@
-@if(Layout == "1"){
+@*
+  This component, T_Select, is a wrapper for the HTML <select> element (dropdown).
+  It supports multiple layouts and populates its options from a formatted string,
+  making it a flexible and reusable component for forms.
+*@
+@using System.Data
+@rendermode InteractiveServer
+
+@* Layout 1: Standard vertical layout with a label. *@
+@if (Layout == "1")
+{
     <div class="@ColSize">
         <div class="mb-3">
-            <label >@Label</label>
-            <select class="form-control" @bind="Value" @bind:after="OnValueChanged" 
-                    @ref="reference" @onkeydown="HandleEnter">
-                @foreach (var option in options)
+            <label for="@_elementId" class="form-label">@Label</label>
+            <select id="@_elementId"
+                    class="form-control"
+                    @bind="Value"
+                    @bind:after="OnValueChanged"
+                    @ref="reference"
+                    @onkeydown="HandleKeyboardInput">
+                @foreach (var option in _options)
                 {
-                    <option value="@option.Value" selected="@(option.Value == Value)">
-                        @option.Text
-                    </option>
+                    <option value="@option.Value">@option.Text</option>
                 }
             </select>
         </div>
     </div>
 }
-else if(Layout == "2"){
-    <select class="form-control form-control-sm" @bind="Value" @bind:after="OnValueChanged"
-            @ref="reference" @onkeydown="HandleEnter">
-        @foreach (var option in options)
+@* Layout 2: Compact, inline layout with no label. *@
+else if (Layout == "2")
+{
+    <select class="form-control form-control-sm"
+            @bind="Value"
+            @bind:after="OnValueChanged"
+            @ref="reference"
+            @onkeydown="HandleKeyboardInput">
+        @foreach (var option in _options)
         {
-            <option value="@option.Value" selected="@(option.Value == Value)">
-                @option.Text
-            </option>
+            <option value="@option.Value">@option.Text</option>
         }
     </select>
 }
 
 @code {
-    [Parameter] public string Label {get; set;} = "";
+    // =================================================================================
+    // PARAMETERS
+    // =================================================================================
+
+    #region Parameters
+    /// <summary>
+    /// The text for the label in Layout 1.
+    /// </summary>
+    [Parameter] public string Label { get; set; } = "";
+
+    /// <summary>
+    /// The currently selected value of the dropdown.
+    /// </summary>
     [Parameter] public string Value { get; set; } = "";
+
+    /// <summary>
+    /// A comma-separated string of key-value pairs to populate the dropdown.
+    /// Format: "VALUE_1:Text_1,VALUE_2:Text_2" (e.g., "CASH:Cash,CARD:Card").
+    /// </summary>
     [Parameter] public string Options { get; set; } = "";
-    [Parameter] public string ColSize{get; set;} = "col-md-3";
-    [Parameter] public string Layout {get; set;} = "1";
+
+    /// <summary>
+    /// The Bootstrap column class for sizing in Layout 1 (e.g., "col-md-3").
+    /// </summary>
+    [Parameter] public string ColSize { get; set; } = "col-md-3";
+
+    /// <summary>
+    /// The layout style to use: "1" (Vertical) or "2" (Inline).
+    /// </summary>
+    [Parameter] public string Layout { get; set; } = "1";
+
+    /// <summary>
+    /// An event callback that fires after the value has changed.
+    /// </summary>
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
-    [Parameter] public EventCallback OnChange{get; set;}
-    
-    // Add reference support
-    [Parameter] public EventCallback<ElementReference> GetInputReference{get; set;}
-    [Parameter] public ElementReference NextReference{get; set;}
-    [Parameter] public bool FocusDefault{get; set;} = false;
-    [Parameter] public EventCallback OnEnterPressed{get; set;}
+
+    /// <summary>
+    /// An optional event callback that fires before ValueChanged when the selection changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChange { get; set; }
+    #endregion
+
+    #region Focus Management Parameters
+    /// <summary>
+    /// An event callback to pass this input's reference to the parent.
+    /// </summary>
+    [Parameter] public EventCallback<ElementReference> GetInputReference { get; set; }
+
+    /// <summary>
+    /// A reference to the next element to focus when 'Enter' is pressed.
+    /// </summary>
+    [Parameter] public ElementReference NextReference { get; set; }
+
+
+    /// <summary>
+    /// An event callback that fires when the user presses the 'Enter' key.
+    /// </summary>
+    [Parameter] public EventCallback OnEnterPressed { get; set; }
+
+    /// <summary>
+    /// The underlying ElementReference for this component's select element.
+    /// </summary>
     public ElementReference reference;
-    
-    private List<SelectOption> options = new List<SelectOption>();
-    private string _lastOptions = "";
-    
-    protected override void OnInitialized()
+    #endregion
+
+    // =================================================================================
+    // PRIVATE FIELDS
+    // =================================================================================
+
+    private readonly List<SelectOption> _options = new List<SelectOption>();
+    private string _lastParsedOptions = "";
+    private readonly string _elementId = $"select-{Guid.NewGuid()}";
+
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// This method is called when parameters are set. It's the ideal place to react
+    /// to changes in the 'Options' string.
+    /// </summary>
+    protected override void OnParametersSet()
     {
-        // Only parse if Options parameter actually changed
-        if (_lastOptions != Options)
+        // To improve performance, only re-parse the options string if it has actually changed.
+        if (_lastParsedOptions != Options)
         {
-            Console.WriteLine("Options changed, re-parsing");
-            _lastOptions = Options;
+            _lastParsedOptions = Options;
             ParseOptions();
-        }
-        else
-        {
-            Console.WriteLine("Options unchanged, skipping parse");
         }
     }
 
+    /// <summary>
+    /// Handles initial focus and passes the element reference to the parent after the first render.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
-    {   
-       
-        if(firstRender && GetInputReference.HasDelegate)
-        {
-            Console.WriteLine("T_Select: Sending reference to parent");
-            await GetInputReference.InvokeAsync(reference);
-        }
-    }
-    
-    private void ParseOptions()
     {
-        options.Clear();
-        
-        if (!string.IsNullOrEmpty(Options))
+        if (firstRender)
         {
-            // Format: "CASH:Cash,CARD:Card,UPI:UPI"
-            var pairs = Options.Split(',');
-            foreach (var pair in pairs)
+            if (GetInputReference.HasDelegate)
             {
-                var parts = pair.Split(':');
-                if (parts.Length == 2)
-                {
-                    options.Add(new SelectOption 
-                    { 
-                        Value = parts[0].Trim(), 
-                        Text = parts[1].Trim() 
-                    });
-                }
+                await GetInputReference.InvokeAsync(reference);
             }
         }
     }
-    
+
+    // =================================================================================
+    // PRIVATE METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Parses the 'Options' string parameter into a list of SelectOption objects.
+    /// </summary>
+    private void ParseOptions()
+    {
+        _options.Clear();
+        if (string.IsNullOrEmpty(Options)) return;
+
+        // The expected format is "VALUE_1:Text_1,VALUE_2:Text_2"
+        var pairs = Options.Split(',');
+        foreach (var pair in pairs)
+        {
+            var parts = pair.Split(':');
+            if (parts.Length == 2)
+            {
+                _options.Add(new SelectOption
+                {
+                    Value = parts[0].Trim(),
+                    Text = parts[1].Trim()
+                });
+            }
+        }
+    }
+
+    /// <summary>
+    /// This method is called by the @bind:after directive when the value changes.
+    /// It invokes the parent component's event callbacks.
+    /// </summary>
     private async Task OnValueChanged()
     {
-        if(OnChange.HasDelegate) await OnChange.InvokeAsync();
+        if (OnChange.HasDelegate) await OnChange.InvokeAsync();
         await ValueChanged.InvokeAsync(Value);
     }
 
-    private async Task HandleEnter(KeyboardEventArgs e)
+    /// <summary>
+    /// Handles the 'Enter' key press for focus management.
+    /// </summary>
+    private async Task HandleKeyboardInput(KeyboardEventArgs e)
     {
-        if(e.Key == "Enter" && !NextReference.Equals(default(ElementReference)))
+        if (e.Key == "Enter")
         {
-            Console.WriteLine("T_Select: Valid Input. Focusing on Next Input");
-            await NextReference.FocusAsync();
+            if (OnEnterPressed.HasDelegate)
+            {
+                await OnEnterPressed.InvokeAsync();
+            }
+            else if (!NextReference.Equals(default(ElementReference)))
+            {
+                await NextReference.FocusAsync();
+            }
         }
     }
-    
+
+    // =================================================================================
+    // PRIVATE INNER CLASS
+    // =================================================================================
+
+    /// <summary>
+    /// A simple class to represent a single option in the select list.
+    /// </summary>
     private class SelectOption
     {
-        public string Value { get; set; }
-        public string Text { get; set; }
+        public string Value { get; set; } = "";
+        public string Text { get; set; } = "";
     }
 }

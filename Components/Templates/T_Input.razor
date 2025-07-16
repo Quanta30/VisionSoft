@@ -1,14 +1,18 @@
-﻿@rendermode InteractiveServer
+﻿@*
+  This component is a highly versatile wrapper for the HTML <input> element.
+  It supports multiple layouts, data binding, validation, and advanced focus management
+  to streamline form creation in Blazor applications.
+*@
+@rendermode InteractiveServer
 
-
-
-
-
-@if(Layout == 1){
+@* Layout 1: Standard Vertical Layout with Label Above Input *@
+@if (Layout == 1)
+{
     <div class="@ColSize">
         <div class="mb-3">
-            <label >@Title</label>
-            <input class="form-control @(ReadOnly ? "readonly-input" : "") @(isValid ? "":"is-invalid")"
+            <label for="@_elementId" class="form-label">@Title</label>
+            <input id="@_elementId"
+                   class="form-control @(ReadOnly ? "readonly-input" : "") @(isValid ? "" : "is-invalid")"
                    placeholder="@Placeholder"
                    type="@Type"
                    value="@_internalValue"
@@ -18,29 +22,31 @@
                    step="@Step"
                    min="@Min"
                    max="@Max"
-                   style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
-                   maxlength="@(MaxLength > 0 && MaxLength < int.MaxValue ? MaxLength.ToString() : null)"
+                   style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")"
+                   maxlength="@(MaxLength > 0 ? MaxLength : null)"
                    @ref="reference"
-                   @onkeydown="HandleEnter"
-                   />
-            
+                   @onkeydown="HandleKeyboardInput" />
 
-        @if  (_internalValue.Length == MaxLength)
-        {
-            <small class="text-danger mt-1 d-block">
-                <i class="bi bi-exclamation-triangle"></i>
-                Maximum length is @MaxLength characters. Current: @_internalValue.Length
-            </small>
-        }
+            @* Display a validation message if the input length reaches the maximum allowed. *@
+            @if (MaxLength > 0 && _internalValue.Length >= MaxLength)
+            {
+                <small class="text-danger mt-1 d-block">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    Maximum length is @MaxLength characters.
+                </small>
+            }
         </div>
     </div>
 }
-else if(Layout == 2){
-    <div class="row mb-2">
+@* Layout 2: Horizontal Layout with Label and Input Side-by-Side *@
+else if (Layout == 2)
+{
+    <div class="row mb-2 align-items-center">
         <div class="col-6">
-            <label class="form-label">@Title</label>
+            <label class="form-label mb-0">@Title</label>
         </div>
         <div class="col-6">
+            @* Allow rendering custom content in place of the input if provided. *@
             @if (DisplayContent != null)
             {
                 @DisplayContent
@@ -54,20 +60,20 @@ else if(Layout == 2){
                        placeholder="@Placeholder"
                        step="@Step"
                        min="@Min"
-                       max="@Max" 
+                       max="@Max"
                        readonly="@ReadOnly"
                        disabled="@ReadOnly"
-                       style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
-                       maxlength="@(MaxLength > 0 && MaxLength < int.MaxValue ? MaxLength.ToString() : null)"
+                       style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")"
+                       maxlength="@(MaxLength > 0 ? MaxLength : null)"
                        @ref="reference"
-                       @onkeydown="HandleEnter"
-                       />
+                       @onkeydown="HandleKeyboardInput" />
             }
         </div>
     </div>
 }
-else if(Layout == 3){
-    // Inline layout for table cells
+@* Layout 3: Inline Layout - Input Only (for use in tables or tight spaces) *@
+else if (Layout == 3)
+{
     <input type="@Type"
            class="form-control form-control-sm @(ReadOnly ? "readonly-input" : "")"
            value="@_internalValue"
@@ -75,21 +81,22 @@ else if(Layout == 3){
            placeholder="@Placeholder"
            step="@Step"
            min="@Min"
-           max="@Max" 
+           max="@Max"
            readonly="@ReadOnly"
            disabled="@ReadOnly"
-           style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")" 
-           maxlength="@(MaxLength > 0 && MaxLength < int.MaxValue ? MaxLength.ToString() : null)"
+           style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")"
+           maxlength="@(MaxLength > 0 ? MaxLength : null)"
            @ref="reference"
-           @onkeydown="HandleEnter"
-           />
+           @onkeydown="HandleKeyboardInput" />
 }
 
 <style>
+    /* Custom styles to override Bootstrap defaults for readonly and invalid states.
+      The !important flag is used here to ensure these styles take precedence.
+    */
+
     .readonly-input {
-    using System.Reflection.Emit;
-#line default
-    color: #6c757d !important;
+        color: #6c757d !important;
         cursor: not-allowed !important;
         border-color: #dee2e6 !important;
     }
@@ -103,8 +110,7 @@ else if(Layout == 3){
         color: #adb5bd !important;
     }
 
-
-        /* Custom invalid styles with red shadow */
+    /* Custom invalid styles with a more prominent red shadow for better visibility. */
     .form-control.is-invalid {
         border-color: #dc3545 !important;
         box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
@@ -117,118 +123,219 @@ else if(Layout == 3){
 </style>
 
 @code {
+    // =================================================================================
+    // PRIVATE FIELDS
+    // =================================================================================
     private string _internalValue = string.Empty;
+    private readonly string _elementId = $"input-{Guid.NewGuid()}";
 
-    [Parameter] public string Value { get; set; } = string.Empty;//To Be Binded 
+    // =================================================================================
+    // PARAMETERS - CONTENT & BINDING
+    // =================================================================================
+
+    /// <summary>
+    /// The value bound to this input component.
+    /// </summary>
+    [Parameter] public string Value { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The text displayed in the label associated with the input.
+    /// </summary>
     [Parameter] public string Title { get; set; } = string.Empty;
 
-    //Parameter for Input Box Properties and Styling
-    [Parameter] public string Type { get; set; } = "text";
-    [Parameter] public string Placeholder { get; set; } = "Enter value";
-    [Parameter] public string Min { get; set; } = string.Empty;
-    [Parameter] public string Max { get; set; } = string.Empty;
-    [Parameter] public string Step { get; set; } = string.Empty;
-    [Parameter] public string ColSize {get; set;} = "col-md-4";
-
-
-    //Parameters For Validataion
-    [Parameter] public int MaxLength {get; set;} = int.MaxValue;
-
-
-    //Integer Variables
-    [Parameter] public int Layout { get; set; } = 1; // Default layout
-
-    //Boolean Variables
-    [Parameter] public bool IsDisplayOnly { get; set; } = false;
-    [Parameter] public bool ReadOnly { get; set; } = false;
-    [Parameter] public bool isValid{get; set;} = true;
-    [Parameter] public bool Required{get; set;} = false;
-    [Parameter] public String FocusOn{get; set;}
-
-
-    //EventCallbacks and RenderFragments
+    /// <summary>
+    /// An event callback that updates the bound 'Value' when the input changes.
+    /// </summary>
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
-    [Parameter] public EventCallback<string> ChangeFunction{get; set;}
+
+    /// <summary>
+    /// An optional event callback that fires whenever the input value changes.
+    /// Useful for triggering additional logic in the parent component.
+    /// </summary>
+    [Parameter] public EventCallback<string> ChangeFunction { get; set; }
+
+    /// <summary>
+    /// Optional content to display instead of the input box in Layout 2.
+    /// </summary>
     [Parameter] public RenderFragment? DisplayContent { get; set; }
 
-    [Parameter] public EventCallback<ElementReference> GetInputReference{get; set;}
-    [Parameter] public EventCallback OnEnterPressed{get; set;}
-    
+    // =================================================================================
+    // PARAMETERS - STYLING & LAYOUT
+    // =================================================================================
+
+    /// <summary>
+    /// The HTML 'type' attribute for the input (e.g., "text", "number", "date").
+    /// </summary>
+    [Parameter] public string Type { get; set; } = "text";
+
+    /// <summary>
+    /// The placeholder text to display when the input is empty.
+    /// </summary>
+    [Parameter] public string Placeholder { get; set; } = "Enter value";
+
+    /// <summary>
+    /// The Bootstrap column class for sizing (e.g., "col-md-4"). Used in Layout 1.
+    /// </summary>
+    [Parameter] public string ColSize { get; set; } = "col-md-4";
+
+    /// <summary>
+    /// The layout style to use: 1 (Vertical), 2 (Horizontal), 3 (Inline).
+    /// </summary>
+    [Parameter] public int Layout { get; set; } = 1;
+
+    // =================================================================================
+    // PARAMETERS - BEHAVIOR & VALIDATION
+    // =================================================================================
+
+    /// <summary>
+    /// If true, the input cannot be edited by the user.
+    /// </summary>
+    [Parameter] public bool ReadOnly { get; set; } = false;
+
+    /// <summary>
+    /// If true, the input is considered invalid if it's empty.
+    /// </summary>
+    [Parameter] public bool Required { get; set; } = false;
+
+    /// <summary>
+    /// The HTML 'min' attribute, for numeric or date types.
+    /// </summary>
+    [Parameter] public string Min { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The HTML 'max' attribute, for numeric or date types.
+    /// </summary>
+    [Parameter] public string Max { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The HTML 'step' attribute, for numeric inputs.
+    /// </summary>
+    [Parameter] public string Step { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The maximum number of characters allowed in the input. Defaults to no limit.
+    /// </summary>
+    [Parameter] public int MaxLength { get; set; }
+
+    // =================================================================================
+    // PARAMETERS - FOCUS MANAGEMENT & EVENTS
+    // =================================================================================
+
+    /// <summary>
+    /// An event callback that fires when the user presses the 'Enter' key.
+    /// </summary>
+    [Parameter] public EventCallback OnEnterPressed { get; set; }
+
+    /// <summary>
+    /// An event callback to pass this input's reference to the parent.
+    /// </summary>
+    [Parameter] public EventCallback<ElementReference> GetInputReference { get; set; }
+
+    /// <summary>
+    /// A reference to the next element to focus when 'Enter' is pressed.
+    /// </summary>
+    [Parameter] public ElementReference NextReference { get; set; }
+
+
+    /// <summary>
+    /// The underlying ElementReference for this component's input element.
+    /// </summary>
     public ElementReference reference;
-    [Parameter] public ElementReference NextReference{get; set;}
-    [Parameter] public bool FocusDefault{get; set;} = false;
-  
 
+    // =================================================================================
+    // PRIVATE STATE
+    // =================================================================================
+    private bool isValid = true;
 
-    //Runs During (When Edit is clicked and variable is changed, it automatically updates the UI)
-    //Component Creation, Parameters Updated, StateHasChanged Called in Parent Component
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Synchronizes the internal value with the 'Value' parameter when it changes.
+    /// </summary>
     protected override void OnParametersSet()
     {
         _internalValue = Value ?? string.Empty;
     }
 
+    /// <summary>
+    /// Handles initial focus and passes the element reference to the parent after the first render.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
-    {   
-
-        if(firstRender && GetInputReference.HasDelegate){
-            Console.WriteLine("After Render Async");
-            await GetInputReference.InvokeAsync(reference);
+    {
+        if (firstRender)
+        {
+            if (GetInputReference.HasDelegate)
+            {
+                await GetInputReference.InvokeAsync(reference);
+            }
         }
     }
 
-    //Runs When Input is Changed In Input Area
+    // =================================================================================
+    // EVENT HANDLERS & METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Triggered on every keystroke in the input. Updates the bound value.
+    /// </summary>
     private async Task OnInputChanged(ChangeEventArgs e)
     {
-        if (!ReadOnly)
+        if (ReadOnly) return;
+
+        _internalValue = e.Value?.ToString() ?? string.Empty;
+        await ValueChanged.InvokeAsync(_internalValue);
+
+        if (ChangeFunction.HasDelegate)
         {
-            string newValue = e.Value?.ToString() ?? string.Empty;
-            
-            // For date inputs, ensure ISO format
-            if (Type == "date" && !string.IsNullOrEmpty(newValue))
-            {
-                if (DateTime.TryParse(newValue, out DateTime date))
-                {
-                    newValue = date.ToString("yyyy-MM-dd");
-                }
-            }
-            
-            _internalValue = newValue;
-            await ValueChanged.InvokeAsync(_internalValue);
-            if(ChangeFunction.HasDelegate){
-                await ChangeFunction.InvokeAsync(_internalValue);
-            }
+            await ChangeFunction.InvokeAsync(_internalValue);
         }
         Validate();
     }
 
-    //Validate the Input
-    public void Validate(){
-        isValid = true;
-        if(_internalValue.Length > MaxLength || (_internalValue == "" && Required)){
-            isValid = false;
-        }
-    }
-
-    public async Task HandleEnter(KeyboardEventArgs e){
-        
-        if(e.Key == "Enter"){
+    /// <summary>
+    /// Handles keyboard events, specifically the 'Enter' key.
+    /// </summary>
+    private async Task HandleKeyboardInput(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
             Validate();
-            if(OnEnterPressed.HasDelegate){
+            // If a specific Enter action is defined, run it.
+            if (OnEnterPressed.HasDelegate)
+            {
                 await OnEnterPressed.InvokeAsync();
             }
-            else{
-                    if(isValid && !NextReference.Equals(default(ElementReference))){
-                    Console.WriteLine("Valid Input. Focusing on Next Input");
-                    await NextReference.FocusAsync();
-                }   
-                else{
-                    Console.WriteLine("Input Not Valid or No Next Reference");
-                }
-            }    
+            // Otherwise, move to the next field if the input is valid.
+            else if (isValid && !NextReference.Equals(default(ElementReference)))
+            {
+                await NextReference.FocusAsync();
+            }
         }
     }
 
-    public async Task Focus(){
+    // =================================================================================
+    // PUBLIC API METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Checks the input's validity based on 'Required' and 'MaxLength' properties.
+    /// This can be called from a parent component to trigger validation.
+    /// </summary>
+    public void Validate()
+    {
+        // A field is valid if it's not empty when required AND its length doesn't exceed the max length.
+        isValid = !(_internalValue.Length > MaxLength && MaxLength > 0) && !(Required && string.IsNullOrEmpty(_internalValue));
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Sets focus programmatically to this input element.
+    /// This can be called from a parent component.
+    /// </summary>
+    public async Task Focus()
+    {
         await reference.FocusAsync();
     }
 }

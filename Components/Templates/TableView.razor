@@ -1,44 +1,54 @@
+@*
+  This component, TableView, provides a structured and styled wrapper for displaying
+  tabular data. It uses a card layout and RenderFragments to offer a high degree of
+  flexibility for defining table headers, rows, and a footer, making it a
+  reusable and powerful tool for data presentation.
+*@
 @using System.Data
+@rendermode InteractiveServer
 
 <div class="card">
+    <!-- Card Header: Contains the title, optional info, and an 'Add' button. -->
     <div class="card-header d-flex justify-content-between align-items-center">
         <h6 class="mb-0">@TableName</h6>
         <div class="d-flex align-items-center gap-3">
+            <!-- Optional informational text displayed in the header. -->
             <p class="mb-0 text-muted" style="font-size: 1rem; color: #6c757d !important;">@Info</p>
+            <!-- The 'Add' button, which triggers a parent component's method. -->
             <button class="btn btn-sm btn-primary" @onclick="HandleAdd">
                 <i class="bi bi-plus"></i> Add Item
             </button>
         </div>
     </div>
+
+    <!-- Card Body: Contains the scrollable table. -->
     <div class="card-body p-0">
+        <!-- The table-responsive class ensures the table can be scrolled horizontally on small screens.
+             The max-height style makes the table body scrollable vertically if it exceeds 400px. -->
         <div class="table-responsive" style="max-height: 400px;">
             <table class="table table-sm table-hover mb-0">
+                <!-- The sticky-top class keeps the table header visible during vertical scrolling. -->
                 <thead class="table-light sticky-top">
                     <tr>
-                        @* <th style="width: 50px;">Action</th>
-                        <th style="width: 60px;">Sr No</th>
-                        <th style="width: 200px;">Product</th>
-                        <th style="width: 100px;">Rate</th>
-                        <th style="width: 100px;">Qty</th>
-                        <th style="width: 100px;">Discount</th>
-                        <th style="width: 120px;">GST Category</th>
-                        <th style="width: 100px;" class="text-end">Amount</th>
-                        <th style="width: 100px;" class="text-end">GST Amt</th>
-                        <th style="width: 100px;" class="text-end">Net Amt</th> *@
+                        <!-- The table headers are rendered here from a RenderFragment. -->
                         @TableHeads
                     </tr>
                 </thead>
                 <tbody>
-                        @TableRows
+                    <!-- The table rows are rendered here from a RenderFragment. -->
+                    @TableRows
                 </tbody>
             </table>
         </div>
     </div>
+
+    <!-- Card Footer: Contains summary information or totals. -->
     <div class="card-footer">
         <div class="row">
             <div class="col-md-8"></div>
             <div class="col-md-4">
                 <small class="text-muted">
+                    <!-- The table footer content is rendered here from a RenderFragment. -->
                     @TableFooter
                 </small>
             </div>
@@ -47,11 +57,41 @@
 </div>
 
 
-@code{
-    [Parameter] public string? TableName{get; set;}
-    [Parameter] public EventCallback HandleAdd {get; set;}
-    [Parameter] public RenderFragment? TableHeads{get; set;}
-    [Parameter] public RenderFragment? TableRows{get; set;}
-    [Parameter] public RenderFragment? TableFooter{get; set;}
-    [Parameter] public string Info{get; set;} = "";
+@code {
+    // =================================================================================
+    // PARAMETERS
+    // =================================================================================
+
+    /// <summary>
+    /// The title to be displayed in the card header.
+    /// </summary>
+    [Parameter] public string? TableName { get; set; }
+
+    /// <summary>
+    /// An event callback that is invoked when the 'Add Item' button is clicked.
+    /// </summary>
+    [Parameter] public EventCallback HandleAdd { get; set; }
+
+    /// <summary>
+    /// A RenderFragment to define the content of the table's header (`<thead>`).
+    /// This should contain the `<th>` elements.
+    /// </summary>
+    [Parameter] public RenderFragment? TableHeads { get; set; }
+
+    /// <summary>
+    /// A RenderFragment to define the content of the table's body (`<tbody>`).
+    /// This should contain the `<tr>` and `<td>` elements for the data rows.
+    /// </summary>
+    [Parameter] public RenderFragment? TableRows { get; set; }
+
+    /// <summary>
+    /// A RenderFragment to define the content of the card's footer.
+    /// This is typically used for summary information like totals.
+    /// </summary>
+    [Parameter] public RenderFragment? TableFooter { get; set; }
+
+    /// <summary>
+    /// Optional informational text to be displayed in the top-right of the card header.
+    /// </summary>
+    [Parameter] public string Info { get; set; } = "";
 }

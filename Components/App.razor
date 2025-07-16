@@ -29,9 +29,15 @@
                     console.log("ShortCut Key: ALT + S Pressed")
                     dotNetRef.invokeMethodAsync('HandleSave');
                 }
-                if(event.altKey && (event.key ==='A' || event.key === 'a')){
+                if(event.altKey && ((event.key ==='+') || (event.key === 'A') || (event.key === 'a'))){
                     console.log("ShortCut Key: ALT + A Pressed")
                     dotNetRef.invokeMethodAsync('HandleAdd');
+                }
+
+                if(event.altKey && ((event.key ==='-') || (event.key === 'D') || (event.key === 'd'))){
+                    console.log("ShortCut Key: ALT + D Pressed")
+                    event.preventDefault();
+                    dotNetRef.invokeMethodAsync('HandleRemoveLast');
                 }
                 if(event.altKey && (event.key ==='C' || event.key === 'c')){
                     console.log("ShortCut Key: ALT + C Pressed")

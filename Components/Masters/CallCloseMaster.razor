@@ -6,7 +6,7 @@
 <T_Msg @ref="Msg" />
 @if (isViewing)
 {
-    <FrmView TableName="CallCloseMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+    <FrmView TableName="CallCloseMaster" OnClosed="HandleClose" EditClicked="HandleEdit" PrimaryKeyColumn="EntryNo"/>
 }
 
 <T_Frm FormName="Call Close Master">

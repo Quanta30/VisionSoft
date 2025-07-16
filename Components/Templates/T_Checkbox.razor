@@ -1,76 +1,164 @@
-<div class=@ColSize >
+<!--
+  This component is a wrapper around the standard HTML checkbox input.
+  It's designed to be used within a form, providing support for column sizing,
+  two-way value binding, and keyboard navigation (focus control).
+-->
+<div class="@ColSize">
     <div>
+        <!-- 
+          The 'form-check' class provides Bootstrap styling. The top padding
+          helps align the checkbox vertically with other form controls.
+        -->
         <div class="form-check" style="padding-top: 35px;">
-            <label @onclick="ToggleCheckBox">@Title</label>
-            <input class="form-check-input" value=@Value type="checkbox" @onkeydown="HandleKeyboardInput" 
-                  checked=@IsChecked
-                  @onchange="HandleChange"
-                  @ref="reference" />
+            <!--
+              The 'for' attribute links this label to the input element below.
+              Clicking the label will now correctly toggle the checkbox state.
+              A unique ID is used to ensure this link is specific.
+            -->
+            <label class="form-check-label" for="@_elementId">@Title</label>
+            <!--
+              The checkbox input. It's bound to the IsChecked property and handles
+              change events and keyboard input. The '@ref' captures its reference
+              for focus management.
+            -->
+            <input class="form-check-input" 
+                   type="checkbox" 
+                   id="@_elementId"
+                   value="@Value"
+                   checked="@IsChecked"
+                   @onchange="HandleChange"
+                   @onkeydown="HandleKeyboardInput"
+                   @ref="reference" />
         </div>
     </div>
 </div>
 
 @code {
-    [Parameter] public string Title { get; set; } = string.Empty;
-    [Parameter] public string Value { get; set; } = "0";
-    [Parameter] public string ColSize { get; set; } = "col-md-4";
-    [Parameter] public EventCallback<string> ValueChanged { get; set; }
-    
-    // Add reference support
-    [Parameter] public EventCallback<ElementReference> GetInputReference{get; set;}
-    [Parameter] public ElementReference NextReference{get; set;}
-    [Parameter] public bool FocusDefault{get; set;} = false;
-    public ElementReference reference;
-    
-    private bool IsChecked = false;
+        // =================================================================================
+        // PARAMETERS - Public properties for component configuration.
+        // =================================================================================
 
-    protected override void OnInitialized()
-    {
-        ChangeCheckBoxValue(Value);
-    }
-    
+        /// <summary>
+        /// The text to display in the label next to the checkbox.
+        /// </summary>
+        [Parameter] public string Title { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The current value of the checkbox, represented as a string ("1" for checked, "0" for unchecked).
+        /// </summary>
+        [Parameter] public string Value { get; set; } = "0";
+
+        /// <summary>
+        /// The Bootstrap column size class (e.g., "col-md-4") for layout control.
+        /// </summary>
+        [Parameter] public string ColSize { get; set; } = "col-md-4";
+
+        /// <summary>
+        /// An event callback that fires when the checkbox value changes.
+        /// </summary>
+        [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+        /// <summary>
+        /// An event callback to pass this component's input reference to a parent component.
+        /// Useful for managing focus programmatically from the parent.
+        /// </summary>
+        [Parameter] public EventCallback<ElementReference> GetInputReference { get; set; }
+
+        /// <summary>
+        /// A reference to the next element in the form's tab order.
+        /// When the user presses 'Enter', focus will be moved to this element.
+        /// </summary>
+        [Parameter] public ElementReference NextReference { get; set; }
+
+    /// <summary>
+    /// Public property to expose the internal ElementReference.
+    /// </summary>
+    public ElementReference reference;
+
+    // =================================================================================
+    // PRIVATE FIELDS - Internal state for the component.
+    // =================================================================================
+
+    // The internal boolean state of the checkbox, derived from the string 'Value'.
+    private bool IsChecked = false;
+    // A unique ID to link the <label> and <input> elements.
+    private readonly string _elementId = $"checkbox-{Guid.NewGuid()}";
+
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// This method is called when the component receives new or updated parameters from its parent.
+    /// It ensures the internal 'IsChecked' state is synchronized with the 'Value' parameter.
+    /// </summary>
     protected override void OnParametersSet()
     {
-        ChangeCheckBoxValue(Value);
+        SetCheckedStateFromValue();
     }
 
+    /// <summary>
+    /// This method runs after the component has finished rendering.
+    /// It handles setting the initial focus and passing the element reference to the parent.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
-    {   
-        if(firstRender && FocusDefault) await reference.FocusAsync();
-        if(firstRender && GetInputReference.HasDelegate){
-            Console.WriteLine("T_Checkbox: Sending reference to parent");
-            await GetInputReference.InvokeAsync(reference);
+    {
+        if (firstRender)
+        {
+            if (GetInputReference.HasDelegate)
+            {
+                await GetInputReference.InvokeAsync(reference);
+            }
         }
     }
 
-    private void HandleChange(ChangeEventArgs e){
-        string newValue = e.Value.ToString() == "True"?"1":"0";
-        ChangeCheckBoxValue(newValue);
-        ValueChanged.InvokeAsync(newValue);
+    // =================================================================================
+    // PRIVATE METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Handles the 'onchange' event from the input element. This is the primary
+    /// way the component's value is updated through user interaction.
+    /// </summary>
+    private async Task HandleChange(ChangeEventArgs e)
+    {
+        // The new value from the event args is a boolean.
+        IsChecked = (bool)(e.Value ?? false);
+        // Convert the boolean to the "1" or "0" string format for the parent.
+        var newValue = IsChecked ? "1" : "0";
+        // Update the public Value parameter and notify the parent.
+        Value = newValue;
+        await ValueChanged.InvokeAsync(newValue);
     }
 
-    //ToggleCheckBox
-    private void ToggleCheckBox(){
-        Console.WriteLine("Here Again");
-        string  newValue = Value == "0"?"1":"0";
-        ChangeCheckBoxValue(newValue);
-        ValueChanged.InvokeAsync(newValue);
-    }
-
-    private async Task HandleKeyboardInput(KeyboardEventArgs e){
-        if(e.Key == "T" || e.Key == "t")
+    /// <summary>
+    /// Handles specific keyboard inputs for accessibility and usability.
+    /// </summary>
+    private async Task HandleKeyboardInput(KeyboardEventArgs e)
+    {
+        // Allows toggling the checkbox by pressing 'T' or 't'.
+        if (e.Key.Equals("T", StringComparison.OrdinalIgnoreCase))
         {
-            ToggleCheckBox();
+            // Manually toggle the state.
+            IsChecked = !IsChecked;
+            var newValue = IsChecked ? "1" : "0";
+            Value = newValue;
+            // Notify the parent of the change.
+            await ValueChanged.InvokeAsync(newValue);
         }
-        else if(e.Key == "Enter" && !NextReference.Equals(default(ElementReference)))
+        // Allows moving to the next form element by pressing 'Enter'.
+        else if (e.Key == "Enter" && !NextReference.Equals(default(ElementReference)))
         {
-            Console.WriteLine("T_Checkbox: Enter pressed. Focusing on Next Input");
             await NextReference.FocusAsync();
         }
     }
 
-    private void ChangeCheckBoxValue(string newValue){
-        if(newValue == "1")IsChecked=true;
-        else IsChecked =false;
+    /// <summary>
+    /// Synchronizes the internal 'IsChecked' boolean property based on the
+    /// current string 'Value' parameter ("1" or "0").
+    /// </summary>
+    private void SetCheckedStateFromValue()
+    {
+        IsChecked = Value == "1";
     }
 }

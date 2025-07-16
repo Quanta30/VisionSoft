@@ -1,32 +1,40 @@
+@*
+  This component is a wrapper for the standard HTML <textarea> element.
+  It provides data binding, validation, character limit feedback, and advanced
+  focus management for use in Blazor forms.
+*@
 @rendermode InteractiveServer
 
-<div class=@ColSize>
+<div class="@ColSize">
     <div class="mb-3">
-        <label>@Title</label>
-        <textarea class="form-control @(ReadOnly ? "readonly-input" : "") @(!isValid ? "is-invalid" : "")"
-                    placeholder="@Placeholder"
-                    @bind="@_internalValue"
-                    @oninput="OnInputChanged"
-                    readonly="@ReadOnly"
-                    disabled="@ReadOnly"
-                    rows="@Rows"
-                    maxlength="@(MaxLength < int.MaxValue ? MaxLength.ToString() : null)"
-                    style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")"
-                    @ref="reference"
-                    @onkeydown="HandleEnter">
+        <label for="@_elementId" class="form-label">@Title</label>
+        <textarea id="@_elementId"
+                  class="form-control @(ReadOnly ? "readonly-input" : "") @(isValid ? "" : "is-invalid")"
+                  placeholder="@Placeholder"
+                  @bind="@_internalValue"
+                  @bind:event="oninput"
+                  readonly="@ReadOnly"
+                  disabled="@ReadOnly"
+                  rows="@Rows"
+                  maxlength="@(MaxLength > 0 && MaxLength < int.MaxValue ? MaxLength : null)"
+                  style="@(ReadOnly ? "background-color: #f8f9fa; color: #6c757d; cursor: not-allowed;" : "")"
+                  @ref="reference"
+                  @onkeydown="HandleKeyboardInput">
         </textarea>
         
-        @if  (_internalValue.Length == MaxLength)
+        @* Display a validation message if the input length reaches the maximum allowed. *@
+        @if (MaxLength > 0 && MaxLength < int.MaxValue && _internalValue?.Length >= MaxLength)
         {
             <small class="text-danger mt-1 d-block">
-                <i class="bi bi-exclamation-triangle"></i>
-                Maximum length is @MaxLength characters. Current: @_internalValue.Length
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                Maximum length is @MaxLength characters.
             </small>
         }
     </div>
 </div>
 
 <style>
+    /* Custom styles for the readonly state to make it visually distinct. */
     .readonly-input {
         background-color: #f8f9fa !important;
         color: #6c757d !important;
@@ -43,7 +51,7 @@
         color: #adb5bd !important;
     }
 
-    /* Custom invalid styles with red shadow */
+    /* Custom invalid styles with a red shadow for better visibility. */
     .form-control.is-invalid {
         border-color: #dc3545 !important;
         box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
@@ -56,89 +64,183 @@
 </style>
 
 @code {
+    // =================================================================================
+    // PRIVATE FIELDS
+    // =================================================================================
     private string _internalValue = string.Empty;
+    private readonly string _elementId = $"textarea-{Guid.NewGuid()}";
 
-    [Parameter] public string Value { get; set; } = string.Empty;//To Be Binded 
+    // =================================================================================
+    // PARAMETERS - CONTENT & BINDING
+    // =================================================================================
+
+    /// <summary>
+    /// The value bound to this textarea component.
+    /// </summary>
+    [Parameter] public string Value { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The text displayed in the label associated with the textarea.
+    /// </summary>
     [Parameter] public string Title { get; set; } = string.Empty;
 
-    //Parameter for Input Box Properties and Styling
-    [Parameter] public string Type { get; set; } = "text";
-    [Parameter] public string Placeholder { get; set; } = "Enter value";
-    [Parameter] public string Min { get; set; } = string.Empty;
-    [Parameter] public string Max { get; set; } = string.Empty;
-    [Parameter] public string Step { get; set; } = string.Empty;
-    [Parameter] public string ColSize {get; set;} = "col-md-4";
-    [Parameter] public int Rows{get; set;} = 1;
-
-    //Parameters For Validataion
-    [Parameter] public int MaxLength {get; set;} = int.MaxValue;
-
-    //Integer Variables
-    [Parameter] public int Layout { get; set; } = 1; // Default layout
-
-    //Boolean Variables
-    [Parameter] public bool ReadOnly { get; set; } = false;
-    [Parameter] public bool isValid{get; set;} = true;
-    [Parameter] public bool Required{get; set;} = false;
-
-    //EventCallbacks and RenderFragments
+    /// <summary>
+    /// An event callback that updates the bound 'Value' when the input changes.
+    /// </summary>
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
-    [Parameter] public EventCallback<string> ChangeFunction{get; set;}
 
-    // Add reference support
-    [Parameter] public EventCallback<ElementReference> GetInputReference{get; set;}
-    [Parameter] public ElementReference NextReference{get; set;}
-    [Parameter] public bool FocusDefault{get; set;} = false;
+    /// <summary>
+    /// An optional event callback that fires whenever the input value changes.
+    /// </summary>
+    [Parameter] public EventCallback<string> ChangeFunction { get; set; }
+
+    // =================================================================================
+    // PARAMETERS - STYLING & LAYOUT
+    // =================================================================================
+
+    /// <summary>
+    /// The placeholder text to display when the textarea is empty.
+    /// </summary>
+    [Parameter] public string Placeholder { get; set; } = "Enter value";
+
+    /// <summary>
+    /// The Bootstrap column class for sizing (e.g., "col-md-4").
+    /// </summary>
+    [Parameter] public string ColSize { get; set; } = "col-md-4";
+
+    /// <summary>
+    /// The initial number of visible text lines for the textarea.
+    /// </summary>
+    [Parameter] public int Rows { get; set; } = 1;  
+
+    // =================================================================================
+    // PARAMETERS - BEHAVIOR & VALIDATION
+    // =================================================================================
+
+    /// <summary>
+    /// If true, the textarea cannot be edited by the user.
+    /// </summary>
+    [Parameter] public bool ReadOnly { get; set; } = false;
+
+    /// <summary>
+    /// If true, the textarea is considered invalid if it's empty.
+    /// </summary>
+    [Parameter] public bool Required { get; set; } = false;
+
+    /// <summary>
+    /// The maximum number of characters allowed. Defaults to no limit.
+    /// </summary>
+    [Parameter] public int MaxLength { get; set; } = int.MaxValue;
+
+    // =================================================================================
+    // PARAMETERS - FOCUS MANAGEMENT & EVENTS
+    // =================================================================================
+
+    /// <summary>
+    /// An event callback that fires when the user presses the 'Enter' key.
+    /// </summary>
+    [Parameter] public EventCallback OnEnterPressed { get; set; }
+
+    /// <summary>
+    /// An event callback to pass this textarea's reference to the parent.
+    /// </summary>
+    [Parameter] public EventCallback<ElementReference> GetInputReference { get; set; }
+
+    /// <summary>
+    /// A reference to the next element to focus when 'Enter' is pressed.
+    /// </summary>
+    [Parameter] public ElementReference NextReference { get; set; }
+
+    /// <summary>
+    /// The underlying ElementReference for this component's textarea element.
+    /// </summary>
     public ElementReference reference;
 
-    //Runs During (When Edit is clicked and variable is changed, it automatically updates the UI)
-    //Component Creation, Parameters Updated, StateHasChanged Called in Parent Component
+    // =================================================================================
+    // PRIVATE STATE
+    // =================================================================================
+    private bool isValid = true;
+
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Synchronizes the internal value with the 'Value' parameter when it changes.
+    /// </summary>
     protected override void OnParametersSet()
     {
         _internalValue = Value ?? string.Empty;
     }
 
+    /// <summary>
+    /// Handles initial focus and passes the element reference to the parent after the first render.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
-    {   
-        if(firstRender && FocusDefault)await reference.FocusAsync();
-        if(firstRender && GetInputReference.HasDelegate){
-            Console.WriteLine("T_Textarea: Sending reference to parent");
-            await GetInputReference.InvokeAsync(reference);
+    {
+        if (firstRender)
+        {
+            if (GetInputReference.HasDelegate)
+            {
+                await GetInputReference.InvokeAsync(reference);
+            }
         }
     }
 
-    //Runs When Input is Changed In Input Area
+    // =================================================================================
+    // EVENT HANDLERS & METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Triggered on every keystroke in the textarea. Updates the bound value and validates.
+    /// </summary>
     private async Task OnInputChanged(ChangeEventArgs e)
     {
-        if (!ReadOnly)
+        if (ReadOnly) return;
+
+        _internalValue = e.Value?.ToString() ?? string.Empty;
+        await ValueChanged.InvokeAsync(_internalValue);
+
+        if (ChangeFunction.HasDelegate)
         {
-            _internalValue = e.Value?.ToString() ?? string.Empty;
-            await ValueChanged.InvokeAsync(_internalValue);
-            if(ChangeFunction.HasDelegate){
-                await ChangeFunction.InvokeAsync(_internalValue);
-            }
+            await ChangeFunction.InvokeAsync(_internalValue);
         }
         Validate();
     }
 
-    //Validate the Input
-    public void Validate(){
-        isValid = true;
-        if(_internalValue.Length > MaxLength || (_internalValue == "" && Required)){
-            isValid = false;
+    /// <summary>
+    /// Handles keyboard events, specifically the 'Enter' key, to override default behavior.
+    /// </summary>
+    private async Task HandleKeyboardInput(KeyboardEventArgs e)
+    {
+        // NOTE: This overrides the default behavior of the Enter key in a textarea,
+        // which is to create a new line. Consider using a different key combination
+        // (like Ctrl+Enter) if new lines are needed within the textarea.
+        if (e.Key == "Enter")
+        {
+            Validate();
+            if (OnEnterPressed.HasDelegate)
+            {
+                await OnEnterPressed.InvokeAsync();
+            }
+            else if (isValid && !NextReference.Equals(default(ElementReference)))
+            {
+                await NextReference.FocusAsync();
+            }
         }
     }
 
-    public async Task HandleEnter(KeyboardEventArgs e){
-        if(e.Key == "Enter" && !NextReference.Equals(default(ElementReference))){
-            Validate();
-            if(isValid){
-                Console.WriteLine("T_Textarea: Valid Input. Focusing on Next Input");
-                await NextReference.FocusAsync();
-            }   
-            else{
-                Console.WriteLine("T_Textarea: Input Not Valid");
-            }
-        }
+    // =================================================================================
+    // PUBLIC API METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Checks the textarea's validity based on 'Required' and 'MaxLength' properties.
+    /// This can be called from a parent component to trigger validation.
+    /// </summary>
+    public void Validate()
+    {
+        isValid = !(_internalValue.Length > MaxLength && MaxLength > 0 && MaxLength != int.MaxValue) && !(Required && string.IsNullOrEmpty(_internalValue));
+        StateHasChanged();
     }
 }

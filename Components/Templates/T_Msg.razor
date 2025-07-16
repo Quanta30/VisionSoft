@@ -1,26 +1,43 @@
+@*
+  This component, T_Msg, displays toast-style notifications (alerts) on the screen.
+  It's designed to be used as a singleton or a shared service within an application
+  to provide feedback to the user (e.g., success or error messages).
+*@
+@implements IDisposable
+
 @if (!string.IsNullOrEmpty(message))
 {
+    <!-- 
+      The notification appears only when the 'message' variable is not empty.
+      It's styled as a dismissible alert and positioned as a toast notification.
+    -->
     <div class="alert @alertClass alert-dismissible fade show notification-toast" role="alert">
+        <!-- Icon corresponding to the message type (e.g., success, danger). -->
         <i class="bi @alertIcon me-2"></i>
+        
+        <!-- The notification message text. -->
         @message
-        <button type="button" class="btn-close" @onclick="Clear"></button>
+        
+        <!-- A button to manually dismiss the notification. -->
+        <button type="button" class="btn-close" @onclick="Clear" aria-label="Close"></button>
     </div>
 }
 
 <style>
+    /* Positions the notification toast at the top-right corner of the viewport. */
     .notification-toast {
         position: fixed;
         top: 20px;
         right: 20px;
-        z-index: 9999;
+        z-index: 9999; /* Ensures it appears above other content. */
         min-width: 300px;
         max-width: 400px;
-
         margin: 0;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         border: none;
     }
     
+    /* Adds a slide-in animation when the toast appears. */
     .notification-toast.fade.show {
         animation: slideInRight 0.3s ease-out;
     }
@@ -37,49 +54,115 @@
     }
 </style>
 
-@code{
-    public string message = "";
-    public string alertClass = "";
-    public string alertIcon = "";
+@code {
+    // =================================================================================
+    // PRIVATE FIELDS
+    // =================================================================================
+    private string message = "";
+    private string alertClass = "";
+    private string alertIcon = "";
+    private CancellationTokenSource? _cts;
 
+    // =================================================================================
+    // PUBLIC API METHODS - These can be called from other components.
+    // =================================================================================
 
-    //Clear Messages
-    public void Clear(){
-        message="";
-        alertClass="";
-        alertIcon="";
-        StateHasChanged();
-    }
+    #region Public API
 
-
-    //Show The Message With Type-(success, danger), icon bootstrap
+    /// <summary>
+    /// Displays a custom message with a specified type and icon.
+    /// </summary>
+    /// <param name="msg">The message text to display.</param>
+    /// <param name="type">The alert type (e.g., "success", "danger", "warning"). This is used for styling.</param>
+    /// <param name="icon">The Bootstrap Icon class (e.g., "bi-check-circle").</param>
     public void Show(string msg, string type, string icon)
     {
+        // Cancel any pending auto-clear task to prevent it from closing this new message prematurely.
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+
         message = msg;
         alertClass = $"alert-{type}";
         alertIcon = icon;
         StateHasChanged();
     }
 
-
-    //Success Message Notification after saving
-    public async Task Success(){
-        Show("Record saved successfully!", "success", "bi-check-circle");
-        await Task.Delay(3000);  // Show longer for success
-        Clear();
+    /// <summary>
+    /// Clears the current notification message from the screen.
+    /// </summary>
+    public void Clear()
+    {
+        message = "";
+        alertClass = "";
+        alertIcon = "";
+        StateHasChanged();
     }
 
-    //Error Message Notification after saving
-    public async Task SaveError(){
-        Show("Error saving record. Please try again.", "danger", "bi-exclamation-triangle");
-        await Task.Delay(5000);  // Show longer for errors
-        Clear();
+    /// <summary>
+    /// Shows a predefined success message and automatically clears it after 3 seconds.
+    /// </summary>
+    public async Task Success()
+    {
+        Show("Record saved successfully!", "success", "bi-check-circle-fill");
+        await AutoClear(3000);
+    }
+    public async Task Success(String Message)
+    {
+        Show(Message, "success", "bi-check-circle-fill");
+        await AutoClear(3000);
     }
 
-    public async Task Error(string message){
-        Show(message, "danger", "bi-exclamation-triangle");
-        await Task.Delay(5000);  // Show longer for errors
-        Clear();
+    /// <summary>
+    /// Shows a predefined error message for saving failures and clears it after 5 seconds.
+    /// </summary>
+    public async Task SaveError()
+    {
+        Show("Error saving record. Please try again.", "danger", "bi-exclamation-triangle-fill");
+        await AutoClear(5000);
     }
 
+    /// <summary>
+    /// Shows a custom error message and automatically clears it after 5 seconds.
+    /// </summary>
+    /// <param name="errorMessage">The specific error message to display.</param>
+    public async Task Error(string errorMessage)
+    {
+        Show(errorMessage, "danger", "bi-exclamation-triangle-fill");
+        await AutoClear(5000);
+    }
+
+    #endregion
+
+    // =================================================================================
+    // PRIVATE HELPER METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Waits for a specified duration and then clears the message,
+    /// unless the operation is cancelled.
+    /// </summary>
+    /// <param name="delayMilliseconds">The time to wait before clearing.</param>
+    private async Task AutoClear(int delayMilliseconds)
+    {
+        var token = _cts?.Token ?? CancellationToken.None;
+        try
+        {
+            await Task.Delay(delayMilliseconds, token);
+            // If the task was not cancelled, clear the message.
+            Clear();
+        }
+        catch (TaskCanceledException)
+        {
+            // This is expected if a new message is shown before the delay completes.
+            // No action is needed.
+        }
+    }
+
+    /// <summary>
+    /// Disposes of the CancellationTokenSource when the component is removed from the UI.
+    /// </summary>
+    public void Dispose()
+    {
+        _cts?.Dispose();
+    }
 }

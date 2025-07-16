@@ -30,22 +30,22 @@
             <T_Input Title="Sales Bill Date" Type="date"
                      @bind-Value="@model.dict["SalesBillDate"]"
                      ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(1)) 
+                     GetInputReference="@((eref) => getInputReferences(0, eref))"
+                     NextReference="@(GetRef(1))" 
                      @ref="firstReference"/>
 
             <T_Input Title="Due Date" Type="date"
                      @bind-Value="@model.dict["DueDate"]"
                      ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(2)) />
+                     GetInputReference="@((eref) => getInputReferences(1, eref))"
+                     NextReference="@(GetRef(2))" />
 
             <T_Input Title="Booking No"
                      @bind-Value="@model.dict["BookingNo"]"
                      ColSize="col-md-3" 
                      Type="Number"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(3)) />
+                     GetInputReference="@((eref) => getInputReferences(2, eref))"
+                     NextReference="@(GetRef(3))" />
         </T_Row>
 
         <!-- Customer & Engineer Info -->
@@ -57,32 +57,32 @@
                       Value="@model.dict["CustomerCode"]"
                       ValueChanged="OnCustomerChanged"
                       ColSize="col-md-4"
-                      GetInputReference="getInputReferences"
-                      NextReference=@(GetRef(4)) />
+                      GetInputReference="@((eref) => getInputReferences(3, eref))"
+                      NextReference="@(GetRef(4))" />
 
             <T_Input Title="Customer Name"
                      @bind-Value="@model.dict["CustomerName"]"
                      MaxLength="100"
                      ColSize="col-md-4" 
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(5)) />
+                     GetInputReference="@((eref) => getInputReferences(4, eref))"
+                     NextReference="@(GetRef(5))" />
 
             <T_Input Title="Customer City"
                      @bind-Value="@model.dict["CustomerCity"]"
                      MaxLength="50"
                      ColSize="col-md-4" 
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(6)) />
+                     GetInputReference="@((eref) => getInputReferences(5, eref))"
+                     NextReference="@(GetRef(6))" />
         </T_Row>
 
-        <T_Row>
+        <T_Row Gutters="">
             <T_Input Title="Mobile No."
                      @bind-Value="@model.dict["CustomerMobileNo"]"
                      MaxLength="50"
                      ColSize="col-md-4"
                      Type="Number"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(7)) />
+                     GetInputReference="@((eref) => getInputReferences(6, eref))"
+                     NextReference="@(GetRef(7))" />
 
             <T_RInput Title="Engineer" Layout="1"
                       TableName="EngineerMaster"
@@ -90,14 +90,14 @@
                       DisplayColumn="EngineerName"
                       @bind-Value="@model.dict["EngineerCode"]"
                       ColSize="col-md-4"
-                      GetInputReference="getInputReferences"
-                      NextReference=@(GetRef(8)) />
+                      GetInputReference="@((eref) => getInputReferences(7, eref))"
+                      NextReference="@(GetRef(8))" />
 
             <T_Select @bind-Value="@model.dict["ModeOfPay"]" Label="Mode Of Pay"
                     Options="CREDIT:Credit,CASH:Cash" 
                     ColSize="col-md-4"
-                    GetInputReference="getInputReferences"
-                    NextReference=@(GetRef(9)) />
+                    GetInputReference="@((eref) => getInputReferences(8, eref))"
+                    NextReference="@(GetRef(9))" />
         </T_Row>
 
         <!-- Narration and Options -->
@@ -105,8 +105,9 @@
             <T_Textarea Title="Narration"
                         @bind-Value="@model.dict["Narration"]"
                         ColSize="col-md-6"
-                        GetInputReference="getInputReferences"
-                        NextReference=@(GetRef(0)) />
+                        GetInputReference="@((eref) => getInputReferences(9, eref))"
+                        NextReference="@(GetRef(0))" 
+                        OnEnterPressed="HandleAdd"/>
         </T_Row>
 
         <!-- Sales Details Table -->
@@ -135,9 +136,6 @@
                 <th>Warranty Till</th>
             </TableHeads>
 
-
-
-            <!-- Fix the TableRows section -->
             <TableRows>
                 @for (int i = 0; i < detailComponents.Count; i++)
                 {
@@ -149,6 +147,7 @@
                         SerialNo="@(index + 1)"
                         SalesBillNo="@model.dict["SalesBillNo"]"
                         OnRemove="HandleRemove"
+                        OnAdd="HandleAdd"
                         OnCalculationChanged="CalculateTotals"
                         InitialDataRow="@(detailRows.Count > index ? detailRows[index] : null)"
                         GstStateCode="@GstStateCode"
@@ -157,8 +156,6 @@
                         @ref="@detailComponents[index]" />
                 }
             </TableRows>
-                
-
 
             <TableFooter>
                 Total Count: @detailComponents.Count | Total Qty: @model.dict["TotalQty"]
@@ -175,23 +172,23 @@
 
             <T_Input Title="Discount" Layout="2"
                      @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals" Type="Number"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(11)) />
+                     GetInputReference="@((eref) => getInputReferences(10, eref))"
+                     NextReference="@(GetRef(11))" />
 
             <T_Input Title="Add/Less" Layout="2"
                      @bind-Value="@model.dict["AddLess"]" ChangeFunction="CalculateTotals" Type="Number"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(12)) />
+                     GetInputReference="@((eref) => getInputReferences(11, eref))"
+                     NextReference="@(GetRef(12))" />
 
             <T_Input Title="Rounding" Layout="2"
                      @bind-Value="@model.dict["Rounding"]" ChangeFunction="CalculateTotals" Type="Number"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(13)) />
+                     GetInputReference="@((eref) => getInputReferences(12, eref))"
+                     NextReference="@(GetRef(13))" />
 
             <T_Input Title="Oct Re Emb Amount" Layout="2"
                      @bind-Value="@model.dict["OctReEmbAmount"]" ChangeFunction="CalculateTotals" Type="Number"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(10)) />
+                     GetInputReference="@((eref) => getInputReferences(13, eref))"
+                     NextReference="@(GetRef(10))" />
 
             <T_Input Title="Net Amount" Layout="2" ReadOnly
                      @bind-Value="@model.dict["NetAmount"]" Placeholder="-" Type="Number"/>
@@ -229,22 +226,27 @@
     private bool isEditing = false;
 
     // Element References Management
-    public List<ElementReference> references = new List<ElementReference>();
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
 
     // ============================= ELEMENT REFERENCE METHODS =============================
     
-    public void getInputReferences(ElementReference eref)
+    public void getInputReferences(int position, ElementReference eref)
     {
-        references.Add(eref);
-        Console.WriteLine($"Added reference #{references.Count - 1} for element");
+        if (!references.ContainsKey(position))
+        {
+            references.Add(position, eref);
+            Console.WriteLine($"Added reference for position {position}");
+        }
+        else
+        {
+            references[position] = eref;
+            Console.WriteLine($"Updated reference for position {position}");
+        }
     }
 
     private ElementReference GetRef(int idx) 
     {
-        //Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
-        return (idx >= 0 && idx < references.Count) 
-            ? references[idx] 
-            : default;
+        return references.ContainsKey(idx) ? references[idx] : default;
     }
 
     //================================Component Tracking===================================
@@ -324,7 +326,6 @@
         StateHasChanged();
     }
 
-
     [JSInvokable]
     public async Task HandleAdd()
     {
@@ -365,6 +366,7 @@
     {
         HandleClear();
         nextDetailId += 10;
+        nextDetailId %= 10000;
         await Task.Delay(50);
         isEditing = true;
         model.Populate(row);
@@ -401,10 +403,9 @@
                 return;
             }
 
-
             //Revert and Delete Stock if Editing
             if(isEditing){
-                reverStock();
+                revertStock();
                 transaction.AddQuery($"DELETE FROM SalesBillDetails WHERE SalesBillNo = '{model.dict2["SalesBillNo"]}'");
             }  
 
@@ -418,7 +419,6 @@
             if(isEditing)model.Update(transaction);
             else model.Save(transaction);
            
-
             bool result = transaction.Execute();
             if (!result)
                 throw new Exception("Failed to save");
@@ -432,7 +432,7 @@
         }
     }
 
-    public void reverStock()
+    public void revertStock()
     {
         Utilities utilities = new Utilities();
         string key = model.dict2["SalesBillNo"];
@@ -475,6 +475,11 @@
         {
             Console.WriteLine($"Invalid index {index} for removal.");
         }
+    }
+
+    [JSInvokable]
+    public void HandleRemoveLast(){
+        HandleRemove(detailComponents.Count);
     }
 
     // ============================= CALCULATION METHODS =============================

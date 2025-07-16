@@ -14,17 +14,20 @@
                   PrimaryColumn="ProductName"
                   DisplayColumn="ProductName"
                   Value="@StockName"
-                  ValueChanged="OnStockChanged" />
+                  ValueChanged="OnStockChanged"
+                  GetInputReference="@((eref) => getInputReferences(0, eref))"
+                  NextReference="@(GetRef(1))"
+                  @ref="firstReference" />
     </td>
 
     <td>
         <div style="width:100px">
-            <select class="form-control form-control-sm"
-                    value="@model.dict["AdjustmentType"]"
-                    @onchange="OnAdjustmentTypeChange">
-                <option value="LESS">LESS</option>
-                <option value="ADD">ADD</option>
-            </select>
+            <T_Select @bind-Value="@model.dict["AdjustmentType"]"
+                      Layout="2"
+                      Options="LESS:LESS,ADD:ADD"
+                      OnChange="OnAdjustmentTypeChange"
+                      GetInputReference="@((eref) => getInputReferences(1, eref))"
+                      NextReference="@(GetRef(2))" />
         </div>
     </td>
 
@@ -42,7 +45,10 @@
             <T_Input Title="" Layout="3"
                      @bind-Value="@model.dict["Rate"]"
                      Placeholder=""
-                     ChangeFunction="OnChange" />
+                     ChangeFunction="OnChange"
+                     Type="Number"
+                     GetInputReference="@((eref) => getInputReferences(2, eref))"
+                     NextReference="@(GetRef(3))" />
         </div>
     </td>
 
@@ -51,37 +57,53 @@
             <T_Input Title="" Layout="3"
                      @bind-Value="@model.dict["Quantity"]"
                      Placeholder=""
-                     ChangeFunction="OnChange" />
+                     ChangeFunction="OnChange"
+                     Type="Number"
+                     GetInputReference="@((eref) => getInputReferences(3, eref))"
+                     OnEnterPressed="OnEnterPressed" />
         </div>
     </td>
-
-    <td>@amount.ToString("F2")</td>
+    <td class="text-end">@amount.ToString("F2")</td>
 </tr>
 
 @code {
+    // =================================================================================
+    // PARAMETERS
+    // =================================================================================
+
     [Parameter] public EventCallback<int> OnRemove { get; set; }
     [Parameter] public EventCallback OnCalculationChanged { get; set; }
-
+    [Parameter] public EventCallback OnAdd { get; set; }
     [Parameter] public int SerialNo { get; set; }
     [Parameter] public int AdjustmentNo { get; set; }
-
     [Parameter] public DataRow InitialDataRow { get; set; }
-  
+    [Parameter] public ElementReference endReference{get; set;} = default;
 
-    private Model model = new Model("AdjustmentDetails", "");
+    // =================================================================================
+    // REFERENCES & STATE
+    // =================================================================================
+
+    public Model model = new Model("AdjustmentDetails", "");
     private string StockName = "";
-    private float currentQuantity = 0;
-    private float amount = 0;
+    private decimal currentQuantity = 0;
+    private decimal amount = 0;
 
     private readonly ClsDatabase db = new();
     private readonly Utilities utilities = new();
+
+    // Focus Management
+    public T_RInput firstReference;
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
 
     protected override void OnInitialized()
     {
         model.dict["Rate"] ??= "0";
         model.dict["Quantity"] ??= "1";
         model.dict["AdjustmentType"] ??= "LESS";
-
         Calculate();
     }
 
@@ -89,20 +111,45 @@
     {
         model.dict["AdjustmentNo"] = AdjustmentNo.ToString();
         model.dict["SrNo"] = SerialNo.ToString();
-        Calculate();
     }
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && InitialDataRow != null)
+        if (firstRender)
         {
-            model.Populate(InitialDataRow);
-            StockName = utilities.StockIdToName(model.dict["StockID"]);
-            InitialDataRow = null;
-            Console.WriteLine("Rendering Again");
-            StateHasChanged();
+            if (InitialDataRow != null)
+            {
+                model.Populate(InitialDataRow);
+                StockName = utilities.StockIdToName(model.dict["StockID"]);
+                UpdateStockDetails(); // This will also calculate
+                InitialDataRow = null;
+                StateHasChanged();
+            }
+            // Set initial focus on the first input of the new row.
+            if (firstReference?.reference.Id != null)
+            {
+                await firstReference.Focus();
+            }
         }
     }
+
+    // =================================================================================
+    // FOCUS MANAGEMENT
+    // =================================================================================
+    
+    public void getInputReferences(int position, ElementReference eref)
+    {
+        references[position] = eref;
+    }
+
+    private ElementReference GetRef(int idx)
+    {
+        return references.ContainsKey(idx) ? references[idx] : default;
+    }
+
+    // =================================================================================
+    // EVENT HANDLERS
+    // =================================================================================
 
     private void OnStockChanged(string name)
     {
@@ -111,7 +158,6 @@
             StockName = name;
             model.dict["StockID"] = utilities.StockNameToId(name);
             UpdateStockDetails();
-            Calculate();
             StateHasChanged();
         }
         catch (Exception ex)
@@ -120,30 +166,49 @@
         }
     }
 
-    private void OnAdjustmentTypeChange(ChangeEventArgs e)
+    private async Task OnAdjustmentTypeChange()
     {
-        model.dict["AdjustmentType"] = e.Value?.ToString() ?? "LESS";
         Calculate();
-        OnCalculationChanged.InvokeAsync();
+        await OnCalculationChanged.InvokeAsync();
     }
 
-    private void OnChange(string _)
+    private async Task OnChange(string _)
     {
         Calculate();
-        OnCalculationChanged.InvokeAsync();
+        await OnCalculationChanged.InvokeAsync();
     }
+
+    private async Task HandleRemove()
+    {
+        await OnRemove.InvokeAsync(SerialNo);
+    }
+
+    private async void OnEnterPressed(){
+        if(string.IsNullOrEmpty(StockName)){
+            if(!endReference.Equals(default(ElementReference))){
+                await endReference.FocusAsync();
+                await HandleRemove();
+            }
+        }
+        else{
+            await OnAdd.InvokeAsync();
+        }
+    }
+
+    // =================================================================================
+    // DATA & CALCULATION
+    // =================================================================================
 
     private void Calculate()
     {
-        float.TryParse(model.dict["Rate"], out float rate);
-        float.TryParse(model.dict["Quantity"], out float quantity);
+        decimal.TryParse(model.dict["Rate"], out decimal rate);
+        decimal.TryParse(model.dict["Quantity"], out decimal quantity);
         amount = rate * quantity;
     }
 
     private void UpdateStockDetails()
     {
-        if (string.IsNullOrWhiteSpace(model.dict["StockID"]))
-            return;
+        if (string.IsNullOrWhiteSpace(model.dict["StockID"])) return;
 
         try
         {
@@ -153,65 +218,41 @@
             if (result.Rows.Count > 0)
             {
                 var row = result.Rows[0];
-
                 model.dict["Rate"] = row["PurchaseRate"]?.ToString() ?? "0";
-                currentQuantity = row["Quantity"] != DBNull.Value ? Convert.ToSingle(row["Quantity"]) : 0;
+                currentQuantity = row["Quantity"] != DBNull.Value ? Convert.ToDecimal(row["Quantity"]) : 0;
             }
             else
             {
-                Console.WriteLine("No stock found for the selected item");
                 model.dict["Rate"] = "0";
                 currentQuantity = 0;
             }
+            Calculate();
+            OnCalculationChanged.InvokeAsync();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error getting stock details: {ex.Message}");
-            model.dict["Rate"] = "0";
-            currentQuantity = 0;
         }
     }
 
-    private void UpdatePhysicalStock()
+    private void UpdatePhysicalStock(Transaction transaction)
     {
-        utilities.AdjustStock(model.dict["StockID"], model.dict["AdjustmentType"], model.dict["Quantity"]);
+        utilities.AdjustStock(model.dict["StockID"], model.dict["AdjustmentType"], model.dict["Quantity"], transaction);
     }
 
-    public async Task HandleRemove()
-    {
-        Console.WriteLine($"Removing row with SerialNo: {SerialNo}");
-        await OnRemove.InvokeAsync(SerialNo);
-    }
+    // =================================================================================
+    // PUBLIC API
+    // =================================================================================
 
-    public bool SaveDetail()
+    public void SaveDetail(Transaction transaction)
     {
-        try
+        if (string.IsNullOrEmpty(model.dict["StockID"]) || model.dict["StockID"] == "0")
         {
-            if (string.IsNullOrEmpty(model.dict["StockID"]) || model.dict["StockID"] == "0")
-            {
-                Console.WriteLine("Cannot save - no stock selected");
-                return false;
-            }
-
-            model.dict["AdjustmentNo"] = AdjustmentNo.ToString();
-            model.dict["SrNo"] = SerialNo.ToString();
-
-            UpdatePhysicalStock();
-
-            bool saved = model.Save();
-
-            Console.WriteLine(saved
-                ? $"Detail {SerialNo} saved successfully"
-                : $"Failed to save detail {SerialNo}");
-
-            return saved;
+            return; // Don't save empty rows
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
-            return false;
-        }
+        UpdatePhysicalStock(transaction);
+        model.Save(transaction);
     }
 
-    public float GetAmount() => amount;
+    public decimal GetAmount() => amount;
 }

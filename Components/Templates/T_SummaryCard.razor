@@ -1,4 +1,10 @@
-@* T_SummaryCard.razor - Enhanced Minimal Design *@
+@*
+  This component, T_SummaryCard, is designed to display a concise summary of information.
+  It features a clean, minimal design with a distinct header and content area,
+  making it ideal for showing totals, statistics, or key details on a dashboard or form.
+*@
+@rendermode InteractiveServer
+
 <div class="mt-3">
     <div class="d-flex justify-content-end">
         <div class="summary-card @CardClass" style="@Style">
@@ -14,46 +20,74 @@
 
 <style>
     .summary-card {
+        /* Sizing and Layout */
         min-width: 400px;
         max-width: 500px;
-        background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+        overflow: hidden; /* Ensures content respects the rounded corners. */
+
+        /* Appearance */
+        background: linear-gradient(145deg, #f8f9fa, #e9ecef); /* Subtle gradient for depth. */
         border: 1px solid #dee2e6;
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        overflow: hidden;
-        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Soft shadow for a floating effect. */
+        
+        /* Animation */
+        transition: all 0.2s ease; /* Smooth transition for hover effects. */
     }
 
     .summary-card:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* A slightly larger shadow on hover. */
+        transform: translateY(-1px); /* A subtle lift effect on hover. */
     }
 
     .summary-header {
-        background: rgba(255, 255, 255, 0.8);
         padding: 12px 16px 8px 16px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        background: rgba(255, 255, 255, 0.8); /* Semi-transparent white for a frosted glass effect. */
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05); /* Very subtle separator line. */
     }
 
     .summary-title {
         margin: 0;
         font-size: 0.875rem;
         font-weight: 500;
-        color: #6c757d;
+        color: #6c757d; /* Muted text color for the title. */
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
 
     .summary-content {
         padding: 16px;
-        background: rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.6); /* Another semi-transparent layer. */
     }
 </style>
 
 @code {
+    // =================================================================================
+    // PARAMETERS
+    // =================================================================================
+
+    /// <summary>
+    /// The title displayed in the header of the summary card.
+    /// </summary>
     [Parameter] public string Title { get; set; } = "Summary";
+
+    /// <summary>
+    /// The content to be rendered inside the card's body (e.g., summary items).
+    /// </summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Any additional custom CSS classes to apply to the main card element.
+    /// </summary>
     [Parameter] public string CardClass { get; set; } = "";
+
+    /// <summary>
+    /// Any additional custom CSS classes to apply to the content area of the card.
+    /// </summary>
     [Parameter] public string ItemClass { get; set; } = "";
+
+    /// <summary>
+    /// Any custom inline styles to apply to the main card element.
+    /// </summary>
     [Parameter] public string Style { get; set; } = "";
 }

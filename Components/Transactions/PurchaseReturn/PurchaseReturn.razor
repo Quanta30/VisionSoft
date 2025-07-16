@@ -4,258 +4,517 @@
 @using VisionSoft.Components.Transactions.PurchaseReturn
 @rendermode InteractiveServer 
 
-<T_Msg @ref="Msg"/>
-@if(isViewing){
-    <FrmView TableName="PurchaseReturnHead" OnClosed="HandleClose" EditClicked="HandleEdit" DeleteClicked="HandleDelete"/>
+<!-- Message Dialog -->
+<T_Msg @ref="Msg" />
+
+<!-- View Mode Form -->
+@if (isViewing)
+{
+    <FrmView TableName="PurchaseReturnHead"
+             OnClosed="HandleClose"
+             EditClicked="HandleEdit"
+             DeleteClicked="HandleDelete"
+             PrimaryKeyColumn="PurchaseReturnNo" />
 }
-<T_Frm FormName="Purchase Return">
-<ChildContent>
-    <T_Row>
-        <T_Input Title="Purchase Return No *" ReadOnly=true @bind-Value="@model.dict["PurchaseReturnNo"]" ColSize="col-md-3"/>
-        <T_Input Title="Purchase Return Date" Type="date" @bind-Value="@model.dict["PurchaseReturnDate"]" ColSize="col-md-3"/>
-        <T_RInput Title="Supplier *" Layout="1" TableName="SupplierMaster" PrimaryColumn="SupplierCode" DisplayColumn="SupplierName" Value="@model.dict["SupplierCode"]" ValueChanged="OnSupplierChanged" ColSize="col-md-3"/>
-        <div class="col-md-3">
-            <label class="form-label">Mode of Pay</label>
-            <select class="form-control" @bind="@model.dict["ModeOfPay"]">
-                <option selected value="CASH">Cash</option>
-                <option value="CARD">Card</option>
-                <option value="UPI">UPI</option>
-                <option value="CHEQUE">Cheque</option>
-                <option value="CREDIT">Credit</option>
-                <option value="NEFT">NEFT</option>
-                <option value="RTGS">RTGS</option>
-            </select>
-        </div>
-    </T_Row>
-    <T_Row>
-        <T_Input Title="Entry No" @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-3"/>
-        <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
-        <T_Checkbox Title="Consider In Accounts" @bind-Value="@model.dict["ConsiderInAccounts"]" ColSize="col-md-3"/>
-    </T_Row>
-    <T_Row>
-        <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-12"/>
-    </T_Row>
-    <TableView TableName="Purchase Return Details" HandleAdd="HandleAdd">
-        <TableHeads>
-            <th>Action</th>
-            <th>Sr. No.</th>
-            <th>Product</th>
-            <th>Original Bill No</th>
-            <th>Original Bill Date</th>
-            <th>Rate</th>
-            <th>Quantity</th>
-            <th>Discount</th>
-            <th>GST%</th>
-            <th>Taxable Amount</th>
-            @if(GstStateCode == 27){
-                <th>CGST/SGST</th>
-            }
-            else{
-                <th>IGST</th>
-            }
-            <th>Total GST</th>
-            <th>Net Amount</th>
-        </TableHeads>
-        <TableRows>
-            @for(int i = 0; i < detailComponents.Count; i++){
-                int index = i;
-                <PurchaseReturnDetail SerialNo="@(index+1)" 
-                                     PurchaseReturnNo="@model.dict["PurchaseReturnNo"]" 
-                                     OnRemove="@((idx) => HandleRemove(idx))"
-                                     OnCalculationChanged="CalculateTotals"
-                                     InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
-                                     GstStateCode=@GstStateCode
-                                     @ref="detailComponents[index]" />
-            }
-        </TableRows>
-        <TableFooter>
-            Total Count : @detailComponents.Count
-        </TableFooter>
-    </TableView>
-    <T_SummaryCard >
-        <T_Input Title="Total Amount" Layout=2 ReadOnly @bind-Value="@model.dict["TotalAmount"]" Placeholder="-"/>
-        <T_Input Title="GST Amount" Layout=2 ReadOnly @bind-Value="@model.dict["GSTAmount"]" Placeholder="-"/>
-        <T_Input Title="Discount" Layout=2 @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Add/Less" Layout=2 @bind-Value="@model.dict["AddLess"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Rounding" Layout=2 @bind-Value="@model.dict["Rounding"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Oct Re Emb Amount" Layout=2 @bind-Value="@model.dict["OctReEmbAmount"]" ChangeFunction="CalculateTotals"/>
-        <T_Input Title="Net Amount" Layout=2 ReadOnly @bind-Value="@model.dict["NetAmount"]" Placeholder="-"/>
-    </T_SummaryCard>
-</ChildContent>
 
-<CardFooterContent>
-    <T_Button Text="Save" Style="" OnClick="HandleSave"/>
-    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
-    <T_Button Text="View" Style="" OnClick="HandleView"/>
-    <T_Button Text="Print" Style=""/>
-</CardFooterContent>
+<!-- Main Purchase Return Form -->
+<T_Frm FormName="Purchase Return" OnFormTypeChange="HandleFormTypeChange">
+    <ChildContent>
+        <!-- Header Inputs -->
+        <T_Row>
+            <T_Input Title="Purchase Return No *" ReadOnly="true"
+                     @bind-Value="@model.dict["PurchaseReturnNo"]"
+                     ColSize="col-md-3" />
 
+            <T_Input Title="Purchase Return Date" Type="date"
+                     @bind-Value="@model.dict["PurchaseReturnDate"]"
+                     ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(0, eref))"
+                     NextReference="@(GetRef(1))"
+                     @ref="firstReference" />
+
+            <T_RInput Title="Supplier *" Layout="1"
+                      TableName="SupplierMaster"
+                      PrimaryColumn="SupplierCode"
+                      DisplayColumn="SupplierName"
+                      Value="@model.dict["SupplierCode"]"
+                      ValueChanged="OnSupplierChanged"
+                      ColSize="col-md-3"
+                      GetInputReference="@((eref) => getInputReferences(1, eref))"
+                      NextReference="@(GetRef(2))" />
+
+            <T_Select @bind-Value="@model.dict["ModeOfPay"]" Label="Mode Of Pay"
+                      Options="CREDIT:Credit,CASH:Cash"
+                      ColSize="col-md-3"
+                      GetInputReference="@((eref) => getInputReferences(2, eref))"
+                      NextReference="@(GetRef(3))" />
+        </T_Row>
+
+        <!-- Entry No & Options -->
+        <T_Row>
+            <T_Input Title="Entry No"
+                     @bind-Value="@model.dict["EntryNo"]"
+                     ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(3, eref))"
+                     NextReference="@(GetRef(4))" />
+
+            <T_Checkbox Title="Cancelled"
+                        @bind-Value="@model.dict["Cancelled"]"
+                        ColSize="col-md-3"
+                        GetInputReference="@((eref) => getInputReferences(4, eref))"
+                        NextReference="@(GetRef(5))" />
+
+            <T_Checkbox Title="Consider In Accounts"
+                        @bind-Value="@model.dict["ConsiderInAccounts"]"
+                        ColSize="col-md-3"
+                        GetInputReference="@((eref) => getInputReferences(5, eref))"
+                        NextReference="@(GetRef(6))" />
+        </T_Row>
+
+        <!-- Narration -->
+        <T_Row>
+            <T_Textarea Title="Narration"
+                        @bind-Value="@model.dict["Narration"]"
+                        ColSize="col-md-12"
+                        GetInputReference="@((eref) => getInputReferences(6, eref))"
+                        NextReference="@(GetRef(7))"
+                        OnEnterPressed="HandleAdd" />
+        </T_Row>
+
+        <!-- Purchase Return Details Table -->
+        <TableView TableName="Purchase Return Details" HandleAdd="HandleAdd" Info="(Press : ALT + A)">
+            <TableHeads>
+                <th>Action</th>
+                <th>Sr. No.</th>
+                <th>Product</th>
+                <th>Original Bill No</th>
+                <th>Original Bill Date</th>
+                <th>Rate</th>
+                <th>Quantity</th>
+                <th>Discount %</th>
+                <th>GST%</th>
+                <th>Taxable Amount</th>
+                @if(GstStateCode == 27)
+                {
+                    <th>CGST/SGST</th>
+                }
+                else
+                {
+                    <th>IGST</th>
+                }
+                <th>Total GST</th>
+                <th>Net Amount</th>
+            </TableHeads>
+
+            <!-- Updated TableRows with proper key implementation -->
+            <TableRows>
+                @for (int i = 0; i < detailComponents.Count; i++)
+                {
+                    int index = i;
+                    int detailId = detailIds.Count > index ? detailIds[index] : index;
+
+                    <PurchaseReturnDetail 
+                        @key="@($"detail-{detailId}")"
+                        SerialNo="@(index + 1)"
+                        PurchaseReturnNo="@model.dict["PurchaseReturnNo"]"
+                        OnRemove="@((idx) => HandleRemove(idx))"
+                        OnAdd="HandleAdd"
+                        OnCalculationChanged="CalculateTotals"
+                        InitialDataRow="@(detailRows.Count > index ? detailRows[index] : null)"
+                        GstStateCode="@GstStateCode"
+                        endReference="@(GetRef(7))"
+                        transaction="@transaction"
+                        @ref="detailComponents[index]" />
+                }
+            </TableRows>
+
+            <TableFooter>
+                Total Count: @detailComponents.Count | Total Qty: @model.dict2["TotalQty"]
+            </TableFooter>
+        </TableView>
+
+        <!-- Summary Section -->
+        <T_SummaryCard>
+            <T_Input Title="Total Amount" Layout="2" ReadOnly
+                     @bind-Value="@model.dict["TotalAmount"]" Placeholder="-" Type="Number"/>
+
+            <T_Input Title="GST Amount" Layout="2" ReadOnly
+                     @bind-Value="@model.dict["GSTAmount"]" Placeholder="-" Type="Number"/>
+
+            <T_Input Title="Discount" Layout="2"
+                     @bind-Value="@model.dict["Discount"]" ChangeFunction="CalculateTotals" Type="Number"
+                     GetInputReference="@((eref) => getInputReferences(7, eref))"
+                     NextReference="@(GetRef(8))" />
+
+            <T_Input Title="Add/Less" Layout="2"
+                     @bind-Value="@model.dict["AddLess"]" ChangeFunction="CalculateTotals" Type="Number"
+                     GetInputReference="@((eref) => getInputReferences(8, eref))"
+                     NextReference="@(GetRef(9))" />
+
+            <T_Input Title="Rounding" Layout="2"
+                     @bind-Value="@model.dict["Rounding"]" ChangeFunction="CalculateTotals" Type="Number"
+                     GetInputReference="@((eref) => getInputReferences(9, eref))"
+                     NextReference="@(GetRef(10))" />
+
+            <T_Input Title="Oct Re Emb Amount" Layout="2"
+                     @bind-Value="@model.dict["OctReEmbAmount"]" ChangeFunction="CalculateTotals" Type="Number"
+                     GetInputReference="@((eref) => getInputReferences(10, eref))"
+                     NextReference="@(GetRef(0))" />
+
+            <T_Input Title="Net Amount" Layout="2" ReadOnly
+                     @bind-Value="@model.dict["NetAmount"]" Placeholder="-" Type="Number"/>
+        </T_SummaryCard>
+    </ChildContent>
+
+    <!-- Footer Buttons -->
+    <CardFooterContent>
+        <T_Button Text="Save" OnClick="HandleSave" Info="(ALT + S)"/>
+        <T_Button Text="Clear" OnClick="HandleClear" Info="(ALT + C)"/>
+        <T_Button Text="View" OnClick="HandleView" Info="(ALT + V)"/>
+        <T_Button Text="Print" Info="(ALT + P)"/>
+    </CardFooterContent>
 </T_Frm>
 
 @code {
+    // ============================= VARIABLES & REFERENCES =============================
+    
+    // UI References
     private T_Msg Msg;
+    private T_Input firstReference;
     public DotNetObjectReference<PurchaseReturn> dotNetRef;
 
-    Model model = new Model("PurchaseReturnHead", "PurchaseReturnNo");
+    // Model and Data
+    private Model model = new("PurchaseReturnHead", "PurchaseReturnNo", "A");
     private List<PurchaseReturnDetail> detailComponents = new();
     public List<DataRow> detailRows = new();
-    ClsDatabase db = new ClsDatabase();
+    private ClsDatabase db = new();
+    public Transaction transaction = new Transaction();
 
-    public int GstStateCode;
-
+    // State Variables
+    public int GstStateCode = 27;
     private bool isViewing = false;
     private bool isAddClicked = false;
     private bool isEditing = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender){
-        if(firstRender){
-            Console.WriteLine("First Render");
-            dotNetRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+    // Element References Management
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+
+    // Component Tracking
+    private List<int> detailIds = new();
+    private int nextDetailId = 1;
+
+    // ============================= ELEMENT REFERENCE METHODS =============================
+    
+    public void getInputReferences(int position, ElementReference eref)
+    {
+        if (!references.ContainsKey(position))
+        {
+            references.Add(position, eref);
+            Console.WriteLine($"PurchaseReturn: Added reference for position {position}, Id: {eref.Id}");
+        }
+        else
+        {
+            references[position] = eref;
+            Console.WriteLine($"PurchaseReturn: Updated reference for position {position}, Id: {eref.Id}");
         }
     }
 
+    private ElementReference GetRef(int idx) 
+    {
+        bool hasRef = references.ContainsKey(idx);
+        return hasRef ? references[idx] : default;
+    }
+
+    // ============================= COMPONENT LIFECYCLE METHODS =============================
+    
+    protected override void OnInitialized()
+    {
+        // Set default values
+        if (string.IsNullOrEmpty(model.dict["PurchaseReturnDate"]))
+            model.dict["PurchaseReturnDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+
+        model.dict["ModeOfPay"] ??= "CASH";
+        model.dict["ConsiderInAccounts"] ??= "true";
+        model.dict["Cancelled"] ??= "false";
+        model.dict2["TotalQty"] = "0";
+
+        GstStateCode = 27;
+
+        // Initialize component tracking
+        detailComponents = new List<PurchaseReturnDetail>();
+        detailIds = new List<int>();
+        detailRows = new List<DataRow>();
+        nextDetailId = 1;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {   
+            Console.WriteLine("PurchaseReturn: First render, focusing firstReference");
+            if (firstReference != null)
+            {
+                await firstReference.Focus();
+            }
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+
+    }
+
+    // ============================= SUPPLIER DATA METHODS =============================
+    
     private void OnSupplierChanged(string supplierCode)
     {
         model.dict["SupplierCode"] = supplierCode;
         UpdateGstStateCode();
         StateHasChanged();
     }
-    private void UpdateGstStateCode(){
-        GstStateCode = Convert.ToInt32(db.GetScalar($"Select SupplierStateCode from SupplierMaster where SupplierCode = {model.dict["SupplierCode"]}"));
+
+    private void UpdateGstStateCode()
+    {
+        try
+        {
+            var result = db.GetScalar($"SELECT SupplierStateCode FROM SupplierMaster WHERE SupplierCode = '{model.dict["SupplierCode"]}'");
+            GstStateCode = result != null ? Convert.ToInt32(result) : 27; // Default to 27 if null
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"PurchaseReturn: Error getting supplier details: {ex.Message}");
+            GstStateCode = 27; // Default value
+        }
     }
 
+    // ============================= FORM ACTION METHODS =============================
+    
     [JSInvokable]
-    public void HandleView(){
+    public void HandleView()
+    {
         isViewing = !isViewing;
         StateHasChanged();
     }
 
     [JSInvokable]
-    public void HandleAdd(){
-        detailComponents.Add(null);
-        StateHasChanged();
-    }
-
-    public void HandleEdit(DataRow row)
+    public async Task HandleAdd()
     {
-        HandleClear();
-        isEditing = true;
-        model.Populate(row);
-        UpdateGstStateCode();
-
-        DataTable dataTable = db.GetDataTable($"Select * from PurchaseReturnDetails where PurchaseReturnNo='{model.dict["PurchaseReturnNo"]}'");
-        foreach(DataRow detailRow in dataTable.Rows)
-        {
-            detailRows.Add(detailRow);
-            detailComponents.Add(null);
-        }
-        isViewing = false;
+        detailComponents.Add(null);
+        detailIds.Add(nextDetailId++);
         StateHasChanged();
+        await Task.Delay(50);
+
     }
 
     [JSInvokable]
-    public void HandleSave(){
-        Console.WriteLine("Saving");
-        try{
-            bool allDetailsSaved = true;
-            if(isEditing){
-                db.ExecuteQuery($"Delete From PurchaseReturnDetails where PurchaseReturnNo='{model.dict["PurchaseReturnNo"]}'");
-            }
-            foreach(var detail in detailComponents){
-                if(detail != null){
-                    bool saved = detail.SaveDetail();
-                    if(!saved) allDetailsSaved = false;
-                }
-            }
-            if(!allDetailsSaved){
-                throw new Exception("Failed to save some details");
-            }
-            bool er;
-            if(isEditing) er = model.Update();
-            else er = model.Save();
-            if(!er) throw new Exception("Failed to save header");
-            Msg.Success();
-        }
-        catch(Exception e){
-            Console.WriteLine($"Save error: {e.Message}");
-            Msg.SaveError();
-        }
+    public void HandleRemoveLast()
+    {
+        HandleRemove(detailComponents.Count);
     }
 
     [JSInvokable]
-    public void HandleClear(){
-        Console.WriteLine("Clear Form");
+    public async Task HandleClear()
+    {
         model.Clear();
         detailComponents.Clear();
         detailRows.Clear();
+        detailIds.Clear();
+        transaction.ClearQuery();
+        nextDetailId = 1;
         isEditing = false;
+        isAddClicked = false;
+        isViewing = false;
+
+        // Reset default values
+        OnInitialized();
+        StateHasChanged();
+        await Task.Delay(50);
+        if (firstReference != null )
+        {
+            await firstReference.Focus();
+        }
+    }
+
+    public void HandleClose()
+    {
         isAddClicked = false;
         isViewing = false;
         StateHasChanged();
     }
 
-    public void HandleClose(){
-        isAddClicked = false;
+    public void HandleFormTypeChange(string s)
+    {
+        model.SetPrimaryKey(s);
+    }
+
+    // ============================= CRUD OPERATIONS =============================
+    
+    public async Task HandleEdit(DataRow row)
+    {
+        await HandleClear();
+        nextDetailId += 10;
+        nextDetailId %= 10000;
+        isEditing = true;
+        model.Populate(row);
+        model.dict2["PurchaseReturnNo"] = model.dict["PurchaseReturnNo"]; // Store original primary key
+        UpdateGstStateCode();
+
+        var dataTable = db.GetDataTable($"SELECT * FROM PurchaseReturnDetails WHERE PurchaseReturnNo = '{model.dict["PurchaseReturnNo"]}'");
+        foreach (DataRow detailRow in dataTable.Rows)
+        {
+            detailRows.Add(detailRow);
+            detailComponents.Add(null);
+            detailIds.Add(nextDetailId++);
+        }
+
         isViewing = false;
+        StateHasChanged();
+        await Task.Delay(50);
+        if (firstReference != null)
+        {
+            await firstReference.Focus();
+        }
     }
 
-    public void HandleDelete(DataRow row){
-        string pk = row["PurchaseReturnNo"].ToString();
-        db.ExecuteQuery($"Delete From PurchaseReturnHead where PurchaseReturnNo='{pk}'");
-        db.ExecuteQuery($"Delete From PurchaseReturnDetails where PurchaseReturnNo='{pk}'");
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
+        {
+            // Validation
+            if (string.IsNullOrEmpty(model.dict["SupplierCode"]) || model.dict["SupplierCode"] == "0")
+            {
+                await Msg.Error("Please select a supplier.");
+                return;
+            }
+
+            if (detailComponents.Count == 0)
+            {
+                await Msg.Error("Please add at least one return item.");
+                return;
+            }
+
+            // Revert stock if editing
+            if (isEditing)
+            {
+                RevertStock();
+                transaction.AddQuery($"DELETE FROM PurchaseReturnDetails WHERE PurchaseReturnNo = '{model.dict2["PurchaseReturnNo"]}'");
+            }
+
+
+
+            foreach (var detail in detailComponents)
+            {
+                detail.SaveDetail();
+            }
+
+
+            // Save Header
+            if (!transaction.Execute())
+                throw new Exception("Failed to save");
+
+            await Msg.Success();
+            await HandleClear();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"PurchaseReturn: Save error: {e.Message}");
+            await Msg.SaveError();
+        }
     }
 
-    public void HandleRemove(int serialNo){
-        Console.WriteLine($"Removing Row with SerialNo {serialNo}");
+    public void RevertStock()
+    {
+        Utilities utilities = new Utilities();
+        string key = model.dict2["PurchaseReturnNo"];
+        DataTable dt = db.GetDataTable($"SELECT StockId, Quantity FROM PurchaseReturnDetails WHERE PurchaseReturnNo = '{key}'");
+
+        foreach (DataRow row in dt.Rows)
+        {
+            string stId = row["StockId"].ToString();
+            string qty = row["Quantity"].ToString();
+            utilities.AdjustStock(stId, "ADD", qty, transaction);
+        }
+    }
+
+    public void HandleDelete(DataRow row)
+    {
+        try
+        {
+            string pk = row["PurchaseReturnNo"].ToString();
+            transaction.AddQuery($"DELETE FROM PurchaseReturnDetails WHERE PurchaseReturnNo = '{pk}'");
+            transaction.AddQuery($"DELETE FROM PurchaseReturnHead WHERE PurchaseReturnNo = '{pk}'");
+            if (transaction.Execute())
+            {
+                Msg.Success();
+            }
+            else
+            {
+                Msg.Error("Failed to delete the purchase return.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"PurchaseReturn: Delete error: {ex.Message}");
+            Msg.Error("Failed to delete the purchase return.");
+        }
+    }
+
+    // ============================= DETAIL MANAGEMENT METHODS =============================
+    
+    public void HandleRemove(int serialNo)
+    {
         int index = serialNo - 1;
+
         if (index >= 0 && index < detailComponents.Count)
         {
             detailComponents.RemoveAt(index);
-            if(detailRows.Count > index)detailRows.RemoveAt(index);
-            Console.WriteLine($"Removed item at index {index}. New count: {detailComponents.Count}");
+            detailIds.RemoveAt(index);
+            
+            if (detailRows.Count > index)
+                detailRows.RemoveAt(index);
+
             CalculateTotals();
             StateHasChanged();
         }
         else
         {
-            Console.WriteLine($"Invalid index {index} for removal. Count: {detailComponents.Count}");
+            Console.WriteLine($"PurchaseReturn: Invalid index {index} for removal. Component count: {detailComponents.Count}");
         }
     }
 
+    // ============================= CALCULATION METHODS =============================
+    
     private void CalculateTotals()
     {
-        float totalAmount = 0;
-        float gstAmount = 0;
+        float totalAmount = 0, gstAmount = 0, totalQty = 0;
 
-        foreach(var detail in detailComponents){
-            if(detail != null){
+        // Calculate totals from all detail components
+        foreach (var detail in detailComponents)
+        {
+            if (detail != null)
+            {
                 totalAmount += detail.GetTotalAmount();
                 gstAmount += detail.GetGstAmount();
+                totalQty += float.TryParse(detail.model.dict["Quantity"], out float qty) ? qty : 0;
             }
         }
 
+        Console.WriteLine($"PurchaseReturn: Total: {totalAmount}, GST: {gstAmount}, Total Qty: {totalQty}");
+
+        // Update model with calculated values
         model.dict["TotalAmount"] = totalAmount.ToString("F2");
         model.dict["GSTAmount"] = gstAmount.ToString("F2");
+        model.dict2["TotalQty"] = totalQty.ToString("F2");
 
+        // Parse adjustment values
         float discount = float.TryParse(model.dict["Discount"], out float d) ? d : 0;
         float addLess = float.TryParse(model.dict["AddLess"], out float al) ? al : 0;
         float rounding = float.TryParse(model.dict["Rounding"], out float r) ? r : 0;
         float octReEmb = float.TryParse(model.dict["OctReEmbAmount"], out float ore) ? ore : 0;
 
-        float netAmount = totalAmount + gstAmount - discount + addLess + rounding + octReEmb;
+        // Calculate final net amount
+        float netAmount = totalAmount - discount + addLess + rounding + octReEmb;
         model.dict["NetAmount"] = netAmount.ToString("F2");
 
         StateHasChanged();
-    }
-
-    protected override void OnInitialized()
-    {
-        if (string.IsNullOrEmpty(model.dict["PurchaseReturnDate"]))
-            model.dict["PurchaseReturnDate"] = DateTime.Now.ToString("yyyy-MM-dd");
-        if (string.IsNullOrEmpty(model.dict["ModeOfPay"]))
-            model.dict["ModeOfPay"] = "CASH";
-        if (string.IsNullOrEmpty(model.dict["ConsiderInAccounts"]))
-            model.dict["ConsiderInAccounts"] = "1";
     }
 }

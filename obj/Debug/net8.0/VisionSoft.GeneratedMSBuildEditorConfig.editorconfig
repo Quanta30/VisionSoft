@@ -148,16 +148,8 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Templates/CCard.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wbGF0ZXNcQ0NhcmQucmF6b3I=
-build_metadata.AdditionalFiles.CssScope = 
-
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Templates/FrmView.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wbGF0ZXNcRnJtVmlldy5yYXpvcg==
-build_metadata.AdditionalFiles.CssScope = 
-
-[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Templates/RLister.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wbGF0ZXNcUkxpc3Rlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Templates/TableView.razor]
@@ -198,10 +190,6 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Templates/T_SummaryCard.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wbGF0ZXNcVF9TdW1tYXJ5Q2FyZC5yYXpvcg==
-build_metadata.AdditionalFiles.CssScope = 
-
-[C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Templates/T_TableView.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUZW1wbGF0ZXNcVF9UYWJsZVZpZXcucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Parag/Projects + Study/Csharp/VisionSoft/VisionSoft/Components/Templates/T_Textarea.razor]

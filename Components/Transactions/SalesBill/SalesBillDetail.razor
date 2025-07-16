@@ -19,7 +19,8 @@
         <T_RInput Title="" Layout="3" TableName="PhysicalStockView" 
                   PrimaryColumn="ProductName" DisplayColumn="ProductName" 
                   Value=@StockName ValueChanged="OnStockChanged"
-                  GetInputReference="getInputReferences" NextReference=@(GetRef(1)) 
+                  GetInputReference="@((eref) => getInputReferences(0, eref))" 
+                  NextReference="@(GetRef(1))" 
                   @ref="firstReference"/>
     </td>
     
@@ -35,7 +36,8 @@
         <div style="width:70px">
             <T_Input Title="" Layout="3" @bind-Value="@model.dict["Rate"]" 
                      Placeholder="" ChangeFunction="OnChange" Type="Number" 
-                     GetInputReference="getInputReferences" NextReference=@(GetRef(2))/>
+                     GetInputReference="@((eref) => getInputReferences(1, eref))" 
+                     NextReference="@(GetRef(2))"/>
         </div>
     </td>
 
@@ -44,7 +46,8 @@
         <div style="width:70px">
             <T_Input Title="" Layout="3" @bind-Value="@model.dict["Quantity"]" 
                      Placeholder="" ChangeFunction="OnQuantityChange" Type="Number" 
-                     GetInputReference="getInputReferences" NextReference=@(GetRef(3))/>
+                     GetInputReference="@((eref) => getInputReferences(2, eref))" 
+                     NextReference="@(GetRef(3))"/>
         </div>
     </td>
 
@@ -53,7 +56,8 @@
         <div style="width:70px">
             <T_Input Title="" Layout="3" @bind-Value="@model.dict["Discount"]" 
                      Placeholder="" ChangeFunction="OnChange" Type="Number" 
-                     GetInputReference="getInputReferences" NextReference=@(GetRef(4))/>
+                     GetInputReference="@((eref) => getInputReferences(3, eref))" 
+                     NextReference="@(GetRef(4))"/>
         </div>
     </td>
 
@@ -62,7 +66,8 @@
         <div style="width:70px">
             <T_Input Title="" Layout="3" @bind-Value="@model.dict["Free"]" 
                      Placeholder="" ChangeFunction="OnChange" Type="Number"
-                     GetInputReference="getInputReferences" NextReference=@(GetRef(5))/>
+                     GetInputReference="@((eref) => getInputReferences(4, eref))" 
+                     NextReference="@(GetRef(5))"/>
         </div>
     </td>
 
@@ -73,7 +78,8 @@
                       Options="1:0% GST,2:5% GST,3:12% GST,4:18% GST,5:28% GST"
                       ValueChanged="OnGstCategoryChanged"
                       ColSize="col-md-3" Layout="2"
-                      GetInputReference="getInputReferences" NextReference=@(GetRef(6))/>
+                      GetInputReference="@((eref) => getInputReferences(5, eref))" 
+                      NextReference="@(GetRef(6))"/>
         </div>
     </td>
 
@@ -112,7 +118,8 @@
         <div style="width:100px">
             <T_Input Title="" Layout="3" @bind-Value="@model.dict["WarrantyTillDate"]" 
                      Placeholder="" Type="month"
-                     GetInputReference="getInputReferences" NextReference=@(GetRef(0))
+                     GetInputReference="@((eref) => getInputReferences(6, eref))" 
+                     NextReference="@(GetRef(0))"
                      OnEnterPressed="OnEnterPressed"/>
         </div>
     </td>
@@ -128,7 +135,8 @@
     [Parameter] public DataRow InitialDataRow { get; set; }
     [Parameter] public int GstStateCode { get; set; }
     [Parameter] public ElementReference endReference { get; set; }
-    [Parameter] public Transaction transaction{get; set;}
+    [Parameter] public Transaction transaction { get; set; }
+    [Parameter] public EventCallback OnAdd{get; set;}
 
     // ============================= MODEL & HELPERS =============================
     
@@ -149,7 +157,7 @@
     // ============================= UI REFERENCES =============================
     
     public T_RInput firstReference;
-    public List<ElementReference> references = new List<ElementReference>();
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
 
     // ============================= COMPONENT LIFECYCLE METHODS =============================
     
@@ -188,29 +196,34 @@
         }
     }
 
-
     // ============================= ELEMENT REFERENCE METHODS =============================
     
-    public void getInputReferences(ElementReference eref)
+    public void getInputReferences(int position, ElementReference eref)
     {
-        references.Add(eref);
-        Console.WriteLine("Here");
+        if (!references.ContainsKey(position))
+        {
+            references.Add(position, eref);
+            Console.WriteLine($"Added reference for position {position}");
+        }
+        else
+        {
+            references[position] = eref;
+            Console.WriteLine($"Updated reference for position {position}");
+        }
     }
     
     private ElementReference GetRef(int idx) 
     {
-        //Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
-        
-        // Safe check - return default if index is out of bounds
-        if (idx >= 0 && idx < references.Count)
-            return references[idx];
-        else
-            return default(ElementReference);
+        return references.ContainsKey(idx) ? references[idx] : default;
     }
 
     public void OnEnterPressed()
     {
-        endReference.FocusAsync();
+        if(StockName == "" || StockName == null){
+            endReference.FocusAsync();
+            OnRemove.InvokeAsync(SerialNo);
+        }
+        else OnAdd.InvokeAsync();
     }
 
     // ============================= STOCK & PRODUCT METHODS =============================
@@ -288,7 +301,7 @@
         _ => 0f     // Default to 0%
     };
 
-    public void OnGstCategoryChanged(String Value)
+    public void OnGstCategoryChanged(string Value)
     {
         GstCategoryCode = Convert.ToInt32(Value);
         OnChange("");
@@ -300,9 +313,11 @@
         OnCalculationChanged.InvokeAsync();
     }
 
-    public void OnQuantityChange(string qty){
+    public void OnQuantityChange(string qty)
+    {
         int CurrQty = Convert.ToInt32(db.GetScalar($"Select Quantity from PhysicalStock where StockId = {model.dict["StockId"]}"));
-        if(Convert.ToInt32(qty) > CurrQty){
+        if(Convert.ToInt32(qty) > CurrQty)
+        {
             Msg.Show($"Warning Insufficient Stock for\n{StockName}", "danger", "");
         }
         else Msg.Clear();
@@ -348,7 +363,8 @@
             UpdatePhysicalStock();
             
             // Save to database
-            if(transaction != null){
+            if(transaction != null)
+            {
                 model.Save(transaction);
                 return true;
             }

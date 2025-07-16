@@ -1,168 +1,280 @@
+@*
+  This component, T_RInput, is a "relational input" that acts as a lookup field.
+  It displays a user-friendly value (e.g., a name) while binding to a key value
+  (e.g., an ID). It uses the FrmView component to provide a powerful search and
+  selection modal for finding the correct record.
+*@
 @using System.Data
-@if(Layout == 3){
-    // Inline layout for table cells
-    <div class="input-group input-group-sm" style="width:">
-        <input class="form-control"
-            placeholder="@Placeholder"
-            value="@_displayValue"
-            @oninput="OnInputChanged"
-            readonly="@ReadOnly" 
-            @ref="reference"
-            @onkeydown="HandleEnter"
-            />
-        <button class="btn btn-outline-secondary" @onclick="OpenFrmViewHelper" @onclick:stopPropagation="true">?</button>
+@rendermode InteractiveServer
+
+@* Layout 3: Compact, inline layout suitable for tables or dense UIs. *@
+@if (Layout == 3)
+{
+    <div class="input-group input-group-sm">
+        <input id="@_elementId"
+               class="form-control"
+               placeholder="@Placeholder"
+               value="@_displayValue"
+               @oninput="OnInputChanged"
+               readonly="@ReadOnly"
+               @ref="reference"
+               @onkeydown="HandleKeyboardInput" />
+        <button class="btn btn-outline-secondary" @onclick="OpenLookupModal" @onclick:stopPropagation="true" aria-label="Open lookup" disabled="@ReadOnly">?</button>
     </div>
 }
-else if(Layout == 1){
+@* Layout 1: Standard vertical layout for forms. *@
+else if (Layout == 1)
+{
     <div class="@ColSize">
         <div class="mb-3">
-            <label >@Title</label>
-            
+            <label for="@_elementId" class="form-label">@Title</label>
             <div class="input-group">
-                <input class="form-control"
-                    placeholder="@Placeholder"
-                    value="@_displayValue"
-                    @oninput="OnInputChanged"
-                    readonly="@ReadOnly" 
-                    @ref="reference"
-                    @onkeydown="HandleEnter"
-                    />
-                <button class="btn btn-outline-secondary" @onclick="OpenFrmViewHelper" @onclick:stopPropagation="true">?</button>
+                <input id="@_elementId"
+                       class="form-control"
+                       placeholder="@Placeholder"
+                       value="@_displayValue"
+                       @oninput="OnInputChanged"
+                       readonly="@ReadOnly"
+                       @ref="reference"
+                       @onkeydown="HandleKeyboardInput" />
+                <button class="btn btn-outline-secondary" @onclick="OpenLookupModal" @onclick:stopPropagation="true" aria-label="Open lookup" disabled="@ReadOnly">?</button>
             </div>
         </div>
     </div>
 }
 
-@if(isViewing){
-<FrmView TableName="@TableName" SelectClicked="HandleRowSelected" 
-              OnClosed="Closed"  searchText="@_displayValue" PrimaryKeyColumn=@PrimaryColumn
-              InitialFilters=@($"{PrimaryColumn}:{DisplayColumn}")
-              />
+@* The FrmView modal is rendered conditionally when the user requests the lookup. *@
+@if (isLookupModalOpen)
+{
+    <FrmView TableName="@TableName"
+             PrimaryKeyColumn="@PrimaryColumn"
+             SearchText="@_displayValue"
+             InitialFilters="@($"{PrimaryColumn}:{DisplayColumn}")"
+             SelectClicked="HandleRowSelected"
+             OnClosed="OnLookupModalClosed" />
 }
 
+
 @code {
-    private string _displayValue = string.Empty; // What user sees in the input
-    [Parameter] public string Value { get; set; } = string.Empty; // What gets bound (Primary Key)
-    private bool isViewing = false;
-    [Parameter] public int Layout { get; set; } = 1;
-    //String Parameters
-    [Parameter] public string Title { get; set; } = string.Empty;
-    [Parameter] public string TableName { get; set; } = string.Empty;
-    [Parameter] public string DisplayColumn { get; set; } = string.Empty;
-    [Parameter] public string PrimaryColumn { get; set; } = string.Empty;
-    [Parameter] public string Placeholder { get; set; } = "Enter value";
-    [Parameter] public string ColSize { get; set; } = "col-md-4";
-    [Parameter] public string InitialFilters{get; set;}
+    // =================================================================================
+    // PARAMETERS
+    // =================================================================================
 
-    //Boolean Parameter Variables
-    [Parameter] public bool ReadOnly { get; set; } = false;
+    #region Parameters
+    /// <summary>
+    /// The underlying key value that this component is bound to (e.g., the primary key).
+    /// </summary>
+    [Parameter] public string Value { get; set; } = string.Empty;
 
-    //Event CallBacks
+    /// <summary>
+    /// Event callback for when the 'Value' property changes.
+    /// </summary>
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
-    [Parameter] public string FocusOn{get; set;}
-    public ElementReference reference;
-    [Parameter] public ElementReference NextReference{get; set;}
-    [Parameter] public EventCallback<ElementReference> GetInputReference{get; set;}
-    [Parameter] public bool FocusDefault{get; set;} = false;
 
-    //Runs when parameters change - load display value based on bound Value
+    /// <summary>
+    /// The text for the label in Layout 1.
+    /// </summary>
+    [Parameter] public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The name of the database table to use for the lookup.
+    /// </summary>
+    [Parameter] public string TableName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The name of the column to display in the input field.
+    /// </summary>
+    [Parameter] public string DisplayColumn { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The name of the primary key column to use for binding the 'Value'.
+    /// </summary>
+    [Parameter] public string PrimaryColumn { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The placeholder text for the input field.
+    /// </summary>
+    [Parameter] public string Placeholder { get; set; } = "Enter value";
+
+    /// <summary>
+    /// The Bootstrap column class for sizing in Layout 1 (e.g., "col-md-4").
+    /// </summary>
+    [Parameter] public string ColSize { get; set; } = "col-md-4";
+
+    /// <summary>
+    /// The layout style to use: 1 (Vertical) or 3 (Inline).
+    /// </summary>
+    [Parameter] public int Layout { get; set; } = 1;
+
+    /// <summary>
+    /// If true, the input is disabled.
+    /// </summary>
+    [Parameter] public bool ReadOnly { get; set; } = false;
+    #endregion
+
+    #region Focus Management Parameters
+
+    /// <summary>
+    /// A reference to the next element to focus when 'Enter' is pressed.
+    /// </summary>
+    [Parameter] public ElementReference NextReference { get; set; }
+
+    /// <summary>
+    /// An event callback to pass this input's reference to the parent.
+    /// </summary>
+    [Parameter] public EventCallback<ElementReference> GetInputReference { get; set; }
+    #endregion
+
+    // =================================================================================
+    // PRIVATE FIELDS
+    // =================================================================================
+
+    #region Private Fields
+    private string _displayValue = string.Empty; // The human-readable value shown in the input.
+    private bool isLookupModalOpen = false;
+    private readonly string _elementId = $"rinput-{Guid.NewGuid()}";
+    public ElementReference reference; // The reference to the actual <input> element.
+    #endregion
+
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// When parameters are set, this method loads the display value that corresponds
+    /// to the bound key 'Value'.
+    /// </summary>
     protected override async Task OnParametersSetAsync()
     {
+        // Only attempt to load if we have a key value and the necessary table/column info.
         if (!string.IsNullOrWhiteSpace(Value) && !string.IsNullOrWhiteSpace(TableName) && !string.IsNullOrWhiteSpace(DisplayColumn))
         {
             await LoadDisplayValue();
-            InitialFilters = DisplayColumn;
         }
         else
         {
-            _displayValue = string.Empty;
+            _displayValue = string.Empty; // Clear display value if key is missing.
         }
     }
 
+    /// <summary>
+    /// Handles initial focus and passes the element reference to the parent after the first render.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
-    {   
-        if(firstRender && FocusDefault)await reference.FocusAsync();
-        if(firstRender && GetInputReference.HasDelegate){
-            await GetInputReference.InvokeAsync(reference);
+    {
+        if (firstRender)
+        {
+            if (GetInputReference.HasDelegate)
+            {
+                await GetInputReference.InvokeAsync(reference);
+            }
         }
     }
 
-    // Load the display value from database based on the bound Value (Primary Key)
+    // =================================================================================
+    // DATA LOADING
+    // =================================================================================
+
+    /// <summary>
+    /// Fetches the display value from the database based on the bound 'Value' (Primary Key).
+    /// </summary>
     private async Task LoadDisplayValue()
     {
         try
         {
             ClsDatabase db = new ClsDatabase();
-            string query = $"SELECT {DisplayColumn} FROM {TableName} WHERE {PrimaryColumn} = '{Value}'";
+            // !!! SECURITY WARNING: This query is vulnerable to SQL Injection.
+            // Use parameterized queries in your database access layer to prevent this.
+            string query = $"SELECT [{DisplayColumn}] FROM [{TableName}] WHERE [{PrimaryColumn}] = '{Value}'";
             var result = db.GetDataTable(query);
-            
-            if (result.Rows.Count > 0)
-            {
-                _displayValue = result.Rows[0][DisplayColumn]?.ToString() ?? string.Empty;
-            }
-            else
-            {
-                _displayValue = string.Empty;
-            }
+
+            _displayValue = result.Rows.Count > 0 ? result.Rows[0][DisplayColumn]?.ToString() ?? string.Empty : string.Empty;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading display value: {ex.Message}");
-            _displayValue = string.Empty;
+            _displayValue = string.Empty; // Clear on error
         }
     }
 
-    //Handle manual input changes (for search functionality)
+    // =================================================================================
+    // UI EVENT HANDLERS
+    // =================================================================================
+
+    /// <summary>
+    /// Handles manual input changes. The primary purpose is to use the typed text
+    /// as a search term for the lookup modal.
+    /// </summary>
     private async Task OnInputChanged(ChangeEventArgs e)
     {
-        if (!ReadOnly)
-        {
-            _displayValue = e.Value?.ToString() ?? string.Empty;
-            OpenFrmViewHelper();
-        }
+        if (ReadOnly) return;
+        _displayValue = e.Value?.ToString() ?? string.Empty;
+        // Automatically open the lookup modal when the user starts typing.
+        OpenLookupModal();
     }
 
-    //Handle Button Click: Open FrmView
-    private void OpenFrmViewHelper()
-    {   
-        Console.WriteLine("Opening Frm View Helper");
-        isViewing = true;
-        StateHasChanged();
-    }
-
-    //Handle row selection from FrmView
-    private async Task HandleRowSelected(DataRow selectedRow)
-    {   
-        Console.WriteLine("Handling Selected Row in RInput");
-        isViewing = false;
-        
-        // Set display value (what user sees)
-        _displayValue = selectedRow[DisplayColumn]?.ToString() ?? string.Empty;
-        
-        // Set actual bound value (Primary Key)
-        var newValue = selectedRow[PrimaryColumn]?.ToString() ?? string.Empty;
-        
-        // Update the bound Value and notify parent
-        await ValueChanged.InvokeAsync(newValue);
-        await reference.FocusAsync();
-        
-        StateHasChanged();
-    }
-
-    public async void HandleEnter(KeyboardEventArgs e){
-        if(e.Key == "Enter" && !NextReference.Equals(default(ElementReference))){
-
-                Console.WriteLine("Valid Input. Focusing on Next Input");
-                await NextReference.FocusAsync();
-        }
-    }
-
-    public async Task Focus(){
-        await reference.FocusAsync();
-    }
-    public void Closed()
+    /// <summary>
+    /// Opens the FrmView lookup modal.
+    /// </summary>
+    private void OpenLookupModal()
     {
-        isViewing = false;
+        if (ReadOnly) return;
+        isLookupModalOpen = true;
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Closes the FrmView lookup modal.
+    /// </summary>
+    private void OnLookupModalClosed()
+    {
+        isLookupModalOpen = false;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Handles the 'Enter' key press to move focus to the next element.
+    /// </summary>
+    private async Task HandleKeyboardInput(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !NextReference.Equals(default(ElementReference)))
+        {
+            await NextReference.FocusAsync();
+        }
+    }
+
+    // =================================================================================
+    // ACTION HANDLERS
+    // =================================================================================
+
+    /// <summary>
+    /// Callback method that is invoked when a row is selected in the FrmView modal.
+    /// </summary>
+    private async Task HandleRowSelected(DataRow selectedRow)
+    {
+        isLookupModalOpen = false;
+
+        // Update the display value shown in the input.
+        _displayValue = selectedRow[DisplayColumn]?.ToString() ?? string.Empty;
+
+        // Update the actual bound value (the primary key).
+        var newValue = selectedRow[PrimaryColumn]?.ToString() ?? string.Empty;
+        await ValueChanged.InvokeAsync(newValue);
+
+        // Return focus to this input after selection.
+        await Focus();
+        StateHasChanged();
+    }
+
+    // =================================================================================
+    // PUBLIC API METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Sets focus programmatically to this input element.
+    /// </summary>
+    public async Task Focus()
+    {
+        await reference.FocusAsync();
     }
 }

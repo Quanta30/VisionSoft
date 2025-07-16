@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("VisionSoft")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+24a1390f2f1116e21daa7167e62b5df5eddcb1ef")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+11d9f44eb9dc56719b6caea4a74cf4825e874be9")]
 [assembly: System.Reflection.AssemblyProductAttribute("VisionSoft")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VisionSoft")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

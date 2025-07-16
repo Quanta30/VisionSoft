@@ -1,32 +1,66 @@
-<div class="row @CssClass" style="@Style">
+@*
+  This component, T_Row, is a simple but powerful wrapper for a Bootstrap row (`<div class="row">`).
+  It simplifies the process of applying common layout utility classes for spacing,
+  alignment, and gutters without needing to write them all out manually.
+*@
+@rendermode InteractiveServer
+
+<!--
+  The final CSS class string is constructed directly in the markup.
+  Blazor will intelligently combine the provided classes, ignoring any that are empty.
+  This is a clean and reactive way to build dynamic CSS class lists.
+-->
+<div class="@FinalCssClass" style="@Style">
     @ChildContent
 </div>
 
 @code {
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public string CssClass { get; set; } = "";
-    [Parameter] public string Style { get; set; } = "";
-    [Parameter] public string Spacing { get; set; } = ""; // Default bottom margin
-    [Parameter] public string Alignment { get; set; } = ""; // align-items-center, justify-content-center, etc.
-    [Parameter] public string Gutters { get; set; } = ""; // g-0, g-1, g-2, etc.
+    // =================================================================================
+    // PARAMETERS
+    // =================================================================================
 
-    protected override void OnInitialized()
-    {
-        // Build CSS classes
-        var classes = new List<string> { "row" };
-        
-        if (!string.IsNullOrEmpty(Spacing))
-            classes.Add(Spacing);
-            
-        if (!string.IsNullOrEmpty(Alignment))
-            classes.Add(Alignment);
-            
-        if (!string.IsNullOrEmpty(Gutters))
-            classes.Add(Gutters);
-            
-        if (!string.IsNullOrEmpty(CssClass))
-            classes.Add(CssClass);
-        
-        CssClass = string.Join(" ", classes);
-    }
+    /// <summary>
+    /// The content to be rendered inside the row (e.g., column divs).
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Any additional custom CSS classes to apply to the row.
+    /// </summary>
+    [Parameter] public string CssClass { get; set; } = "";
+
+    /// <summary>
+    /// Any custom inline styles to apply to the row.
+    /// </summary>
+    [Parameter] public string Style { get; set; } = "";
+
+    /// <summary>
+    /// Sets the vertical margin (e.g., "mb-3" for margin-bottom).
+    /// </summary>
+    [Parameter] public string Spacing { get; set; } = "";
+
+    /// <summary>
+    /// Sets the vertical alignment of items within the row (e.g., "align-items-center").
+    /// </summary>
+    [Parameter] public string Alignment { get; set; } = "";
+
+    /// <summary>
+    /// Sets the gutter (spacing between columns) size (e.g., "g-2", "g-3").
+    /// </summary>
+    [Parameter] public string Gutters { get; set; } = "";
+
+    // =================================================================================
+    // PRIVATE PROPERTIES
+    // =================================================================================
+
+    /// <summary>
+    /// A computed property that combines all the provided CSS class parameters into a single string.
+    /// </summary>
+    private string FinalCssClass => string.Join(" ", 
+        "row", 
+        Spacing, 
+        Alignment, 
+        Gutters, 
+        CssClass
+    ).Trim(); // .Trim() handles any potential leading/trailing spaces.
 }

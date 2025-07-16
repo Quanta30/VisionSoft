@@ -28,8 +28,16 @@ public class Utilities
     }
     public void AdjustStock(String StockId, String AdjustmentType, String value, Transaction transaction)
     {
-  
-            float quantity = float.Parse(value);
+            float quantity = 0;
+            try
+            {
+                quantity = float.Parse(value);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error Parsing the Value in Utilities.AdjustStock");
+                Console.WriteLine(e.Message);
+            }
 
             string operation = (AdjustmentType == "ADD") ? "+" : "-";
 

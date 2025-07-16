@@ -1,290 +1,361 @@
 using System.Data;
-using Microsoft.Extensions.Primitives;
-using VisionSoft;
 using System.Text;
+// Assuming VisionSoft contains your database and transaction classes.
+using VisionSoft; 
 
+/// <summary>
+/// A generic model class for handling database operations (CRUD) for a specific table.
+/// It uses a dictionary to store column data and provides methods for saving, updating,
+/// deleting, and populating records.
+/// </summary>
 public class Model
 {
-    ClsDatabase db = new ClsDatabase();
+    // =================================================================================
+    // PRIVATE FIELDS
+    // =================================================================================
 
-    string TableName = "";
-    string PrimaryKeyColumn = "";
-    string PrimaryKeyPrefix = "";
-    public Dictionary<string, string> dict = new Dictionary<string, string>();
-    public Dictionary<string, string> dict2 = new Dictionary<string, string>();
+    private readonly ClsDatabase db = new ClsDatabase();
+    private readonly string _tableName;
+    private readonly string _primaryKeyColumn;
+    private string _primaryKeyPrefix;
 
+    // =================================================================================
+    // PUBLIC PROPERTIES
+    // =================================================================================
 
-    public Model(String TableNamePara, String PrimaryKeyPara)
+    /// <summary>
+    /// The primary dictionary holding the current record's data, with column names as keys.
+    /// This dictionary is used for data binding in the UI.
+    /// </summary>
+    public Dictionary<string, string> dict { get; private set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A secondary dictionary to hold the original state of the primary key when a record is loaded for editing.
+    /// This is crucial for the WHERE clause in UPDATE statements to ensure the correct record is updated.
+    /// </summary>
+    public Dictionary<string, string> dict2 { get; private set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    // =================================================================================
+    // CONSTRUCTORS
+    // =================================================================================
+
+    /// <summary>
+    /// Initializes a new model for a table with a numeric primary key.
+    /// </summary>
+    /// <param name="tableName">The name of the database table.</param>
+    /// <param name="primaryKeyColumn">The name of the primary key column.</param>
+    public Model(string tableName, string primaryKeyColumn)
     {
-        TableName = TableNamePara;
-        PrimaryKeyColumn = PrimaryKeyPara;
+        _tableName = tableName;
+        _primaryKeyColumn = primaryKeyColumn;
+        _primaryKeyPrefix = "";
         InitiateKeys();
-        if (PrimaryKeyColumn != "") SetPrimaryKey();
+        if (!string.IsNullOrEmpty(_primaryKeyColumn)) SetPrimaryKey();
     }
-    public Model(String TableNamePara, String PrimaryKeyPara, String PrimaryKeyPrefixPara)
+
+    /// <summary>
+    /// Initializes a new model for a table with a prefixed primary key (e.g., "INV-001").
+    /// </summary>
+    /// <param name="tableName">The name of the database table.</param>
+    /// <param name="primaryKeyColumn">The name of the primary key column.</param>
+    /// <param name="primaryKeyPrefix">The string prefix for the primary key.</param>
+    public Model(string tableName, string primaryKeyColumn, string primaryKeyPrefix)
     {
-        TableName = TableNamePara;
-        PrimaryKeyColumn = PrimaryKeyPara;
-        PrimaryKeyPrefix = PrimaryKeyPrefixPara;
+        _tableName = tableName;
+        _primaryKeyColumn = primaryKeyColumn;
+        _primaryKeyPrefix = primaryKeyPrefix;
         InitiateKeys();
-        if (PrimaryKeyColumn != "") SetPrimaryKey(PrimaryKeyPrefix);
+        if (!string.IsNullOrEmpty(_primaryKeyColumn)) SetPrimaryKey(primaryKeyPrefix);
     }
 
+    // =================================================================================
+    // PUBLIC CRUD METHODS
+    // =================================================================================
 
-    //Save
+    #region Public CRUD Methods
+
+    /// <summary>
+    /// Saves the current record in the dictionary as a new row in the database.
+    /// </summary>
+    /// <returns>True if the save operation was successful, otherwise false.</returns>
     public bool Save()
     {
-        return db.SaveRecord(TableName, GetColumnString(), GetValueString());
+        // SECURITY NOTE: This assumes `db.SaveRecord` is implemented using parameterized queries
+        // to prevent SQL injection. The implementation should not directly concatenate values.
+        return db.SaveRecord(_tableName, GetColumnString(), GetValueString());
     }
 
+    /// <summary>
+    /// Adds a save query for the current record to a database transaction.
+    /// </summary>
+    /// <param name="transaction">The transaction object to add the query to.</param>
     public void Save(Transaction transaction)
     {
-        string query = "INSERT INTO " + TableName + " (" + GetColumnString() + ") VALUES (" + GetValueString() + ");";
+        // SECURITY NOTE: The `transaction` class should also use parameterized queries.
+        string query = $"INSERT INTO {_tableName} ({GetColumnString()}) VALUES ({GetValueString()});";
         transaction.AddQuery(query);
     }
 
-
-    //Update
+    /// <summary>
+    /// Updates an existing record in the database based on the primary key stored in `dict2`.
+    /// </summary>
+    /// <returns>True if the update was successful, otherwise false.</returns>
     public bool Update()
     {
-        StringBuilder setQuantity = new StringBuilder();
-        bool start = true;
-        foreach (var kvp in dict)
+        if (!dict2.ContainsKey(_primaryKeyColumn) || string.IsNullOrEmpty(dict2[_primaryKeyColumn]))
         {
-
-                if (start)
-                {
-                    setQuantity.Append($"{kvp.Key}='{kvp.Value}'");
-                    start = false;
-                }
-                else setQuantity.Append($",{kvp.Key}='{kvp.Value}'");
+            throw new InvalidOperationException("Cannot update record. Original primary key not found.");
         }
-        string Query = $@"
-                UPDATE {TableName}
-                SET {setQuantity} 
-                WHERE {PrimaryKeyColumn}='{dict2[PrimaryKeyColumn]}'";
-
-        return db.ExecuteQuery(Query);
+        
+        string setClause = GetSetClause();
+        string query = $"UPDATE {_tableName} SET {setClause} WHERE {_primaryKeyColumn} = '{dict2[_primaryKeyColumn]}'";
+        
+        // SECURITY NOTE: This assumes `db.ExecuteQuery` is safe. Ideally, it should take parameters.
+        return db.ExecuteQuery(query);
     }
 
+    /// <summary>
+    /// Adds an update query for the current record to a database transaction.
+    /// </summary>
+    /// <param name="transaction">The transaction object to add the query to.</param>
     public void Update(Transaction transaction)
     {
-        StringBuilder setQuantity = new StringBuilder();
-        bool start = true;
-        foreach (var kvp in dict)
+        if (!dict2.ContainsKey(_primaryKeyColumn) || string.IsNullOrEmpty(dict2[_primaryKeyColumn]))
         {
-
-                if (start)
-                {
-                    setQuantity.Append($"{kvp.Key}='{kvp.Value}'");
-                    start = false;
-                }
-                else setQuantity.Append($",{kvp.Key}='{kvp.Value}'");
-
+            throw new InvalidOperationException("Cannot add update query to transaction. Original primary key not found.");
         }
-        string Query = $@"
-                UPDATE {TableName}
-                SET {setQuantity} 
-                WHERE {PrimaryKeyColumn}='{dict2[PrimaryKeyColumn]}'";
 
-        transaction.AddQuery(Query);
+        string setClause = GetSetClause();
+        string query = $"UPDATE {_tableName} SET {setClause} WHERE {_primaryKeyColumn} = '{dict2[_primaryKeyColumn]}'";
+        
+        transaction.AddQuery(query);
     }
 
-
-    //Delete
-    public bool Delete(int code)
+    /// <summary>
+    /// Deletes a record from the database by its primary key.
+    /// </summary>
+    /// <param name="key">The primary key value of the record to delete.</param>
+    /// <returns>True if the delete was successful, otherwise false.</returns>
+    public bool Delete(int key)
     {
-        String Query = $@"DELETE FROM {TableName} 
-                        WHERE {dict[PrimaryKeyColumn]}={code}";
-        return db.ExecuteQuery(Query);
+        // SECURITY NOTE: This is vulnerable to SQL injection if `key` were a string.
+        // Always prefer parameterized queries.
+        string query = $"DELETE FROM {_tableName} WHERE {_primaryKeyColumn} = {key}";
+        return db.ExecuteQuery(query);
     }
 
+    #endregion
 
-    //Initiate The Dictionary With Keys and Empty Values
+    // =================================================================================
+    // DATA POPULATION & INITIALIZATION
+    // =================================================================================
+
+    #region Data Population
+
+    /// <summary>
+    /// Initializes the dictionary with keys corresponding to the table's columns and empty string values.
+    /// </summary>
     public void InitiateKeys()
     {
-        //Console.WriteLine("Here2");
-        String Query = $@"SELECT COLUMN_NAME,DATA_TYPE 
-                        FROM INFORMATION_SCHEMA.COLUMNS 
-                        WHERE TABLE_NAME = '{TableName}'";
-
-        DataTable dt = db.GetDataTable(Query);
-        foreach (DataRow row in dt.Rows)
+        try
         {
-            string columnName = row["COLUMN_NAME"].ToString();
-            string dataType = row["DATA_TYPE"].ToString().ToLower();
-           
-            dict[row["COLUMN_NAME"].ToString()] = "";
-
-            // INITIALIZE WITH APPROPRIATE VALUE FOR TESTING PURPOSE : TO BE REMOVED
-            //TO BE REMOVED : DATA_TYPE FROM THE QUERY, string dataType, SwitchCase
-            // switch (dataType)
-            // {
-            //     case "int":
-            //     case "bigint":
-            //     case "smallint":
-            //     case "tinyint":
-            //         dict[columnName] = "0";
-            //         break;
-            //     case "float":
-            //     case "real":
-            //     case "decimal":
-            //     case "numeric":
-            //     case "money":
-            //     case "smallmoney":
-            //         dict[columnName] = "0.0";
-            //         break;
-            //     case "bit":
-            //         dict[columnName] = "false";
-            //         break;
-            //     case "datetime":
-            //     case "datetime2":
-            //     case "smalldatetime":
-            //     case "date":
-            //     case "time":
-            //         dict[columnName] = DateTime.Now.ToString("yyyy-MM-dd");
-            //         break;
-            //     default: // varchar, nvarchar, char, nchar, text, ntext, etc.
-            //         dict[columnName] = "DemoValue";
-            //         break;
-            // }
+            string query = $"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{_tableName}'";
+            DataTable dt = db.GetDataTable(query);
+            dict.Clear();
+            foreach (DataRow row in dt.Rows)
+            {
+                string columnName = row["COLUMN_NAME"].ToString();
+                if (!string.IsNullOrEmpty(columnName))
+                {
+                    dict[columnName] = "";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the exception or handle it as needed.
+            Console.WriteLine($"Error initiating keys for table '{_tableName}': {ex.Message}");
+            throw; // Re-throw to make the caller aware of the failure.
         }
     }
 
-    //Populate Dictionary Using DataRow
+    /// <summary>
+    /// Populates the model's dictionary with data from a DataRow.
+    /// Also populates `dict2` to store the original state for updates.
+    /// </summary>
+    /// <param name="row">The DataRow containing the record's data.</param>
     public void Populate(DataRow row)
     {
+        if (row == null) throw new ArgumentNullException(nameof(row));
+
+        // Create a fresh copy for dict2 to store the original state.
+        dict2 = new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
+
         foreach (DataColumn column in row.Table.Columns)
         {
-            if (dict.ContainsKey(column.ColumnName))
+            string colName = column.ColumnName;
+            if (dict.ContainsKey(colName))
             {
-                var value = row[column.ColumnName];
-                
-                // Handle DBNull values
+                object value = row[colName];
+                string stringValue;
+
                 if (value == DBNull.Value || value == null)
                 {
-                    dict[column.ColumnName] = "";
+                    stringValue = "";
                 }
                 else if (column.DataType == typeof(DateTime))
                 {
-                    dict[column.ColumnName] = ((DateTime)value).ToString("yyyy-MM-dd");
+                    stringValue = ((DateTime)value).ToString("yyyy-MM-dd");
                 }
-                else 
+                else
                 {
-                    dict[column.ColumnName] = value.ToString() ?? "";
+                    stringValue = value.ToString() ?? "";
                 }
+
+                dict[colName] = stringValue;
+                dict2[colName] = stringValue; // Also update dict2 with the loaded values.
             }
-            else 
+        }
+    }
+
+    /// <summary>
+    /// Fetches a record by its primary key and populates the model.
+    /// </summary>
+    /// <param name="key">The primary key of the record to fetch.</param>
+    public void PopulateViaKey(object key)
+    {
+        try
+        {
+            // Using a parameterized query approach is safer.
+            DataTable dataTable = db.GetDataTable($"SELECT * FROM {_tableName} WHERE {_primaryKeyColumn} = '{key}'");
+            if (dataTable.Rows.Count > 0)
             {
-                throw new Exception($"Column '{column.ColumnName}' does not exist. Populate Error");
+                Populate(dataTable.Rows[0]);
+            }
+            else
+            {
+                // Handle case where no record is found.
+                Clear();
+                throw new KeyNotFoundException($"Record with key '{key}' not found in table '{_tableName}'.");
             }
         }
-    }
-
-
-    //Populate Dictionary Using Primary Key
-    public void PopulateViaKey(int key)
-    {
-        DataTable dataTable = db.GetDataTable($"Select * From {TableName} where {PrimaryKeyColumn}={key}");
-        DataRow row = dataTable.Rows[0];
-        Populate(row);
-    }
-
-
-
-    //AutoGenerate The Primary Key Code with Max
-    public void SetPrimaryKey()
-    {
-        dict[PrimaryKeyColumn] = db.GenerateNextNo(TableName, $"Cast({PrimaryKeyColumn} as int)", $"{PrimaryKeyColumn} Like '[0-9]%'");
-    }
-
-    //AutoGenerate The Primary Key Code Having Prefix
-    public void SetPrimaryKey(string prefix)
-    {
-        string query = $@"
-            SELECT MAX(CAST(SUBSTRING({PrimaryKeyColumn}, {PrimaryKeyPrefix.Length + 1}, LEN({PrimaryKeyColumn})) AS INT))
-            FROM {TableName}
-            WHERE {PrimaryKeyColumn} LIKE '{prefix}%'";
-
-        //For debuggin and getting the total count with given prefix
-        string checkQuery = $@"
-                    Select Count({PrimaryKeyColumn}) from {TableName} 
-                    where {PrimaryKeyColumn} Like '{prefix}%'";
-
-        int nextNumber;
-        string chVal = db.GetScalar(checkQuery);
-        Console.WriteLine($"Here is ChVal {chVal}");
-
-        if (prefix == "")
+        catch (Exception ex)
         {
-            SetPrimaryKey();
-        }
-        else if (chVal == "0")
-        {
-            Console.WriteLine("Here It is ");
-            nextNumber = 1;
-            dict[PrimaryKeyColumn] = prefix + nextNumber.ToString();
-        }
-        else
-        {
-            string maxVal = db.GetScalar(query);
-            nextNumber = int.Parse(maxVal) + 1;
-            dict[PrimaryKeyColumn] = prefix + nextNumber.ToString();
+            Console.WriteLine($"Error populating via key: {ex.Message}");
+            throw;
         }
     }
 
-
-    //Clear
+    /// <summary>
+    /// Clears all values in the dictionary and resets the primary key.
+    /// </summary>
     public void Clear()
     {
-        foreach (var key in dict.Keys.ToList())
+        var keys = dict.Keys.ToList();
+        foreach (var key in keys)
         {
             dict[key] = "";
         }
-        if (PrimaryKeyColumn != "")
+        if (!string.IsNullOrEmpty(_primaryKeyColumn))
         {
-            if (PrimaryKeyPrefix == "") SetPrimaryKey(); // Reset primary key
-            else SetPrimaryKey(PrimaryKeyPrefix);
+            SetPrimaryKey(_primaryKeyPrefix);
         }
     }
 
+    #endregion
 
-    //Helper Functions
-    public string GetColumnString()
+    // =================================================================================
+    // PRIMARY KEY MANAGEMENT
+    // =================================================================================
+
+    #region Primary Key
+    
+    /// <summary>
+    /// Generates and sets the next numeric primary key.
+    /// </summary>
+    public void SetPrimaryKey()
     {
-        StringBuilder column = new StringBuilder();
-        bool start = true;
-        foreach (var kvp in dict)
-        {
-            if (start)
-            {
-                start = false;
-                column.Append(kvp.Key);
-            }
-            else column.Append($",{kvp.Key}");
-        }
-        return column.ToString();
+        dict[_primaryKeyColumn] = db.GenerateNextNo(_tableName, $"CAST({_primaryKeyColumn} AS INT)", $"{_primaryKeyColumn} LIKE '[0-9]%'");
     }
 
-    public string GetValueString()
+    /// <summary>
+    /// Generates and sets the next primary key for a key with a string prefix.
+    /// </summary>
+    /// <param name="prefix">The prefix of the primary key.</param>
+    public void SetPrimaryKey(string prefix)
     {
-        StringBuilder column = new StringBuilder();
-        bool start = true;
-        foreach (var kvp in dict)
+        _primaryKeyPrefix = prefix;
+        if (string.IsNullOrEmpty(prefix))
         {
-            if (start)
-            {
-                start = false;
-                column.Append($"'{kvp.Value}'");
-            }
-            else column.Append($",'{kvp.Value}'");
+            SetPrimaryKey();
+            return;
         }
-        return column.ToString();
+
+        try
+        {
+            string countQuery = $"SELECT COUNT(*) FROM {_tableName} WHERE {_primaryKeyColumn} LIKE '{prefix}%'";
+            bool recordExists = Convert.ToInt32(db.GetScalar(countQuery)) > 0;
+
+            if (!recordExists)
+            {
+                dict[_primaryKeyColumn] = prefix + "1";
+            }
+            else
+            {
+                string maxValQuery = $"SELECT MAX(CAST(SUBSTRING({_primaryKeyColumn}, {prefix.Length + 1}, LEN({_primaryKeyColumn})) AS INT)) FROM {_tableName} WHERE {_primaryKeyColumn} LIKE '{prefix}%'";
+                int maxVal = Convert.ToInt32(db.GetScalar(maxValQuery));
+                dict[_primaryKeyColumn] = prefix + (maxVal + 1).ToString();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error setting prefixed primary key: {ex.Message}");
+            dict[_primaryKeyColumn] = ""; // Set to empty on error.
+        }
     }
 
+    /// <summary>
+    /// Public method to change the prefix and regenerate the primary key.
+    /// </summary>
+    /// <param name="prefix">The new prefix to use.</param>
     public void SetPrefix(string prefix)
     {
-        PrimaryKeyPrefix = prefix;
         SetPrimaryKey(prefix);
     }
+    
+    #endregion
+
+    // =================================================================================
+    // PRIVATE HELPER FUNCTIONS
+    // =================================================================================
+
+    #region Private Helpers
+
+    /// <summary>
+    /// Gets a comma-separated string of column names from the dictionary.
+    /// </summary>
+    private string GetColumnString()
+    {
+        return string.Join(",", dict.Keys);
+    }
+
+    /// <summary>
+    /// Gets a comma-separated, single-quoted string of values from the dictionary.
+    /// </summary>
+    private string GetValueString()
+    {
+        // Escaping single quotes to provide basic protection against SQL injection.
+        // A fully parameterized approach is strongly recommended.
+        return string.Join(",", dict.Values.Select(v => $"'{v?.Replace("'", "''")}'"));
+    }
+
+    /// <summary>
+    /// Builds the SET clause for an UPDATE statement (e.g., "Col1='Val1',Col2='Val2'").
+    /// </summary>
+    private string GetSetClause()
+    {
+        return string.Join(",", dict.Select(kvp => $"{kvp.Key}='{kvp.Value?.Replace("'", "''")}'"));
+    }
+
+    #endregion
 }

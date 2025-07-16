@@ -1,23 +1,43 @@
 @using Microsoft.AspNetCore.Components
 
+<!--
+  This component, T_Frm, serves as a stylish and reusable wrapper for forms.
+  It provides a consistent layout with a header, a scrollable body for content,
+  and a footer for action buttons. The `tabindex="0"` allows the entire
+  component to be focused, which can be useful for accessibility.
+-->
 <div class="container-fluid p-0" tabindex="0">
+    <!-- 
+      The main card element uses flexbox to ensure the header and footer
+      stick to the top and bottom, while the body fills the remaining space.
+    -->
     <div class="card border-0 shadow-sm h-100 d-flex flex-column" style="background-color: #f8fafc; border-radius: 16px;">
+        
+        <!-- ================================================================================= -->
+        <!-- CARD HEADER - Optional header section displayed if FormName is provided.      -->
+        <!-- ================================================================================= -->
         @if (!string.IsNullOrEmpty(FormName))
         {
+            <!-- flex-shrink-0 prevents the header from shrinking if content grows. -->
             <div class="card-header border-0 flex-shrink-0" style="background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); border-radius: 16px 16px 0 0;">
                 <div class="row align-items-center">
+                    <!-- Column for the form title. -->
                     <div class="col">
                         <h5 class="mb-0 fw-light" style="color: #475569; font-size: 1.1rem; letter-spacing: 0.5px;">
                             <i class="bi bi-file-earmark-text me-2" style="color: #64748b; font-size: 1rem;"></i>
                             @FormName
                         </h5>
                     </div>
+                    
+                    <!-- Column for the optional form type selector. -->
                     @if(OnFormTypeChange.HasDelegate)
                     {
                         <div class="col-auto">
+                            <!-- This dropdown allows changing the form type. -->
                             <select class="form-select form-select-sm border-0 shadow-sm" 
                                     style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: #475569; border-radius: 10px; font-size: 0.85rem;"
                                     @onchange="HandleFormTypeChange">
+                                <!-- NOTE: Options are currently hardcoded. This could be made dynamic. -->
                                 <option value="">Empty</option>
                                 <option selected value="A">Type A</option>
                                 <option value="B">Type B</option>
@@ -28,13 +48,25 @@
             </div>
         }
         
-        <div class="card-body p-4 flex-grow-1 overflow-auto" 
+        <!-- ================================================================================= -->
+        <!-- CARD BODY - Main content area for form fields.                                -->
+        <!-- ================================================================================= -->
+        <!-- 
+          flex-grow-1 allows this section to expand and fill available vertical space.
+          The max-height and overflow-y settings make the form content scrollable
+          on taller forms, preventing the page layout from breaking.
+        -->
+        <div class="card-body p-4 flex-grow-1" 
              style="max-height:75vh; overflow-y: auto; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #334155;">
             @ChildContent
         </div>
- 
+
+        <!-- ================================================================================= -->
+        <!-- CARD FOOTER - Optional footer for action buttons.                             -->
+        <!-- ================================================================================= -->
         @if (CardFooterContent != null)
         {
+            <!-- flex-shrink-0 prevents the footer from shrinking. -->
             <div class="card-footer border-0 flex-shrink-0" 
                  style="background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); border-radius: 0 0 16px 16px;">
                 <div class="d-flex justify-content-end gap-2">
@@ -46,20 +78,49 @@
 </div>
 
 @code {
+    // =================================================================================
+    // PARAMETERS - Public properties for component configuration.
+    // =================================================================================
+
+    /// <summary>
+    /// The name of the form to be displayed in the card header.
+    /// If empty, the header is not rendered.
+    /// </summary>
     [Parameter] public string FormName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The main content of the form (e.g., input fields, checkboxes).
+    /// This is where you place your form elements.
+    /// </summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// The content for the card footer, typically used for buttons like 'Save' or 'Cancel'.
+    /// If null, the footer is not rendered.
+    /// </summary>
     [Parameter] public RenderFragment? CardFooterContent { get; set; }
+
+    /// <summary>
+    /// An event callback that fires when the user selects a new item
+    /// from the form type dropdown in the header.
+    /// </summary>
     [Parameter] public EventCallback<string> OnFormTypeChange { get; set; }
 
+    // =================================================================================
+    // METHODS
+    // =================================================================================
+
+    /// <summary>
+    /// Handles the onchange event of the form type dropdown.
+    /// </summary>
+    /// <param name="e">The event arguments containing the new value.</param>
     public async Task HandleFormTypeChange(ChangeEventArgs e)
     {
+        // Check if a parent component has subscribed to the event.
         if (OnFormTypeChange.HasDelegate)
-        {   
-            Console.WriteLine("Changing Form Type");
-            Console.WriteLine(e.Value.ToString());
-            await OnFormTypeChange.InvokeAsync(e.Value.ToString());
+        {
+            // Invoke the callback with the selected value.
+            await OnFormTypeChange.InvokeAsync(e.Value?.ToString());
         }
     }
-
-    public int index = 0;
 }

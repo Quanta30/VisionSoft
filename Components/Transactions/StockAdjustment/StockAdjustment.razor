@@ -9,6 +9,7 @@
 @if (isViewing)
 {
     <FrmView TableName="AdjustmentHead"
+             PrimaryKeyColumn="AdjustmentNo"
              OnClosed="HandleClose"
              EditClicked="HandleEdit"
              DeleteClicked="HandleDelete" />
@@ -23,20 +24,29 @@
 
             <T_Input Title="Adjustment Date" Type="date"
                      @bind-Value="@model.dict["AdjustmentDate"]"
-                     ColSize="col-md-3" />
+                     ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(0, eref))"
+                     NextReference="@(GetRef(1))"
+                     @ref="firstReference" />
 
             <T_Checkbox Title="Cancelled"
                         @bind-Value="@model.dict["Cancelled"]"
-                        ColSize="col-md-3" />
+                        ColSize="col-md-3"
+                        GetInputReference="@((eref) => getInputReferences(1, eref))"
+                        NextReference="@(GetRef(2))" />
         </T_Row>
 
         <T_Row>
             <T_Textarea Title="Narration"
                         @bind-Value="@model.dict["Narration"]"
-                        ColSize="col-md-9" />
+                        ColSize="col-md-9"
+                        Rows="1"
+                        GetInputReference="@((eref) => getInputReferences(2, eref))"
+                        NextReference="@(GetRef(0))"
+                        OnEnterPressed="HandleAdd" />
         </T_Row>
 
-        <TableView TableName="Adjustment Details" HandleAdd="HandleAdd">
+        <TableView TableName="Adjustment Details" HandleAdd="HandleAdd" Info="(Press : ALT + A)">
             <TableHeads>
                 <th>Action</th>
                 <th>Sr. No.</th>
@@ -45,20 +55,23 @@
                 <th>Current Qty</th>
                 <th>Rate</th>
                 <th>Quantity</th>
-                <th>Amount</th>
+                <th class="text-end">Amount</th>
             </TableHeads>
 
             <TableRows>
                 @for (int i = 0; i < detailComponents.Count; i++)
                 {
                     int index = i;
-                    <StockAdjustmentDetail
-                        SerialNo="@(index + 1)"
-                        AdjustmentNo="@Convert.ToInt32(model.dict["AdjustmentNo"])"
-                        OnRemove="@((idx) => HandleRemove(idx))"
-                        OnCalculationChanged="CalculateTotals"
-                        InitialDataRow="@(detailRows.Count > index ? detailRows[index] : null)"
-                        @ref="detailComponents[index]" />
+                    int detailId = detailIds.Count > index ? detailIds[index] : index;
+
+                    <StockAdjustmentDetail @key="@($"detail-{detailId}")"
+                                         SerialNo="@(index + 1)"
+                                         AdjustmentNo="@AdjustmentNo"
+                                         OnRemove="HandleRemove"
+                                         OnAdd="HandleAdd"
+                                         OnCalculationChanged="CalculateTotals"
+                                         InitialDataRow="@(detailRows.Count > index ? detailRows[index] : null)"
+                                         @ref="detailComponents[index]" />
                 }
             </TableRows>
 
@@ -75,185 +88,298 @@
     </ChildContent>
 
     <CardFooterContent>
-        <T_Button Text="Save" OnClick="HandleSave" />
-        <T_Button Text="Clear" OnClick="HandleClear" />
-        <T_Button Text="View" OnClick="HandleView" />
-        <T_Button Text="Print" />
+        <T_Button Text="Save" OnClick="HandleSave" Info="(ALT + S)" />
+        <T_Button Text="Clear" OnClick="HandleClear" Info="(ALT + C)" />
+        <T_Button Text="View" OnClick="HandleView" Info="(ALT + V)" />
+        <T_Button Text="Print" Info="(ALT + P)" />
     </CardFooterContent>
 </T_Frm>
 
 @code {
-    // ---------- Element References ----------
-    private T_Msg Msg;
-    public DotNetObjectReference<StockAdjustment> dotNetRef;
+    // =================================================================================
+    // REFERENCES & STATE
+    // =================================================================================
 
-    // ---------- Model & Data ----------
+    #region References and State
+    // UI & JS Interop
+    private T_Msg Msg;
+    private T_Input firstReference;
+    private DotNetObjectReference<StockAdjustment> dotNetRef;
+
+    // Data Models
     private Model model = new("AdjustmentHead", "AdjustmentNo");
     private ClsDatabase db = new();
+
+    // Detail Component Management
     private List<StockAdjustmentDetail> detailComponents = new();
-    public List<DataRow> detailRows = new();
-    public int AdjustmentNo;
+    private List<DataRow> detailRows = new();
+    private List<int> detailIds = new();
+    private int nextDetailId = 1;
 
-    // ---------- State Flags ----------
+    // State Flags
     private bool isViewing = false;
-    private bool isAddClicked = false;
     private bool isEditing = false;
-    private bool flagEdit = false;
+    private int AdjustmentNo;
 
-    // ---------- Lifecycle ----------
+    // Focus Management
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+    #endregion
+
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    #region Lifecycle Methods
+    protected override void OnInitialized()
+    {
+        // Set default values for a new record
+        if (string.IsNullOrEmpty(model.dict["AdjustmentDate"]))
+            model.dict["AdjustmentDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        
+        model.dict["Cancelled"] ??= "0"; // Default to not cancelled
+
+        // Ensure AdjustmentNo is initialized
+        if (int.TryParse(model.dict["AdjustmentNo"], out int adjNo))
+        {
+            AdjustmentNo = adjNo;
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            Console.WriteLine("First Render");
+            // Set initial focus to the date field
+            if (firstReference.reference.Id != null)
+            {
+                await firstReference.Focus();
+            }
+            
+            // Setup JS interop for hotkeys
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
+    #endregion
 
-    protected override void OnInitialized()
+    // =================================================================================
+    // FOCUS MANAGEMENT
+    // =================================================================================
+
+    #region Focus Management
+    /// <summary>
+    /// Collects references of focusable child components.
+    /// </summary>
+    public void getInputReferences(int position, ElementReference eref)
     {
-        if (string.IsNullOrEmpty(model.dict["AdjustmentDate"]))
-            model.dict["AdjustmentDate"] = DateTime.Now.ToString("yyyy-MM-dd");
-
-        AdjustmentNo = Convert.ToInt32(model.dict["AdjustmentNo"]);
+        references[position] = eref;
     }
 
-    // ---------- Event Handlers ----------
+    /// <summary>
+    /// Retrieves a component reference by its registered position.
+    /// </summary>
+    private ElementReference GetRef(int idx)
+    {
+        return references.ContainsKey(idx) ? references[idx] : default;
+    }
+    #endregion
+
+    // =================================================================================
+    // EVENT HANDLERS (UI ACTIONS)
+    // =================================================================================
+
+    #region UI Event Handlers
     [JSInvokable]
-    public void HandleView()
+    public Task HandleView()
     {
         isViewing = !isViewing;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public void HandleAdd()
+    public Task HandleAdd()
     {
-        detailComponents.Add(null); // Placeholder
+        detailComponents.Add(null); // Add a placeholder for the new component
+        detailIds.Add(nextDetailId++); // Assign a unique key for tracking
         StateHasChanged();
-    }
-
-    public void HandleEdit(DataRow row)
-    {
-        HandleClear(); // Reset state
-
-        isEditing = true;
-        flagEdit = true;
-
-        model.Populate(row);
-        AdjustmentNo = Convert.ToInt32(model.dict["AdjustmentNo"]);
-
-        DataTable dataTable = db.GetDataTable($"SELECT * FROM AdjustmentDetails WHERE AdjustmentNo = {AdjustmentNo}");
-
-        foreach (DataRow detailRow in dataTable.Rows)
-        {
-            detailRows.Add(detailRow);
-            detailComponents.Add(new()); // Placeholder, will be linked by @ref
-        }
-
-        isViewing = false;
-        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public void HandleSave()
+    public Task HandleClear()
     {
-        Console.WriteLine("Saving");
-
-        try
-        {
-            bool allDetailsSaved = true;
-
-            if (isEditing)
-                db.ExecuteQuery($"DELETE FROM AdjustmentDetails WHERE AdjustmentNo = {AdjustmentNo}");
-
-            foreach (var detail in detailComponents)
-            {
-                if (detail != null && !detail.SaveDetail())
-                {
-                    allDetailsSaved = false;
-                }
-            }
-
-            if (!allDetailsSaved)
-                throw new Exception("Failed to save some details");
-
-            bool headerSaved = isEditing ? model.Update() : model.Save();
-            if (!headerSaved)
-                throw new Exception("Failed to save header");
-
-            Msg.Success();
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine($"Save error: {e.Message}");
-            Msg.SaveError();
-        }
-    }
-
-    [JSInvokable]
-    public void HandleClear()
-    {
-        Console.WriteLine("Clear Form");
-
         model.Clear();
         detailComponents.Clear();
         detailRows.Clear();
-
+        detailIds.Clear();
+        nextDetailId = 1;
         isEditing = false;
-        isAddClicked = false;
         isViewing = false;
 
+        // Reset default values
+        OnInitialized();
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     public void HandleClose()
     {
-        isAddClicked = false;
         isViewing = false;
+        StateHasChanged();
     }
 
-    public void HandleDelete(DataRow row)
+    public async Task HandleEdit(DataRow row)
     {
-        int pk = Convert.ToInt32(row["AdjustmentNo"]);
+        await HandleClear(); // Reset form state
+        await Task.Delay(50); // Allow UI to process clear before populating
 
-        db.ExecuteQuery($"DELETE FROM AdjustmentHead WHERE AdjustmentNo = {pk}");
-        db.ExecuteQuery($"DELETE FROM AdjustmentDetails WHERE AdjustmentNo = {pk}");
+        isEditing = true;
+        model.Populate(row);
+        
+        if (!int.TryParse(model.dict["AdjustmentNo"], out AdjustmentNo))
+        {
+            await Msg.Error("Invalid Adjustment Number in the selected record.");
+            return;
+        }
+
+        // Load details for the selected record
+        DataTable dataTable = db.GetDataTable($"SELECT * FROM AdjustmentDetails WHERE AdjustmentNo = {AdjustmentNo}");
+        foreach (DataRow detailRow in dataTable.Rows)
+        {
+            detailRows.Add(detailRow);
+            detailComponents.Add(null); // Add placeholder
+            detailIds.Add(nextDetailId++); // Assign unique key
+        }
+
+        isViewing = false;
+        StateHasChanged();
+        await firstReference.Focus();
+    }
+
+    public async Task HandleDelete(DataRow row)
+    {
+        try
+        {
+            int pk = Convert.ToInt32(row["AdjustmentNo"]);
+            db.ExecuteQuery($"DELETE FROM AdjustmentHead WHERE AdjustmentNo = {pk}");
+            db.ExecuteQuery($"DELETE FROM AdjustmentDetails WHERE AdjustmentNo = {pk}");
+            await Msg.Success("Record deleted successfully.");
+        }
+        catch (Exception ex)
+        {
+            await Msg.Error($"Error deleting record: {ex.Message}");
+        }
     }
 
     public void HandleRemove(int serialNo)
     {
         int index = serialNo - 1;
-
         if (index >= 0 && index < detailComponents.Count)
         {
             detailComponents.RemoveAt(index);
-            if (detailRows.Count > index)
-                detailRows.RemoveAt(index);
+            detailIds.RemoveAt(index);
+            if (detailRows.Count > index) detailRows.RemoveAt(index);
 
-            Console.WriteLine($"Removed row at index {index}. Remaining: {detailComponents.Count}");
             CalculateTotals();
             StateHasChanged();
         }
-        else
+    }
+    #endregion
+
+    // =================================================================================
+    // SAVE LOGIC
+    // =================================================================================
+
+    #region Save Logic
+    [JSInvokable]
+    public async Task HandleSave()
+    {
+        try
         {
-            Console.WriteLine($"Invalid index {index}. Count: {detailComponents.Count}");
+            // Begin transaction
+            var transaction = new Transaction();
+
+            // If editing, first delete existing details to replace them.
+            if (isEditing)
+            {   
+                revertStock(transaction);
+                transaction.AddQuery($"DELETE FROM AdjustmentDetails WHERE AdjustmentNo = {AdjustmentNo}");
+            }
+
+            // Add save queries for each detail line to the transaction.
+            foreach (var detail in detailComponents)
+            {
+                if (detail != null)
+                {
+                    detail.SaveDetail(transaction);
+                }
+            }
+
+            // Add save/update query for the header to the transaction.
+            if (isEditing)
+            {   
+                model.Update(transaction);
+            }
+            else
+            {
+                model.Save(transaction);
+            }
+
+            // Execute all queries in the transaction.
+            if (transaction.Execute())
+            {
+                await Msg.Success("Record saved successfully!");
+                await HandleClear();
+            }
+            else
+            {
+                throw new Exception("Transaction failed to execute.");
+            }
+        }
+        catch (Exception e)
+        {
+            await Msg.Error($"Save failed: {e.Message}");
         }
     }
 
-    // ---------- Calculation ----------
+    public void revertStock(Transaction transaction)
+    {
+        Utilities utilities = new Utilities();
+        string key = model.dict2["AdjustmentNo"];
+        DataTable dt = db.GetDataTable($"Select StockId, Quantity, AdjustmentType from AdjustmentDetails where AdjustmentNo = '{key}'");
+
+        foreach(DataRow row in dt.Rows)
+        {
+            string stId = row["StockId"].ToString();
+            string qty = row["Quantity"].ToString();
+            string type = row["AdjustmentType"].ToString();
+            string changeType;
+            if(type == "ADD")changeType = "LESS";
+            else changeType = "ADD";
+            
+            utilities.AdjustStock(stId, changeType, qty, transaction);
+        }
+    }
+    #endregion
+
+    // =================================================================================
+    // CALCULATION LOGIC
+    // =================================================================================
+
+    #region Calculation
     private void CalculateTotals()
     {
-        float netAmount = 0;
-
+        decimal netAmount = 0;
         foreach (var detail in detailComponents)
         {
             if (detail != null)
+            {
                 netAmount += detail.GetAmount();
+            }
         }
-
         model.dict["NetAmount"] = netAmount.ToString("F2");
         StateHasChanged();
     }
+    #endregion
 }

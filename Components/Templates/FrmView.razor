@@ -1,43 +1,56 @@
+@*
+  This component, FrmView, provides a powerful and reusable modal dialog for viewing,
+  searching, filtering, and managing data from a database table. It features
+  server-side pagination, dynamic column selection, and keyboard navigation.
+*@
 @using System.Data
 @rendermode InteractiveServer
+@implements IDisposable
 
+<T_Msg @ref="Msg" />
 
-<!-- Modal Backdrop -->
+<!-- Modal Backdrop: A semi-transparent overlay that covers the entire page. -->
 <div class="position-fixed top-0 start-0 w-100 h-100 d-flex 
             align-items-center justify-content-center"
-     style="background-color: rgba(0,0,0,0.5); z-index:1050;">
+     style="background-color: rgba(0,0,0,0.5); z-index:1050;"
+     @onclick="CloseModal">
     
-    <!-- Modal Container -->
+    <!-- 
+      Modal Container: The main dialog window. 
+      - @onclick:stopPropagation stops clicks inside the modal from closing it.
+      - @onkeydown captures keyboard events for navigation.
+      - tabindex="0" allows the div to be focused to receive key events.
+    -->
     <div class="position-relative bg-white rounded-3 shadow"
          style="width: 90vw; height: 90vh; max-width: 1200px; min-width: 600px;"
-         @onclick="CloseModal" @onkeydown="HandleKeyPress" tabindex="0">
+         @onclick:stopPropagation="true" @onkeydown="HandleKeyPress" tabindex="0">
 
-        <!-- Card -->
-        <div class="card w-100 h-100 border-0" @onclick:stopPropagation="true">
+        <!-- Card structure for consistent styling -->
+        <div class="card w-100 h-100 border-0">
 
-            <!-- Header with Gray Background -->
+            <!-- Card Header: Contains all controls like title, search, and pagination. -->
             <div class="card-header bg-light border-bottom">
-                <!-- Title & Close Row -->
+                <!-- Row 1: Title and Close Button -->
                 <div class="d-flex justify-content-between align-items-center py-2">
                     <h5 class="mb-0 text-dark fw-semibold">Select @TableName</h5>
                     <button type="button" class="btn btn-danger btn-sm" @onclick="CloseModal">Close</button>
                 </div>
                 
-                <!-- Search and Pagination Row -->
+                <!-- Row 2: Search, Filter, and Pagination Controls -->
                 <div class="d-flex justify-content-between align-items-center gap-3 mt-3">
                     <!-- Search Section -->
-                    <div style="width: 400px;">
-                        <div class="input-group">
-                            <input type="text" class="form-control"
-                                   style="height: 36px;"
-                                   placeholder="Search @TableName..."
-                                   @bind="searchText" @oninput="OnSearchInput" @ref="searchInput" />
-                            <button type="button" class="btn btn-outline-secondary" @onclick="ClearSearch">X</button>
-                        </div>
+                    <div class="input-group" style="width: 400px;">
+                        <input type="text" class="form-control"
+                               style="height: 36px;"
+                               placeholder="Search @TableName..."
+                               @bind="searchText" @bind:event="oninput"
+                               @ref="searchInput" />
+                        <button type="button" class="btn btn-outline-secondary" @onclick="ClearSearch" aria-label="Clear search text">X</button>
                     </div>
 
+                    <!-- Filter Condition Dropdown -->
                     <div style="min-width: 120px;">
-                        <select class="form-select form-select-sm" value=@filterCondition @onchange="onFilterChange">
+                        <select class="form-select form-select-sm" @bind="filterCondition">
                             <option value="like">📝 Like</option>
                             <option value="=">= Equal</option>
                             <option value=">">&gt; Greater</option>
@@ -47,27 +60,25 @@
                             <option value="<>">&ne; Not Equal</option>
                         </select>
                     </div>
+
+                    <!-- Column Selection Dropdown -->
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
                                 data-bs-toggle="dropdown" aria-expanded="false">
                             Select Columns (@selectedColumns.Count selected)
                         </button>
-                        <ul class="dropdown-menu p-0" style="min-width: 250px; max-height: 600px; z-index: 1055;">
-                            <div class="p-2" style="max-height: 300px; overflow-y: auto;">
-                                @if (Columns.Count > 0)
+                        <ul class="dropdown-menu p-0" style="min-width: 250px; max-height: 400px; z-index: 1055; overflow-y: auto;">
+                            <div class="p-2">
+                                @if (Columns.Any())
                                 {
                                     @foreach (var column in Columns)
                                     {
-                                        <div class="dropdown-item-text">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" 
-                                                    id="col_@column" 
-                                                    @onchange="(e) => OnColumnToggle(column, e)"
-                                                    checked="@selectedColumns.Contains(column)" />
-                                                <label class="form-check-label" for="col_@column">
-                                                    @column
-                                                </label>
-                                            </div>
+                                        <div class="form-check dropdown-item-text">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   id="@($"col-{column}")" 
+                                                   @onchange="(e) => OnColumnToggle(column, (bool)(e.Value ?? false))"
+                                                   checked="@selectedColumns.Contains(column)" />
+                                            <label class="form-check-label" for="@($"col-{column}")">@column</label>
                                         </div>
                                     }
                                 }
@@ -77,40 +88,32 @@
                                 }
                             </div>
                             <hr class="dropdown-divider my-1">
-                            <div class="p-2">
-                                <button class="btn btn-sm btn-outline-primary w-100" @onclick="SelectAllColumns">
-                                    Select All
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary w-100 mt-1" @onclick="ClearAllColumns">
-                                    Clear All
-                                </button>
+                            <div class="p-2 d-grid gap-1">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="SelectAllColumns">Select All</button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="ClearAllColumns">Clear All</button>
                             </div>
                         </ul>
                     </div>
 
                     <!-- Pagination Section -->
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-primary btn-sm" @onclick="PreviousPage"
-                                disabled="@(currentPage <= 1)">◀</button>
+                        <button type="button" class="btn btn-primary btn-sm" @onclick="PreviousPage" disabled="@(currentPage <= 1)">◀</button>
                         <span class="text-muted">Page</span>
                         <input type="number" class="form-control text-center"
                                style="width: 70px; height: 36px;" 
                                value="@currentPage"
                                @onchange="OnPageChange" min="1" max="@totalPages" />
                         <span class="text-muted">of @totalPages</span>
-                        <button type="button" class="btn btn-primary btn-sm" @onclick="NextPage"
-                                disabled="@(currentPage >= totalPages)">▶</button>
+                        <button type="button" class="btn btn-primary btn-sm" @onclick="NextPage" disabled="@(currentPage >= totalPages)">▶</button>
                     </div>
                 </div>
 
-                <!-- Records Info Row -->
+                <!-- Row 3: Records Info -->
                 <div class="mt-2 text-end">
                     <small class="text-muted">
                         @if (totalRecords > 0)
                         {
-                            <span>Showing @((currentPage - 1) * pageSize + 1)
-                                  to @(Math.Min(currentPage * pageSize, totalRecords))
-                                  of @totalRecords records</span>
+                            <span>Showing @((currentPage - 1) * pageSize + 1) to @Math.Min(currentPage * pageSize, totalRecords) of @totalRecords records</span>
                         }
                         else
                         {
@@ -120,12 +123,14 @@
                 </div>
             </div>
 
-            <!-- Table Body -->
-            <div class="card-body p-0 overflow-auto" style="height: calc(100% - 140px);">
+            <!-- Table Body: Displays the data. It's scrollable. -->
+            <div class="card-body p-0 overflow-auto">
                 @if (IsLoading)
                 {
                     <div class="d-flex justify-content-center align-items-center h-100">
-                        <div class="spinner-border text-primary" role="status"></div>
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
                     </div>
                 }
                 else if (TableData != null && TableData.Rows.Count > 0)
@@ -134,10 +139,10 @@
                         <table class="table table-hover table-sm mb-0">
                             <thead class="table-light sticky-top">
                                 <tr>
-                                    <th class="text-center py-3" style="width: 120px; border-top: 1px solid #dee2e6;">Actions</th>
+                                    <th class="text-center py-3" style="width: 120px;">Actions</th>
                                     @foreach (DataColumn col in TableData.Columns)
                                     {
-                                        <th class="py-3" style="border-top: 1px solid #dee2e6;">@col.ColumnName</th>
+                                        <th class="py-3">@col.ColumnName</th>
                                     }
                                 </tr>
                             </thead>
@@ -149,22 +154,19 @@
                                         <td class="text-center">
                                             @if (SelectClicked.HasDelegate)
                                             {
-                                                <button type="button" class="btn btn-primary btn-sm" 
-                                                        @onclick="() => SelectRow(rowIndex)">Select</button>
+                                                <button type="button" class="btn btn-primary btn-sm" @onclick="() => SelectRow(rowIndex)">Select</button>
                                             }
                                             else
                                             {
                                                 <div class="d-flex justify-content-center gap-1">
-                                                    <button type="button" class="btn btn-outline-primary btn-sm" 
-                                                            @onclick="() => EditRow(rowIndex)">Edit</button>
-                                                    <button type="button" class="btn btn-outline-danger btn-sm" 
-                                                            @onclick="() => DeleteRow(rowIndex)">Delete</button>
+                                                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => EditRow(rowIndex)">Edit</button>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteRow(rowIndex)">Delete</button>
                                                 </div>
                                             }
                                         </td>
                                         @foreach (DataColumn col in TableData.Columns)
                                         {
-                                            <td>@TableData.Rows[i][col]</td>
+                                            <td>@TableData.Rows[rowIndex][col]</td>
                                         }
                                     </tr>
                                 }
@@ -174,270 +176,245 @@
                 }
                 else
                 {
-                    <div class="text-center text-muted p-4">No data available</div>
+                    <div class="text-center text-muted p-4">No data available to display.</div>
                 }
             </div>
         </div>
     </div>
 </div>
 
-<script>
-    window.scrollToSelectedRow = (rowIndex) => {
-        const selectedRow = document.querySelector(`tr[data-row-index="${rowIndex}"]`);
-        if (selectedRow) {
-            selectedRow.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'nearest',
-                inline: 'nearest'
-            });
-        }
-    };
-</script>
-
 @code {
+    // =================================================================================
+    // INJECTIONS & PARAMETERS
+    // =================================================================================
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    #region Parameters
+    /// <summary>
+    /// The name of the database table to query.
+    /// </summary>
     [Parameter] public string TableName { get; set; } = "";
-    [Parameter] public string searchText{get; set;} = "";//Search Text is automatically inserted at the search input
-    [Parameter] public string TableQuery{get; set;} = "";
-    [Parameter] public string InitialFilters{get; set;}
-    [Parameter] public string PrimaryKeyColumn{get; set;} = "";
+    /// <summary>
+    /// The initial text to populate the search box with.
+    /// </summary>
+    [Parameter] public string SearchText { get; set; } = "";
+    /// <summary>
+    /// The primary key column of the table, used for sorting. Must be specified for pagination to work correctly.
+    /// </summary>
+    [Parameter] public string PrimaryKeyColumn { get; set; } = "";
+    /// <summary>
+    /// A colon-separated list of column names to select by default.
+    /// </summary>
+    [Parameter] public string? InitialFilters { get; set; }
 
-    //EventCallback for Buttons Clicked
+    /// <summary>
+    /// Callback for when the modal is closed.
+    /// </summary>
     [Parameter] public EventCallback OnClosed { get; set; }
+    /// <summary>
+    /// Callback for when the 'Edit' button is clicked.
+    /// </summary>
     [Parameter] public EventCallback<DataRow> EditClicked { get; set; }
-    [Parameter] public EventCallback<DataRow> DeleteClicked {get; set; }
-    
-    [Parameter] public EventCallback<DataRow> SelectClicked {get; set; }
-    
-    
-    public string filterCondition = "like";
+    /// <summary>
+    /// Callback for when the 'Delete' button is clicked. If not provided, a default delete action is performed.
+    /// </summary>
+    [Parameter] public EventCallback<DataRow> DeleteClicked { get; set; }
+    /// <summary>
+    /// Callback for when the 'Select' button is clicked. The presence of this callback changes the UI to a selection mode.
+    /// </summary>
+    [Parameter] public EventCallback<DataRow> SelectClicked { get; set; }
+    #endregion
 
-    //Element Refernce for AutoFocus
+    // =================================================================================
+    // PRIVATE FIELDS
+    // =================================================================================
+
+    #region Private Fields
+    private T_Msg Msg = default!;
     private ElementReference searchInput;
-
-    //Other Variables
-    private ClsDatabase db = new();
+    private readonly ClsDatabase db = new(); // NOTE: Assumes ClsDatabase is available.
     private DataTable? TableData;
     private List<string> Columns = new();
-    private HashSet<string> selectedColumns = new HashSet<string>();
-    
+    private HashSet<string> selectedColumns = new();
+    private string filterCondition = "like";
+    private string searchText = "";
     private bool IsLoading;
-    
-    private int selectedRowIndex = 0;//Row Index that is selected using keyboard
-
-    //Pagination
-    private int pageSize = 10;
-    private int totalPages = 0;
-    private int currentPage = 1;
-    private int totalRecords = 0;
+    private int selectedRowIndex = 0;
     private Timer? searchTimer;
 
-    protected override void OnInitialized(){
-        if(InitialFilters== null){
+    // Pagination state
+    private int pageSize = 10;
+    private int totalPages = 1;
+    private int currentPage = 1;
+    private int totalRecords = 0;
+    #endregion
 
-        }
-    }
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
 
-    //Runs when Parameters are changed, First Render, Parent State Changed
+    #region Lifecycle Methods
+    /// <summary>
+    /// Initializes the component by setting the search text and starting the data load process.
+    /// </summary>
     protected override async Task OnParametersSetAsync()
     {
+        searchText = SearchText ?? "";
         if (!string.IsNullOrEmpty(TableName))
-        {   
-            Console.WriteLine("Running ParameterAsync");
+        {
             await InitializeColumns();
             await LoadData();
         }
     }
 
-    //Runs After Every Rerender, state change
-    protected override async Task OnAfterRenderAsync(bool firstRender){
-        if(firstRender){
-            await searchInput.FocusAsync();//Only runs on first render
-        }
-    }
-
-
-    //Getting List of Column Heads/Names so that It can be later used in LoadData
-    private async Task InitializeColumns()
-    {   
-        Console.WriteLine("Initializing Columns");
-        if (Columns.Count == 0)
-        {
-            try
-            {
-                var dtCols = db.GetDataTable($@"
-                    SELECT COLUMN_NAME 
-                    FROM INFORMATION_SCHEMA.COLUMNS 
-                    WHERE TABLE_NAME = '{TableName}' 
-                    ORDER BY ORDINAL_POSITION");
-                
-                Columns = dtCols.Rows
-                            .Cast<DataRow>()
-                            .Select(r => r["COLUMN_NAME"].ToString()!)
-                            .ToList();
-                
-                if(PrimaryKeyColumn != null){
-                    selectedColumns = new HashSet<string>();
-                    selectedColumns.Add(PrimaryKeyColumn);
-                    if(InitialFilters != null){
-                        string[] filterArray = InitialFilters.Split(':');
-                        foreach(string filter in filterArray){
-                            selectedColumns.Add(filter);
-                        }
-                    }
-                }
-                else{
-                    PrimaryKeyColumn = Columns.FirstOrDefault() ?? "";
-                    selectedColumns = new HashSet<string>(Columns);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting columns: {ex.Message}");
-            }
-        }
-    }
-
-    private async void OnColumnToggle(string columnName, ChangeEventArgs e)
+    /// <summary>
+    /// Sets focus to the search input on the first render.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        bool isChecked = (bool)(e.Value ?? false);
-        
-        if (isChecked)
+        if (firstRender)
         {
-            selectedColumns.Add(columnName);
+            await searchInput.FocusAsync();
+        }
+    }
+    #endregion
+
+    // =================================================================================
+    // DATA LOADING & INITIALIZATION
+    // =================================================================================
+
+    #region Data Loading
+    /// <summary>
+    /// Fetches the list of columns for the specified table and sets up the initial selection.
+    /// </summary>
+    private async Task InitializeColumns()
+    {
+        if (Columns.Any()) return; // Only initialize once.
+
+        try
+        {
+            var dtCols = db.GetDataTable($"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{TableName}' ORDER BY ORDINAL_POSITION");
+            Columns = dtCols.Rows.Cast<DataRow>().Select(r => r["COLUMN_NAME"]?.ToString()!).ToList();
+
+            if (!string.IsNullOrEmpty(InitialFilters))
+            {
+                selectedColumns = new HashSet<string>(InitialFilters.Split(':'), StringComparer.OrdinalIgnoreCase);
+                if (!string.IsNullOrEmpty(PrimaryKeyColumn))
+                {
+                    selectedColumns.Add(PrimaryKeyColumn); // Ensure PK is always included.
+                }
+            }
+            else
+            {
+                selectedColumns = new HashSet<string>(Columns, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.Error($"Failed to load columns: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Loads data from the database based on the current search, filter, and pagination settings.
+    /// </summary>
+    private async Task LoadData()
+    {
+        if (string.IsNullOrEmpty(PrimaryKeyColumn))
+        {
+            await Msg.Error("Primary Key Column must be specified for data loading and pagination.");
+            return;
+        }
+
+        selectedRowIndex = 0;
+        IsLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // !!! SECURITY WARNING: This method of building queries is vulnerable to SQL Injection.
+            // Replace with a parameterized query approach in your ClsDatabase class.
+            string whereClause = "";
+            if (!string.IsNullOrWhiteSpace(searchText) && selectedColumns.Count > 0)
+            {
+                var escapedSearchText = searchText.Replace("'", "''");
+                var pattern = filterCondition == "like" ? $"'%{escapedSearchText}%'" : $"'{escapedSearchText}'";
+                whereClause = "WHERE " + string.Join(" OR ", selectedColumns.Select(c => $"CAST([{c}] AS NVARCHAR(MAX)) {filterCondition} {pattern}"));
+            }
+
+            string countQuery = $"SELECT COUNT(*) as cnt FROM [{TableName}] {whereClause}";
+            totalRecords = Convert.ToInt32(db.GetDataTable(countQuery).Rows[0]["cnt"]);
+            totalPages = totalRecords > 0 ? (int)Math.Ceiling((double)totalRecords / pageSize) : 1;
+            currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+
+            string dataQuery = $@"
+                SELECT * FROM [{TableName}] {whereClause}
+                ORDER BY [{PrimaryKeyColumn}]
+                OFFSET {(currentPage - 1) * pageSize} ROWS
+                FETCH NEXT {pageSize} ROWS ONLY";
+
+            TableData = db.GetDataTable(dataQuery);
+        }
+        catch (Exception ex)
+        {
+            await Msg.Error($"Error loading data: {ex.Message}");
+            TableData = null;
+            totalRecords = 0;
+            totalPages = 1;
+        }
+        finally
+        {
+            IsLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    #endregion
+
+    // =================================================================================
+    // KEYBOARD & NAVIGATION
+    // =================================================================================
+
+    #region Keyboard Navigation
+    /// <summary>
+    /// Handles global key presses for navigation (arrows, Enter, Escape).
+    /// </summary>
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Escape": await CloseModal(); break;
+            case "ArrowUp": if (selectedRowIndex > 0) { selectedRowIndex--; await ScrollToSelectedRow(); } break;
+            case "ArrowDown": if (TableData != null && selectedRowIndex < TableData.Rows.Count - 1) { selectedRowIndex++; await ScrollToSelectedRow(); } break;
+            case "ArrowLeft": await PreviousPage(); break;
+            case "ArrowRight": await NextPage(); break;
+            case "Enter": await HandleEnter(selectedRowIndex); break;
+        }
+    }
+
+    /// <summary>
+    /// Invokes the appropriate action (Select or Edit) when the Enter key is pressed.
+    /// </summary>
+    private async Task HandleEnter(int rowIndex)
+    {
+        if (TableData == null || rowIndex < 0 || rowIndex >= TableData.Rows.Count)
+        {
+            await Msg.Error("Invalid selection.");
+            return;
+        }
+        if (SelectClicked.HasDelegate)
+        {
+            await SelectRow(rowIndex);
         }
         else
         {
-            selectedColumns.Remove(columnName);
-        }
-        
-        Console.WriteLine($"Column {columnName} is now {(isChecked ? "selected" : "deselected")}");
-        await LoadData();
-        StateHasChanged();
-    }
-
-    private async void SelectAllColumns()
-    {
-        selectedColumns = new HashSet<string>(Columns);
-        await LoadData();
-        StateHasChanged();
-    }
-
-    private async void ClearAllColumns()
-    {
-        selectedColumns.Clear();
-        await LoadData();
-        StateHasChanged();
-    }
-
-    private async void onFilterChange(ChangeEventArgs e){
-        filterCondition = e.Value.ToString();
-        await LoadData();
-        StateHasChanged();
-    }
-
-    //Load Data only on the current page
-    //And matching the pattern in the Search Box for all column entries Pattern : {%patter%} For all columns
-    //Uses ROW_NUMBER() sql window Function to add serial no. to the dataTable, So that it can be divided into pages
-private async Task LoadData()
-{   
-
-    selectedRowIndex = 0;
-    IsLoading = true;
-    StateHasChanged();
-
-    try
-    {
-        // Build WHERE clause for search
-        string whereClause = "";
-        if (!string.IsNullOrWhiteSpace(searchText) && selectedColumns.Count > 0)
-        {
-            // Escape single quotes to prevent SQL injection
-            var escapedSearchText = searchText.Replace("'", "''");
-            var pattern = $@"%{escapedSearchText}%";
-            if(filterCondition != "like")pattern = $"{escapedSearchText}";
-            
-            // For global search, always use LIKE across selected columns
-            whereClause = "WHERE " + string.Join(" OR ",
-                selectedColumns.Select(c => $"CAST({c} AS NVARCHAR(MAX)) {filterCondition} '{pattern}'"));
-        }
-
-        // Get total count
-        string countQuery = $"SELECT COUNT(*) as cnt FROM {TableName} {whereClause}";
-        totalRecords = Convert.ToInt32(db.GetDataTable(countQuery).Rows[0]["cnt"]);
-        totalPages = totalRecords > 0 ? (int)Math.Ceiling((double)totalRecords / pageSize) : 1;
-
-        // Validate current page
-        if (currentPage > totalPages && totalPages > 0)
-        {
-            currentPage = totalPages;
-        }
-        else if (currentPage < 1)
-        {
-            currentPage = 1;
-        }
-
-        // Get data with pagination
-        string dataQuery = $@"
-            SELECT * 
-            FROM {TableName}
-            {whereClause}
-            ORDER BY {PrimaryKeyColumn}
-            OFFSET {(currentPage-1) * pageSize} ROWS
-            FETCH NEXT {pageSize} ROWS ONLY";
-
-        TableData = db.GetDataTable(dataQuery);
-        Console.WriteLine(whereClause);
-
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error loading data: {ex.Message}");
-        TableData = null;
-        totalRecords = 0;
-        totalPages = 0;
-    }
-    finally
-    {
-        IsLoading = false;
-        StateHasChanged();
-    }
-}
-
-    //Navigation keys to navigate the table
-    //After Key Press blazor automatically calls StateHasChanged
-    private async Task HandleKeyPress(KeyboardEventArgs e){
-        switch(e.Key){
-            case "Escape":
-                await CloseModal();
-                break;
-            case "ArrowUp":
-                if(selectedRowIndex>0){
-                    selectedRowIndex--;
-                    await ScrollToSelectedRow();
-                }
-                break;
-            case "ArrowDown":
-                
-                if(selectedRowIndex<pageSize-1 && selectedRowIndex < TableData?.Rows.Count - 1){
-                    selectedRowIndex++;
-                    await ScrollToSelectedRow();
-                }
-                break;
-            case "ArrowLeft":
-                await PreviousPage();
-                break;
-            case "ArrowRight":
-                await NextPage();
-                break;
-            case "Enter":
-                HandleEnter(selectedRowIndex);
-                break;
-            
+            await EditRow(rowIndex);
         }
     }
 
+    /// <summary>
+    /// Calls JavaScript to scroll the currently selected row into the visible area.
+    /// </summary>
     private async Task ScrollToSelectedRow()
     {
         try
@@ -446,53 +423,22 @@ private async Task LoadData()
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error scrolling to row: {ex.Message}");
+            Console.WriteLine($"Error scrolling to row: {ex.Message}"); // Log to console as this is non-critical.
         }
     }
+    #endregion
 
+    // =================================================================================
+    // UI EVENT HANDLERS
+    // =================================================================================
 
-    //Enter key to select or edit the currently focused record
-    private void HandleEnter(int rowIndex){
-        if(SelectClicked.HasDelegate){
-            Console.WriteLine("Handling Enter Inside Select");
-            SelectRow(rowIndex);
-        }
-        else{
-            EditRow(rowIndex);
-        }
-    }
-
-    //Event Handlers for Action Buttons : Edit, Delete, Select
-    private void EditRow(int rowIndex)
-    {
-        EditClicked.InvokeAsync(TableData.Rows[rowIndex]);
-    }
-
-    private void SelectRow(int rowIndex){
-        SelectClicked.InvokeAsync(TableData.Rows[rowIndex]);
-    }
-
-    private async Task DeleteRow(int rowIndex)
-    {
-        if(DeleteClicked.HasDelegate){
-            await DeleteClicked.InvokeAsync(TableData.Rows[rowIndex]);
-        }
-        else if (TableData != null && rowIndex < TableData.Rows.Count)
-        {
-            var pkey = TableData.Rows[rowIndex][PrimaryKeyColumn]?.ToString();
-            if (!string.IsNullOrEmpty(pkey))
-            {
-                db.ExecuteQuery($"DELETE FROM {TableName} WHERE {PrimaryKeyColumn} = '{pkey}'");
-                await LoadData();
-            }
-        }
-    }
-
-    //Runs When there is input change in search bar
-    private void OnSearchInput(ChangeEventArgs e)
+    #region UI Events
+    /// <summary>
+    /// Handles the debounced search input to avoid excessive database calls.
+    /// </summary>
+    private void OnSearchInputChanged(ChangeEventArgs e)
     {
         searchText = e.Value?.ToString() ?? "";
-
         searchTimer?.Dispose();
         searchTimer = new Timer(async _ =>
         {
@@ -504,7 +450,6 @@ private async Task LoadData()
         }, null, 500, Timeout.Infinite); // 500ms delay
     }
 
-    //Clears the search bar on button press
     private async Task ClearSearch()
     {
         searchText = "";
@@ -512,13 +457,35 @@ private async Task LoadData()
         await LoadData();
     }
 
-    //Close The view
-    private async Task CloseModal()
+    private async Task OnColumnToggle(string columnName, bool isChecked)
     {
-        await OnClosed.InvokeAsync();
+        if (isChecked) selectedColumns.Add(columnName);
+        else selectedColumns.Remove(columnName);
+        await LoadData();
     }
 
-    // Pagination Methods
+    private async Task SelectAllColumns()
+    {
+        selectedColumns = new HashSet<string>(Columns);
+        await LoadData();
+    }
+
+    private async Task ClearAllColumns()
+    {
+        selectedColumns.Clear();
+        if (!string.IsNullOrEmpty(PrimaryKeyColumn)) selectedColumns.Add(PrimaryKeyColumn); // Always keep PK
+        await LoadData();
+    }
+
+    private async Task OnPageChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newPage) && newPage >= 1 && newPage <= totalPages)
+        {
+            currentPage = newPage;
+            await LoadData();
+        }
+    }
+
     private async Task PreviousPage()
     {
         if (currentPage > 1)
@@ -539,23 +506,71 @@ private async Task LoadData()
         }
     }
 
-    private async Task OnPageChange(ChangeEventArgs e)//Runs when page number is changed
+    private async Task CloseModal() => await OnClosed.InvokeAsync();
+    #endregion
+
+    // =================================================================================
+    // ACTION EVENT HANDLERS
+    // =================================================================================
+
+    #region Actions
+    private async Task EditRow(int rowIndex)
     {
-        if (int.TryParse(e.Value?.ToString(), out int newPage))
-        {
-            if (newPage >= 1 && newPage <= totalPages)
-            {
-                currentPage = newPage;
-                await LoadData();
-            }
-            else
-            {
-                // Reset to valid page if invalid input
-                currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
-                StateHasChanged();
-            }
-        }
-        e.Value = currentPage;  
+        if (TableData != null) await EditClicked.InvokeAsync(TableData.Rows[rowIndex]);
     }
 
+    private async Task SelectRow(int rowIndex)
+    {
+        if (TableData != null) await SelectClicked.InvokeAsync(TableData.Rows[rowIndex]);
+    }
+
+    private async Task DeleteRow(int rowIndex)
+    {
+        if (TableData == null) return;
+        var rowToDelete = TableData.Rows[rowIndex];
+
+        if (DeleteClicked.HasDelegate)
+        {
+            await DeleteClicked.InvokeAsync(rowToDelete);
+        }
+        else
+        {
+            // Default delete logic if no callback is provided.
+            try
+            {
+                var pkeyValue = rowToDelete[PrimaryKeyColumn]?.ToString();
+                if (!string.IsNullOrEmpty(pkeyValue))
+                {
+                    // SECURITY: Use parameterized queries here!
+                    db.ExecuteQuery($"DELETE FROM [{TableName}] WHERE [{PrimaryKeyColumn}] = '{pkeyValue}'");
+                    await Msg.Success("Record deleted.");
+                    await LoadData();
+                }
+            }
+            catch (Exception ex)
+            {
+                await Msg.Error($"Failed to delete record: {ex.Message}");
+            }
+        }
+    }
+    #endregion
+
+    public void Dispose()
+    {
+        searchTimer?.Dispose();
+    }
 }
+```
+<script>
+    // Scrolls the table to make the selected row visible.
+    window.scrollToSelectedRow = (rowIndex) => {
+        const selectedRow = document.querySelector(`tr[data-row-index="${rowIndex}"]`);
+        if (selectedRow) {
+            selectedRow.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'nearest', // 'nearest' provides a less jarring scroll than 'center'.
+                inline: 'nearest'
+            });
+        }
+    };
+</script>
