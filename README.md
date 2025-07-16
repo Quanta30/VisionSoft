@@ -1,0 +1,90 @@
+# Template Documentation
+### Component Revisions & API Usage
+
+Here is a summary of the purpose and functionality of each of your custom Blazor components, along with a quick guide to their key API usage based on the Sales Bill form.
+
+- **T_Button**: A dynamic and stateful button component that enhances the standard HTML button. It supports different visual styles (e.g., "Save", "Danger"), an optional secondary line of text for info/hotkeys, and an automated loading state that displays a spinner and disables the button during an async operation.
+    - **Key API Parameters**:
+        - `Text`: The primary text displayed on the button.
+        - `spanText`: The text displayed next to the spinner during the loading state. Defaults to the `Text` property if not set.
+        - `Info`: Optional small text displayed below the main button text, often for hotkey hints (e.g., "(ALT + S)").
+        - `btnType`: Defines the button's visual style (e.g., "Save", "Blue", "Danger") to control its color scheme.
+        - `OnClick`: The `EventCallback` that is invoked when the button is clicked.
+        - `Disabled`: A boolean to manually control the disabled state of the button.
+        - `DelayTime`: An optional delay (in milliseconds) to wait after the `OnClick` event completes before resetting the button's state.
+        - `Style`: Allows for custom inline CSS styles to be applied to the button.
+- **T_Input**: A versatile and feature-rich wrapper for the standard HTML input element, designed as a universal building block for forms. It supports multiple layouts, provides visual validation feedback, handles various input types (`text`, `date`, `number`), and integrates advanced focus management for seamless keyboard navigation.
+    - **Key API Parameters**:
+        - **Content & Binding**: `Value` (the bound string), `ValueChanged` (the event callback for binding), `Title` (the label text), `ChangeFunction` (an optional extra callback), and `DisplayContent` (for rendering custom content in Layout 2).
+        - **Styling & Layout**: `Type` (e.g., "text", "number"), `Placeholder`, `ColSize` (Bootstrap column class), and `Layout` (1 for Vertical, 2 for Horizontal, 3 for Inline).
+        - **Behavior & Validation**: `ReadOnly`, `Required`, `Min`, `Max`, `Step`, and `MaxLength` for controlling user input and validation.
+        - **Focus Management & Events**: `OnEnterPressed` (callback for the Enter key), `GetInputReference` (to pass its reference to a parent), and `NextReference` (to control focus flow).
+- **T_Checkbox**: A specialized wrapper for the HTML checkbox input that standardizes its behavior. It binds its checked state to a string value ("1" or "0"), allows users to toggle it via the keyboard for improved accessibility, and participates in the form's focus navigation system.
+    - **Key API Parameters**:
+        - `Title`: The text to display in the label next to the checkbox.
+        - `Value`: The current value of the checkbox, represented as a string ("1" for checked, "0" for unchecked).
+        - `ColSize`: The Bootstrap column size class (e.g., "col-md-4") for layout control.
+        - `ValueChanged`: An event callback that fires when the checkbox value changes.
+        - `GetInputReference`: An event callback to pass this component's input reference to a parent component.
+        - `NextReference`: A reference to the next element in the form's tab order. When the user presses 'Enter', focus will be moved to this element.
+- **T_Frm**: A high-level container component that provides a consistent and modern card-based structure for entire forms. It standardizes the layout with a distinct header for the form title, a scrollable body for input controls, and a footer for action buttons, ensuring a polished appearance.
+    - **Key API Parameters**:
+        - `FormName`: The name of the form to be displayed in the card header. If empty, the header is not rendered.
+        - `ChildContent`: The main content of the form (e.g., input fields, checkboxes). This is where you place your form elements.
+        - `CardFooterContent`: The content for the card footer, typically used for buttons like 'Save' or 'Cancel'. If null, the footer is not rendered.
+        - `OnFormTypeChange`: An event callback that fires when the user selects a new item from the optional form type dropdown in the header.
+- **T_Msg**: A user feedback component that displays non-intrusive "toast" notifications. It is designed to be controlled programmatically via an `@ref` to show success, error, or warning messages that automatically dismiss, providing clear feedback without interrupting workflow.
+    - **Key API Usage**: `<T_Msg @ref="myNotifier" />` then in code: `await myNotifier.Success();`
+- **T_RInput (Relational Input)**: An advanced input that functions as a lookup field, bridging a user-friendly display value (e.g., a name) with its underlying database key (e.g., an ID). It uses the `FrmView` modal to allow users to search and select records, simplifying relational data entry and triggering events on change.
+    - **Key API Parameters**:
+        - **Content & Binding**: `Value` (the bound primary key), `ValueChanged` (the event callback for binding), `Title` (the label text), `TableName` (the lookup table), `DisplayColumn` (the column to show the user), and `PrimaryColumn` (the column to bind the `Value` to).
+        - **Styling & Layout**: `Placeholder`, `ColSize` (Bootstrap column class), and `Layout` (1 for vertical, 3 for inline).
+        - **Behavior**: `ReadOnly` (to disable the input).
+        - **Focus Management**: `GetInputReference` (to pass its reference to a parent) and `NextReference` (to control focus flow).
+- **T_Row**: A simple layout utility component that wraps the standard Bootstrap `div class="row"`. It streamlines creating grid layouts by providing parameters to easily apply common flexbox classes for spacing, alignment, and column gutters.
+    - **Key API Parameters**:
+        - `ChildContent`: The content to be rendered inside the row (e.g., `T_Input` or other components in columns).
+        - `CssClass`: Any additional custom CSS classes to apply to the row.
+        - `Style`: Any custom inline styles to apply to the row.
+        - `Spacing`: Sets the vertical margin (e.g., "mb-3" for margin-bottom).
+        - `Alignment`: Sets the vertical alignment of items within the row (e.g., "align-items-center").
+        - `Gutters`: Sets the gutter (spacing between columns) size (e.g., "g-2", "g-3").
+- **T_Select**: A convenient wrapper for the HTML `<select>` element that simplifies its creation and data binding. It dynamically populates its options from a simple, comma-separated string of key-value pairs and integrates with the form's keyboard navigation.
+    - **Key API Parameters**:
+        - **Content & Binding**: `Label` (the text for the `<label>`), `Value` (the bound selected value), `ValueChanged` (the event callback for binding), `Options` (the formatted string for dropdown items, e.g., "VAL1:Text1,VAL2:Text2"), and `OnChange` (an optional extra callback).
+        - **Styling & Layout**: `ColSize` (Bootstrap column class) and `Layout` ("1" for vertical, "2" for inline).
+        - **Focus Management & Events**: `GetInputReference` (to pass its reference to a parent), `NextReference` (to control focus flow), `OnEnterPressed` (callback for the Enter key), and `FocusDefault` (to focus on initial render).
+- **T_SummaryCard**: A dedicated display component designed to present a clean, right-aligned summary of information, such as transaction totals. It uses a styled card with a distinct header and content area, making it ideal for showing calculated totals at the bottom of a form.
+    - **Key API Parameters**:
+        - `Title`: The title displayed in the header of the summary card.
+        - `ChildContent`: The content to be rendered inside the card's body (e.g., summary items).
+        - `CardClass`: Any additional custom CSS classes to apply to the main card element.
+        - `ItemClass`: Any additional custom CSS classes to apply to the content area of the card.
+        - `Style`: Any custom inline styles to apply to the main card element.
+- **T_Textarea**: A wrapper for the multi-line `<textarea>` element that extends its functionality for forms. It includes validation, character limit feedback, and focus management, notably allowing the 'Enter' key behavior to be overridden for actions like adding a new detail line.
+    - **Key API Parameters**:
+        - **Content & Binding**: `Value` (the bound string), `ValueChanged` (the event callback for binding), `Title` (the label text), and `ChangeFunction` (an optional extra callback).
+        - **Styling & Layout**: `Placeholder`, `ColSize` (Bootstrap column class), and `Rows` (initial number of visible lines).
+        - **Behavior & Validation**: `ReadOnly`, `Required`, and `MaxLength` for controlling user input and validation.
+        - **Focus Management & Events**: `OnEnterPressed` (callback for the Enter key), `GetInputReference` (to pass its reference to a parent), and `NextReference` (to control focus flow).
+- **FrmView**: A powerful, all-in-one modal dialog for browsing and managing data from any database table. It is a cornerstone of your UI, providing a rich user experience with features like server-side pagination, search, column filtering, and full keyboard navigation for selecting, editing, or deleting records.
+    - **Key API Parameters**:
+        - `TableName`: **(Required)** The name of the database table to display and query.
+        - `PrimaryKeyColumn`: **(Required)** The name of the table's primary key column, essential for sorting, pagination, and record identification.
+        - `OnClosed`: **(Required)** An `EventCallback` that is invoked when the user closes the modal, allowing the parent component to hide it.
+        - `EditClicked`: An `EventCallback<DataRow>` that fires when a user clicks the 'Edit' button on a row. The entire `DataRow` is passed to the parent for editing.
+        - `DeleteClicked`: An `EventCallback<DataRow>` that fires when a user clicks the 'Delete' button. If this is not provided, `FrmView` will attempt a default delete operation.
+        - `SelectClicked`: An `EventCallback<DataRow>` that, when provided, puts the modal into "selection mode." The 'Edit' and 'Delete' buttons are replaced with a single 'Select' button, which passes the chosen `DataRow` to the parent. This is used by `T_RInput`.
+        - `SearchText`: An optional string to pre-populate the search box, often used to carry over a user's partial input from a `T_RInput` field.
+        - `InitialFilters`: An optional colon-separated `string` of column names to have selected by default in the column filter dropdown.
+- **TableView**: A flexible data presentation component that provides a styled card containing a scrollable table. Its power lies in using `RenderFragment` parameters, which allows the parent component to define the exact structure of the table's headers, rows, and footer, offering maximum control for displaying data like sales details.
+    - **Key API Parameters**:
+        - `TableName`: The title displayed in the card header.
+        - `HandleAdd`: An `EventCallback` that is invoked when the 'Add Item' button is clicked, allowing the parent to add a new row to its detail collection.
+        - `TableHeads`: A `RenderFragment` to define the content of the table's header (`<thead>`), which should contain all the `<th>` elements.
+        - `TableRows`: A `RenderFragment` to define the content of the table's body (`<tbody>`), which should contain the logic for rendering the `<tr>` and `<td>` elements for the data rows.
+        - `TableFooter`: A `RenderFragment` to define the content of the card's footer, typically used for summary information like item counts or total quantity.
+        - `Info`: Optional informational text displayed in the top-right of the card header, often used for hotkey hints or other contextual information.
+     
+
+
