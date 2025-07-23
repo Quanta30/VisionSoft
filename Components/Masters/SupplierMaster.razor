@@ -4,8 +4,7 @@
 <div class="supplier-master-section">
     <hr class="fade-divider my-4" />
     <h5 class="mb-3">Supplier Details</h5>
-    
-    <!-- Supplier Master fields -->
+
     <T_Row>
         <T_Input Title="Supplier Code *" ReadOnly="true"
                  @bind-Value="@supplierModel.dict["SupplierCode"]"
@@ -13,121 +12,74 @@
         <T_Input Title="Supplier Name *"
                  @bind-Value="@supplierModel.dict["SupplierName"]"
                  MaxLength="50" ColSize="col-md-6"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(1))
-                 @ref = "firstSupplierReference"
-                  />
-        <T_Input Title="City" @bind-Value="@supplierModel.dict["SupplierCity"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 0, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 1) ?? default)"
+                 @ref="firstSupplierReference" />
+        <T_Input Title="City" @bind-Value="@supplierModel.dict["SupplierCity"]"
                  MaxLength="50" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(2)) />
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 1, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 2) ?? default)" />
     </T_Row>
-    
     <T_Row>
-        <T_Input Title="Phone No." @bind-Value="@supplierModel.dict["SupplierPhoneNo"]" 
+        <T_Input Title="Phone No." @bind-Value="@supplierModel.dict["SupplierPhoneNo"]"
                  MaxLength="50" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(3)) />
-        <T_Input Title="Mobile No." @bind-Value="@supplierModel.dict["SupplierMobileNo"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 2, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 3) ?? default)" />
+        <T_Input Title="Mobile No." @bind-Value="@supplierModel.dict["SupplierMobileNo"]"
                  MaxLength="50" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(4)) />
-        <T_Input Title="Email" @bind-Value="@supplierModel.dict["SupplierEmail"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 3, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 4) ?? default)" />
+        <T_Input Title="Email" @bind-Value="@supplierModel.dict["SupplierEmail"]"
                  MaxLength="50" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(5)) />
-        <T_Input Title="GST No." @bind-Value="@supplierModel.dict["SupplierGSTNo"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 4, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 5) ?? default)" />
+        <T_Input Title="GST No." @bind-Value="@supplierModel.dict["SupplierGSTNo"]"
                  MaxLength="50" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(6)) />
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 5, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 6) ?? default)" />
     </T_Row>
-    
     <T_Row>
-        <T_Input Title="PAN No." @bind-Value="@supplierModel.dict["SupplierPanNo"]" 
+        <T_Input Title="PAN No." @bind-Value="@supplierModel.dict["SupplierPanNo"]"
                  MaxLength="50" ColSize="col-md-4"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(7)) />
-        <T_Input Title="Credit Days" Type="number" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 6, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 7) ?? default)" />
+        <T_Input Title="Credit Days" Type="number"
                  @bind-Value="@supplierModel.dict["CreditDays"]" ColSize="col-md-4"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(8)) />
-        <T_Input Title="State Code" Type="number" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 7, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 8) ?? default)" />
+        <T_Input Title="State Code" Type="number"
                  @bind-Value="@supplierModel.dict["SupplierStateCode"]" ColSize="col-md-4"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(0)) />
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 8, eref))"
+                 OnEnterPressed="OnFinalEnter" />
     </T_Row>
 </div>
 
 @code {
     [Parameter] public Model supplierModel { get; set; }
-    [Parameter] public EventCallback<Model> supplierModelChanged { get; set; }
-    [Parameter] public EventCallback<T_Input> StartReference{ get; set; }
-    
-    private ClsDatabase db = new ClsDatabase();
-    public T_Input firstSupplierReference;
-    public List<ElementReference> references = new List<ElementReference>();
-    
-    protected override void OnInitialized()
+    [Parameter] public Action<int, ElementReference> RegisterReference { get; set; }
+    [Parameter] public Func<int, ElementReference> GetParentRef { get; set; }
+    [Parameter] public int StartIndex { get; set; }
+    [Parameter] public EventCallback OnFinalEnter { get; set; }
+
+    private T_Input firstSupplierReference;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (supplierModel == null)
+        if (firstRender && firstSupplierReference?.reference.Id != null)
         {
-            supplierModel = new Model("SupplierMaster", "SupplierCode");
+            await firstSupplierReference.Focus();
         }
     }
 
-    protected override void OnAfterRender(bool firstRender){
-        if(firstRender){
-        StartReference.InvokeAsync(firstSupplierReference);
-        }
-    }
-
-    public void GetInputReference(ElementReference eref)
-    {
-        references.Add(eref);
-        Console.WriteLine($"Added reference #{references.Count - 1} for element");
-    }
-
-
-    private ElementReference GetRef(int idx) 
-    {
-        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
-        return (idx >= 0 && idx < references.Count) 
-            ? references[idx] 
-            : default;
-    }
-    
-    // Method to validate supplier fields
     public List<string> ValidateSupplier()
     {
         var errors = new List<string>();
-        
         if (string.IsNullOrWhiteSpace(supplierModel.dict["SupplierName"]))
             errors.Add("Supplier Name is required");
-            
         return errors;
     }
-    
-    // Method to clear supplier data
-    public void ClearSupplier()
-    {
-        supplierModel.Clear();
-    }
-    
-    // Method to populate supplier data
-    public void PopulateSupplier(DataRow row)
-    {
-        supplierModel.Populate(row);
-    }
-    
-    // Method to save supplier data
-    public bool SaveSupplier()
-    {
-        return supplierModel.Save();
-    }
-    
-    // Method to update supplier data
-    public bool UpdateSupplier()
-    {
-        return supplierModel.Update();
-    }
+
+    public void SaveSupplier(Transaction transaction) => supplierModel.Save(transaction);
+    public void UpdateSupplier(Transaction transaction) => supplierModel.Update(transaction);
+    public void PopulateSupplier(DataRow row) => supplierModel.Populate(row);
 }

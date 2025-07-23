@@ -6,104 +6,185 @@
 <T_Msg @ref="Msg" />
 @if (isViewing)
 {
-    <FrmView TableName="ServiceMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+    <FrmView TableName="ServiceMaster" OnClosed="HandleClose" EditClicked="HandleEdit" PrimaryKeyColumn="ServiceCode"/>
 }
 
 <T_Frm FormName="Service Master">
     <ChildContent>
         <T_Row>
-            <T_Input Title="Service Code *" ReadOnly="true" @bind-Value="@model.dict["ServiceCode"]" ColSize="col-md-2" />
-            <T_Input Title="Service Name *" @bind-Value="@model.dict["ServiceName"]" MaxLength="100" ColSize="col-md-6" />
-            <T_Input Title="Rate" Type="number" Step="0.01" @bind-Value="@model.dict["Rate"]" ColSize="col-md-2" />
+            <T_Input Title="Service Code *" ReadOnly="true" 
+                     @bind-Value="@model.dict["ServiceCode"]" 
+                     ColSize="col-md-3" />
+
+            <T_Input Title="Service Name *" 
+                     @bind-Value="@model.dict["ServiceName"]" 
+                     MaxLength="100" ColSize="col-md-6"
+                     GetInputReference="@((eref) => getInputReferences(0, eref))"
+                     NextReference="@(GetRef(1))"
+                     @ref="firstReference" />
+
+            <T_Input Title="Rate" Type="number" Step="0.01" 
+                     @bind-Value="@model.dict["Rate"]" 
+                     ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(1, eref))"
+                     NextReference="@(GetRef(0))"
+                     OnEnterPressed="HandleSave" />
         </T_Row>
     </ChildContent>
 
     <CardFooterContent>
-        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
-        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
-        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Info="(ALT + S)" />
+        <T_Button Text="Clear" OnClick="HandleClear" Info="(ALT + C)" />
+        <T_Button Text="View" OnClick="HandleView" Info="(ALT + V)" />
+        <T_Button Text="Print" OnClick="HandlePrint" Info="(ALT + P)" />
     </CardFooterContent>
 </T_Frm>
 
 @code {
-    private T_Msg Msg;
-    public DotNetObjectReference<ServiceMaster> dotNetRef;
+    // =================================================================================
+    // REFERENCES & STATE
+    // =================================================================================
 
-    Model model = new Model("ServiceMaster", "ServiceCode");
+    #region References and State
+    // UI & JS Interop
+    private T_Msg Msg;
+    private T_Input firstReference;
+    private DotNetObjectReference<ServiceMaster> dotNetRef;
+
+    // Data Models
+    private Model model = new Model("ServiceMaster", "ServiceCode");
+
+    // State Flags
     private bool isViewing = false;
     private bool isEditing = false;
 
+    // Focus Management
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+    #endregion
+
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    #region Lifecycle Methods
+    protected override void OnInitialized()
+    {
+        // Set default values for a new record
+        model.dict["Rate"] ??= "0.00";
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if(firstRender)
+        if (firstRender)
         {
+            // Set initial focus to the first editable field.
+            if (firstReference?.reference.Id != null)
+            {
+                await firstReference.Focus();
+            }
+
+            // Setup JS interop for hotkeys.
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
+    #endregion
 
+    // =================================================================================
+    // FOCUS MANAGEMENT
+    // =================================================================================
+
+    #region Focus Management
+    /// <summary>
+    /// Collects references of focusable child components using a dictionary to maintain order.
+    /// </summary>
+    public void getInputReferences(int position, ElementReference eref)
+    {
+        references[position] = eref;
+    }
+
+    /// <summary>
+    /// Retrieves a component reference by its registered position.
+    /// </summary>
+    private ElementReference GetRef(int idx)
+    {
+        return references.ContainsKey(idx) ? references[idx] : default;
+    }
+    #endregion
+
+    // =================================================================================
+    // CRUD & FORM ACTIONS
+    // =================================================================================
+
+    #region CRUD and Form Actions
     [JSInvokable]
     public async Task HandleSave()
     {
+        if (!ValidateForm()) return;
+
         try
         {
-            if (!ValidateForm()) return;
-
-            bool success = isEditing
-                ? model.Update()
-                : model.Save();
-
-            if (success)
+            var transaction = new Transaction();
+            if (isEditing)
             {
-                await Msg.Success();
-
-                if (!isEditing)
-                {
-                    HandleClear();
-                }
-
-                isEditing = false;
+                model.Update(transaction);
             }
             else
             {
-                await Msg.SaveError();
+                model.Save(transaction);
+            }
+
+            if (transaction.Execute())
+            {
+                await Msg.Success("Service record saved successfully!");
+                await HandleClear();
+            }
+            else
+            {
+                throw new Exception("Transaction failed to execute.");
             }
         }
         catch (Exception ex)
         {
-            await Msg.SaveError();
-            Console.WriteLine($"Error saving Service Master record: {ex.Message}");
+            await Msg.Error($"Save failed: {ex.Message}");
         }
-        HandleClear();
     }
 
     [JSInvokable]
-    public void HandleClear()
+    public Task HandleClear()
     {
         model.Clear();
         isEditing = false;
+        OnInitialized(); // Re-apply default values
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public void HandleView()
+    public Task HandleView()
     {
         isViewing = !isViewing;
         StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public void HandlePrint()
+    {
+        // TODO: Implement printing logic if needed.
+        Console.WriteLine("Print Service Master");
     }
 
     public async Task HandleEdit(DataRow row)
     {
-        try
+        await HandleClear();
+        isEditing = true;
+        isViewing = false;
+        model.Populate(row);
+        StateHasChanged();
+        if (firstReference?.reference.Id != null)
         {
-            isEditing = true;
-            isViewing = false;
-            model.Populate(row);
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading Service Master record: {ex.Message}");
+            await firstReference.Focus();
         }
     }
 
@@ -112,12 +193,17 @@
         isViewing = false;
         StateHasChanged();
     }
+    #endregion
+
+    // =================================================================================
+    // VALIDATION
+    // =================================================================================
 
     private bool ValidateForm()
     {
         var errors = new List<string>();
 
-        if (string.IsNullOrWhiteSpace(model.dict["ServiceName"])) 
+        if (string.IsNullOrWhiteSpace(model.dict["ServiceName"]))
             errors.Add("Service Name is required");
 
         if (errors.Any())
@@ -129,6 +215,10 @@
 
         return true;
     }
+
+    // =================================================================================
+    // CLEANUP
+    // =================================================================================
 
     public void Dispose()
     {

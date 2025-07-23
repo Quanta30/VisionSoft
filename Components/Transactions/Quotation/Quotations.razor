@@ -57,9 +57,6 @@
                      GetInputReference="@((eref) => getInputReferences(3, eref))"
                      NextReference="@(GetRef(4))" />
             
-            <T_Checkbox Title="Cancelled" 
-                        @bind-Value="@(model.dict["Cancelled"])" 
-                        ColSize="col-md-3" />
             
             <T_Textarea Title="Narration" 
                         @bind-Value="@(model.dict["Narration"])" 
@@ -200,7 +197,6 @@
     private ElementReference GetRef(int idx) 
     {
         bool hasRef = references.ContainsKey(idx);
-        Console.WriteLine($"Quotation: GetRef({idx}) called, exists: {hasRef}, Id: {(hasRef ? references[idx] : "null")}");
         return hasRef ? references[idx] : default;
     }
     
@@ -331,7 +327,7 @@
         // Populate header fields
         model.Populate(rowToEdit);
         model.dict2["QuotationNo"] = model.dict["QuotationNo"]; // Store original primary key
-
+        model.dict2["TotalQty"] = "0";
         // Fetch and populate detail lines
         DataTable detailsTable = db.GetDataTable($"SELECT * FROM QuotationDetails WHERE QuotationNo = '{model.dict["QuotationNo"]}'");
         foreach (DataRow detailRow in detailsTable.Rows)
@@ -341,7 +337,6 @@
             detailIds.Add(nextDetailId++);
         }
 
-        StateHasChanged();
         await Task.Delay(50);
         if (firstReference != null)
         {

@@ -4,8 +4,7 @@
 <div class="customer-master-section">
     <hr class="fade-divider my-4" />
     <h5 class="mb-3">Customer Details</h5>
-    
-    <!-- Customer Master fields -->
+
     <T_Row>
         <T_Input Title="Customer Code *" ReadOnly="true"
                  @bind-Value="@customerModel.dict["CustomerCode"]"
@@ -13,129 +12,85 @@
         <T_Input Title="Customer Name *"
                  @bind-Value="@customerModel.dict["CustomerName"]"
                  MaxLength="1000" ColSize="col-md-6"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 1))
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 0, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 1) ?? default)"
                  @ref="firstCustomerReference" />
-        <T_Input Title="City" @bind-Value="@customerModel.dict["CustomerCity"]" 
+        <T_Input Title="City" @bind-Value="@customerModel.dict["CustomerCity"]"
                  MaxLength="100" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 2)) />
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 1, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 2) ?? default)" />
     </T_Row>
-    
     <T_Row>
-        <T_Input Title="District" @bind-Value="@customerModel.dict["CustomerDistrict"]" 
+        <T_Input Title="District" @bind-Value="@customerModel.dict["CustomerDistrict"]"
                  MaxLength="100" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 3)) />
-        <T_Input Title="Phone No." @bind-Value="@customerModel.dict["CustomerPhoneNo"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 2, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 3) ?? default)" />
+        <T_Input Title="Phone No." @bind-Value="@customerModel.dict["CustomerPhoneNo"]"
                  MaxLength="50" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 4)) />
-        <T_Input Title="Mobile No." @bind-Value="@customerModel.dict["CustomerMobileNo"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 3, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 4) ?? default)" />
+        <T_Input Title="Mobile No." @bind-Value="@customerModel.dict["CustomerMobileNo"]"
                  MaxLength="50" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 5)) />
-        <T_Input Title="Email" @bind-Value="@customerModel.dict["CustomerEmail"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 4, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 5) ?? default)" />
+        <T_Input Title="Email" @bind-Value="@customerModel.dict["CustomerEmail"]"
                  MaxLength="100" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 6)) />
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 5, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 6) ?? default)" />
     </T_Row>
-    
     <T_Row>
-        <T_Input Title="GST No." @bind-Value="@customerModel.dict["CustomerGSTNo"]" 
+        <T_Input Title="GST No." @bind-Value="@customerModel.dict["CustomerGSTNo"]"
                  MaxLength="50" ColSize="col-md-4"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 7)) />
-        <T_Input Title="PAN No." @bind-Value="@customerModel.dict["CustomerPanNo"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 6, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 7) ?? default)" />
+        <T_Input Title="PAN No." @bind-Value="@customerModel.dict["CustomerPanNo"]"
                  MaxLength="50" ColSize="col-md-4"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 8)) />
-        <T_Input Title="State Code" @bind-Value="@customerModel.dict["CustomerStateCode"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 7, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 8) ?? default)" />
+        <T_Input Title="State Code" @bind-Value="@customerModel.dict["CustomerStateCode"]"
                  MaxLength="10" ColSize="col-md-4"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 9)) />
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 8, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 9) ?? default)" />
     </T_Row>
-    
     <T_Row>
-        <T_Input Title="Credit Days" Type="number" 
+        <T_Input Title="Credit Days" Type="number"
                  @bind-Value="@customerModel.dict["CustomerCreditDays"]" ColSize="col-md-3"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 10)) />
-        <T_Input Title="Address" @bind-Value="@customerModel.dict["CustomerAddress"]" 
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 9, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 10) ?? default)" />
+        <T_Input Title="Address" @bind-Value="@customerModel.dict["CustomerAddress"]"
                  MaxLength="500" ColSize="col-md-6"
-                 GetInputReference="GetInputReference"
-                 NextReference=@(GetRef(StartReferenceIndex + 11)) />
-        <T_Checkbox Title="Login Flag"
-                    @bind-Value="@customerModel.dict["Loginflag"]"
-                    ColSize="col-md-3"
-                    GetInputReference="GetInputReference"
-                    NextReference=@(GetRef(0)) />
+                 GetInputReference="@((eref) => RegisterReference?.Invoke(StartIndex + 10, eref))"
+                 NextReference="@(GetParentRef?.Invoke(StartIndex + 11) ?? default)" />
+
     </T_Row>
 </div>
 
 @code {
     [Parameter] public Model customerModel { get; set; }
-    [Parameter] public EventCallback<Model> customerModelChanged { get; set; }
-    [Parameter] public Action<ElementReference> GetInputReference { get; set; }
-    [Parameter] public int StartReferenceIndex { get; set; }
-    
-    private ClsDatabase db = new ClsDatabase();
+    [Parameter] public Action<int, ElementReference> RegisterReference { get; set; }
+    [Parameter] public Func<int, ElementReference> GetParentRef { get; set; }
+    [Parameter] public int StartIndex { get; set; }
+    [Parameter] public EventCallback OnFinalEnter { get; set; }
+
     private T_Input firstCustomerReference;
-    
-    protected override void OnInitialized()
-    {
-        if (customerModel == null)
-        {
-            customerModel = new Model("CustomerMaster", "CustomerCode");
-        }
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && firstCustomerReference != null)
+        if (firstRender && firstCustomerReference?.reference.Id != null)
         {
             await firstCustomerReference.Focus();
         }
     }
 
-    private ElementReference GetRef(int idx)
-    {
-        // This will be handled by the parent component
-        return default;
-    }
-    
-    // Method to validate customer fields
     public List<string> ValidateCustomer()
     {
         var errors = new List<string>();
-        
         if (string.IsNullOrWhiteSpace(customerModel.dict["CustomerName"]))
             errors.Add("Customer Name is required");
-            
         return errors;
     }
-    
-    // Method to clear customer data
-    public void ClearCustomer()
-    {
-        customerModel.Clear();
-    }
-    
-    // Method to populate customer data
-    public void PopulateCustomer(DataRow row)
-    {
-        customerModel.Populate(row);
-    }
-    
-    // Method to save customer data
-    public bool SaveCustomer()
-    {
-        return customerModel.Save();
-    }
-    
-    // Method to update customer data
-    public bool UpdateCustomer()
-    {
-        return customerModel.Update();
-    }
+
+    public void SaveCustomer(Transaction transaction) => customerModel.Save(transaction);
+    public void UpdateCustomer(Transaction transaction) => customerModel.Update(transaction);
+    public void PopulateCustomer(DataRow row) => customerModel.Populate(row);
 }

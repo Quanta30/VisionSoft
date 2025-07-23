@@ -26,14 +26,9 @@
                      @bind-Value="@model.dict["AdjustmentDate"]"
                      ColSize="col-md-3"
                      GetInputReference="@((eref) => getInputReferences(0, eref))"
-                     NextReference="@(GetRef(1))"
+                     NextReference="@(GetRef(2))"
                      @ref="firstReference" />
 
-            <T_Checkbox Title="Cancelled"
-                        @bind-Value="@model.dict["Cancelled"]"
-                        ColSize="col-md-3"
-                        GetInputReference="@((eref) => getInputReferences(1, eref))"
-                        NextReference="@(GetRef(2))" />
         </T_Row>
 
         <T_Row>

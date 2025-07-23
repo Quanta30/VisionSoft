@@ -1,188 +1,270 @@
 @page "/callclosemaster"
 @inject IJSRuntime JS
 @using System.Data
-@rendermode InteractiveServer 
+@rendermode InteractiveServer
 
 <T_Msg @ref="Msg" />
+
 @if (isViewing)
 {
-    <FrmView TableName="CallCloseMaster" OnClosed="HandleClose" EditClicked="HandleEdit" PrimaryKeyColumn="EntryNo"/>
+    <FrmView TableName="CallCloseMaster"
+             PrimaryKeyColumn="EntryNo"
+             OnClosed="HandleClose"
+             EditClicked="HandleEdit" 
+             InitialFilters="EntryNo"/>
 }
 
 <T_Frm FormName="Call Close Master">
     <ChildContent>
         <T_Row>
-            <T_Input Title="Entry No *" ReadOnly="true" @bind-Value="@model.dict["EntryNo"]" ColSize="col-md-3" />
-            <T_Input Title="Entry Date" Type="date" @bind-Value="@model.dict["EntryDate"]" ColSize="col-md-3" />
-            <div class="col-md-3">
-                <label class="form-label">Mode of Pay *</label>
-                <select class="form-control" @bind="@model.dict["ModeOfPay"]">
-                    <option value="">Select Mode</option>
-                    <option value="CASH">Cash</option>
-                    <option value="CREDIT">Credit</option>
-                    <option value="CARD">Card</option>
-                    <option value="UPI">UPI</option>
-                    <option value="CHEQUE">Cheque</option>
-                    <option value="NEFT">NEFT</option>
-                    <option value="RTGS">RTGS</option>
-                    <option value="IMPS">IMPS</option>
-                </select>
-            </div>
-            <T_Checkbox Title="Consider In Accounts" @bind-Value="@model.dict["ConsiderInAccounts"]" ColSize="col-md-3" />
+            <T_Input Title="Entry No *" ReadOnly="true"
+                     @bind-Value="@model.dict["EntryNo"]"
+                     ColSize="col-md-3" />
+
+            <T_Input Title="Entry Date" Type="date"
+                     @bind-Value="@model.dict["EntryDate"]"
+                     ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(0, eref))"
+                     NextReference="@(GetRef(1))"
+                     @ref="firstReference" />
+
+      
+                <T_Select @bind-Value="@model.dict["ModeOfPay"]"
+                          Layout="1"
+                          Label="Mode Of Pay"
+                          Options="CREDIT:Credit,CASH:Cash"
+                          GetInputReference="@((eref) => getInputReferences(1, eref))"
+                          NextReference="@(GetRef(2))" />
+         
+
+            <T_Checkbox Title="Consider In Accounts"
+                        @bind-Value="@model.dict["ConsiderInAccounts"]"
+                        ColSize="col-md-3"
+                        GetInputReference="@((eref) => getInputReferences(2, eref))"
+                        NextReference="@(GetRef(3))" />
         </T_Row>
         <T_Row>
-            <T_RInput Title="Token ID *" @bind-Value="@model.dict["TokenID"]" ColSize="col-md-4"
-                      TableName="TokenMaster" PrimaryColumn="TokenID" DisplayColumn="TokenID" />
-            <T_Input Title="Completion Date" Type="date" @bind-Value="@model.dict["CompletionDate"]" ColSize="col-md-4" />
-            <T_Input Title="Completion Time" Type="time" @bind-Value="@model.dict["CompletionTime"]" ColSize="col-md-4" />
+            <T_RInput Title="Token ID *"
+                      @bind-Value="@model.dict["TokenID"]"
+                      ColSize="col-md-4"
+                      TableName="TokenMaster"
+                      PrimaryColumn="TokenID"
+                      DisplayColumn="TokenID"
+                      GetInputReference="@((eref) => getInputReferences(3, eref))"
+                      NextReference="@(GetRef(4))" />
+
+            <T_Input Title="Completion Date" Type="date"
+                     @bind-Value="@model.dict["CompletionDate"]"
+                     ColSize="col-md-4"
+                     GetInputReference="@((eref) => getInputReferences(4, eref))"
+                     NextReference="@(GetRef(5))" />
+
+            <T_Input Title="Completion Time" Type="time"
+                     @bind-Value="@model.dict["CompletionTime"]"
+                     ColSize="col-md-4"
+                     GetInputReference="@((eref) => getInputReferences(5, eref))"
+                     NextReference="@(GetRef(6))" />
         </T_Row>
         <T_Row>
-            <T_Input Title="Amount *" Type="number" Step="0.01" @bind-Value="@model.dict["Amount"]" ColSize="col-md-4" />
-            <T_Input Title="Discount" Type="number" Step="0.01" @bind-Value="@model.dict["Discount"]" ColSize="col-md-4" />
-            <T_Input Title="Net Amount *" Type="number" Step="0.01" @bind-Value="@model.dict["NetAmount"]" ColSize="col-md-4" />
+            <T_Input Title="Amount *" Type="number" Step="0.01"
+                     @bind-Value="@model.dict["Amount"]"
+                     ColSize="col-md-4"
+                     GetInputReference="@((eref) => getInputReferences(6, eref))"
+                     NextReference="@(GetRef(7))" />
+
+            <T_Input Title="Discount" Type="number" Step="0.01"
+                     @bind-Value="@model.dict["Discount"]"
+                     ColSize="col-md-4"
+                     GetInputReference="@((eref) => getInputReferences(7, eref))"
+                     NextReference="@(GetRef(8))" />
+
+            <T_Input Title="Net Amount *" Type="number" Step="0.01"
+                     @bind-Value="@model.dict["NetAmount"]"
+                     ColSize="col-md-4"
+                     GetInputReference="@((eref) => getInputReferences(8, eref))"
+                     NextReference="@(GetRef(9))" />
         </T_Row>
         <T_Row>
-            <T_Input Title="Narration" @bind-Value="@model.dict["Narration"]" MaxLength="500" ColSize="col-md-6" />
-            <T_Input Title="Closed By" @bind-Value="@model.dict["ClosedBy"]" MaxLength="50" ColSize="col-md-3" />
-            <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3" />
+            <T_Input Title="Narration"
+                     @bind-Value="@model.dict["Narration"]"
+                     MaxLength="500" ColSize="col-md-6"
+                     GetInputReference="@((eref) => getInputReferences(9, eref))"
+                     NextReference="@(GetRef(10))" />
+
+            <T_Input Title="Closed By"
+                     @bind-Value="@model.dict["ClosedBy"]"
+                     MaxLength="50" ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(10, eref))"
+                     NextReference="@(GetRef(11))" />
+
+            <T_Checkbox Title="Cancelled"
+                        @bind-Value="@model.dict["Cancelled"]"
+                        ColSize="col-md-3"
+                        GetInputReference="@((eref) => getInputReferences(11, eref))"
+                        />
         </T_Row>
     </ChildContent>
 
     <CardFooterContent>
-        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
-        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
-        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Info="(ALT + S)" />
+        <T_Button Text="Clear" OnClick="HandleClear" Info="(ALT + C)" />
+        <T_Button Text="View" OnClick="HandleView" Info="(ALT + V)" />
+        <T_Button Text="Print" OnClick="HandlePrint" Info="(ALT + P)" />
     </CardFooterContent>
 </T_Frm>
 
 @code {
-    private T_Msg Msg;
-    public DotNetObjectReference<CallCloseMaster> dotNetRef;
+    // =================================================================================
+    // REFERENCES & STATE
+    // =================================================================================
 
-    Model model = new Model("CallCloseMaster", "EntryNo", "A");
+    #region References and State
+    // UI & JS Interop
+    private T_Msg Msg;
+    private T_Input firstReference;
+    private DotNetObjectReference<CallCloseMaster> dotNetRef;
+
+    // Data Models
+    private Model model = new Model("CallCloseMaster", "EntryNo", "A");
+
+    // State Flags
     private bool isViewing = false;
     private bool isEditing = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if(firstRender)
-        {
-            Console.WriteLine("CallCloseMaster OnAfterRenderAsync executed");
-            dotNetRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
-            
-            // Initialize defaults
-            InitializeDefaults();
-        }
-    }
+    // Focus Management
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+    #endregion
 
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    #region Lifecycle Methods
     protected override void OnInitialized()
     {
-        // Initialize defaults when component is first created
-        InitializeDefaults();
-    }
-
-    private void InitializeDefaults()
-    {
-        // Set default date if empty
+        // Set default values for a new record
         if (string.IsNullOrEmpty(model.dict["EntryDate"]))
             model.dict["EntryDate"] = DateTime.Now.ToString("yyyy-MM-dd");
-        
-        // Set default Mode of Pay to CASH
         if (string.IsNullOrEmpty(model.dict["ModeOfPay"]))
             model.dict["ModeOfPay"] = "CASH";
-        
-        // Initialize boolean fields
         if (string.IsNullOrEmpty(model.dict["ConsiderInAccounts"]))
             model.dict["ConsiderInAccounts"] = "1";
-        
         if (string.IsNullOrEmpty(model.dict["Cancelled"]))
             model.dict["Cancelled"] = "0";
-        
-        // Initialize numeric fields to 0 if empty
         if (string.IsNullOrEmpty(model.dict["Amount"]))
             model.dict["Amount"] = "0.00";
-        
         if (string.IsNullOrEmpty(model.dict["Discount"]))
             model.dict["Discount"] = "0.00";
-        
         if (string.IsNullOrEmpty(model.dict["NetAmount"]))
             model.dict["NetAmount"] = "0.00";
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Set initial focus to the first editable field.
+            if (firstReference?.reference.Id != null)
+            {
+                await firstReference.Focus();
+            }
+
+            // Setup JS interop for hotkeys.
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
+        }
+    }
+    #endregion
+
+    // =================================================================================
+    // FOCUS MANAGEMENT
+    // =================================================================================
+
+    #region Focus Management
+    public void getInputReferences(int position, ElementReference eref)
+    {
+        references[position] = eref;
+    }
+
+    private ElementReference GetRef(int idx)
+    {
+        return references.ContainsKey(idx) ? references[idx] : default;
+    }
+    #endregion
+
+    // =================================================================================
+    // CRUD & FORM ACTIONS
+    // =================================================================================
+
+    #region CRUD and Form Actions
     [JSInvokable]
     public async Task HandleSave()
     {
+        if (!ValidateForm()) return;
+
         try
         {
-            if (!ValidateForm()) return;
-
-            bool success = isEditing
-                ? model.Update()
-                : model.Save();
-
-            if (success)
+            var transaction = new Transaction();
+            if (isEditing)
             {
-                await Msg.Success();
-
-                if (!isEditing)
-                {
-                    HandleClear();
-                }
-
-                isEditing = false;
+                model.Update(transaction);
             }
             else
             {
-                await Msg.SaveError();
+                model.Save(transaction);
+            }
+
+            if (transaction.Execute())
+            {
+                await Msg.Success("Call Close record saved successfully!");
+                await HandleClear();
+            }
+            else
+            {
+                throw new Exception("Transaction failed to execute.");
             }
         }
         catch (Exception ex)
         {
-            await Msg.SaveError();
-            Console.WriteLine($"Error saving Call Close record: {ex.Message}");
+            await Msg.Error($"Save failed: {ex.Message}");
         }
     }
 
     [JSInvokable]
-    public void HandleClear()
+    public Task HandleClear()
     {
         model.Clear();
         isEditing = false;
-        
-        // Re-apply defaults after clearing
-        InitializeDefaults();
-        
+        OnInitialized(); // Re-apply default values
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public void HandleView()
+    public Task HandleView()
     {
         isViewing = !isViewing;
         StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public void HandlePrint()
+    {
+        // TODO: Implement printing logic if needed.
+        Console.WriteLine("Print Call Close Master");
     }
 
     public async Task HandleEdit(DataRow row)
     {
-        try
+        await HandleClear();
+        isEditing = true;
+        isViewing = false;
+        model.Populate(row);
+        StateHasChanged();
+        if (firstReference?.reference.Id != null)
         {
-            isEditing = true;
-            isViewing = false;
-            
-            // Clear first to ensure clean state
-            model.Clear();
-            
-            // Populate with data
-            model.Populate(row);
-            
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading Call Close record: {ex.Message}");
-            Msg.Show($"Error loading record: {ex.Message}", "danger", "bi-exclamation-triangle");
-            HandleClear();
+            await firstReference.Focus();
         }
     }
 
@@ -191,59 +273,24 @@
         isViewing = false;
         StateHasChanged();
     }
+    #endregion
+
+    // =================================================================================
+    // VALIDATION
+    // =================================================================================
 
     private bool ValidateForm()
     {
         var errors = new List<string>();
 
-        // Required field validations
-        if (string.IsNullOrWhiteSpace(model.dict["EntryNo"])) 
-            errors.Add("Entry No is required");
-
-        if (string.IsNullOrWhiteSpace(model.dict["ModeOfPay"])) 
+        if (string.IsNullOrWhiteSpace(model.dict["ModeOfPay"]))
             errors.Add("Mode of Pay is required");
-
-        if (string.IsNullOrWhiteSpace(model.dict["TokenID"])) 
+        if (string.IsNullOrWhiteSpace(model.dict["TokenID"]) || model.dict["TokenID"] == "0")
             errors.Add("Token ID is required");
-
-        if (string.IsNullOrWhiteSpace(model.dict["Amount"])) 
-            errors.Add("Amount is required");
-
-        if (string.IsNullOrWhiteSpace(model.dict["NetAmount"])) 
-            errors.Add("Net Amount is required");
-
-        // Length validations
-        if (!string.IsNullOrWhiteSpace(model.dict["EntryNo"]) && model.dict["EntryNo"].Length > 50)
-            errors.Add("Entry No cannot exceed 50 characters");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["ModeOfPay"]) && model.dict["ModeOfPay"].Length > 50)
-            errors.Add("Mode of Pay cannot exceed 50 characters");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["TokenID"]) && model.dict["TokenID"].Length > 50)
-            errors.Add("Token ID cannot exceed 50 characters");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["Narration"]) && model.dict["Narration"].Length > 500)
-            errors.Add("Narration cannot exceed 500 characters");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["ClosedBy"]) && model.dict["ClosedBy"].Length > 50)
-            errors.Add("Closed By cannot exceed 50 characters");
-
-        // Numeric validations
-        if (!string.IsNullOrWhiteSpace(model.dict["Amount"]) && !double.TryParse(model.dict["Amount"], out _))
-            errors.Add("Amount must be a valid number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["Discount"]) && !double.TryParse(model.dict["Discount"], out _))
-            errors.Add("Discount must be a valid number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["NetAmount"]) && !double.TryParse(model.dict["NetAmount"], out _))
-            errors.Add("Net Amount must be a valid number");
-
-        // Date validations
-        if (!string.IsNullOrWhiteSpace(model.dict["EntryDate"]) && !DateTime.TryParse(model.dict["EntryDate"], out _))
-            errors.Add("Entry Date must be a valid date");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["CompletionDate"]) && !DateTime.TryParse(model.dict["CompletionDate"], out _))
-            errors.Add("Completion Date must be a valid date");
+        @* if (!decimal.TryParse(model.dict["Amount"], out var amount) || amount <= 0)
+            errors.Add("Amount must be a positive number");
+        if (!decimal.TryParse(model.dict["NetAmount"], out var netAmount) || netAmount <= 0)
+            errors.Add("Net Amount must be a positive number"); *@
 
         if (errors.Any())
         {
@@ -254,6 +301,10 @@
 
         return true;
     }
+
+    // =================================================================================
+    // CLEANUP
+    // =================================================================================
 
     public void Dispose()
     {

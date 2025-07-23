@@ -10,7 +10,7 @@
 <!-- View Mode Form -->
 @if (isViewing)
 {
-    <FrmView TableName="SalesBillHead"
+    <FrmView Query="Select SalesBillNo, SalesBillDate, CustomerName, CustomerCity from SalesBillHead"
              OnClosed="HandleClose"
              EditClicked="HandleEdit"
              DeleteClicked="HandleDelete" 
@@ -369,7 +369,7 @@
         nextDetailId %= 10000;
         await Task.Delay(50);
         isEditing = true;
-        model.Populate(row);
+        model.PopulateViaKey(row["SalesBillNo"]);
         model.dict2["SalesBillNo"] = model.dict["SalesBillNo"];//Dictionary2 used to store primary key if primary key is to be changed
 
         var dataTable = db.GetDataTable($"SELECT * FROM SalesBillDetails WHERE SalesBillNo = '{model.dict["SalesBillNo"]}'");

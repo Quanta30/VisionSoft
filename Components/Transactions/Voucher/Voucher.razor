@@ -2,161 +2,335 @@
 @inject IJSRuntime JS
 @using System.Data
 @using VisionSoft.Components.Transactions.Voucher
-@rendermode InteractiveServer 
+@rendermode InteractiveServer
 
-<T_Msg @ref="Msg"/>
-@if(isViewing){
-    <FrmView TableName="VoucherHead" OnClosed="HandleClose" EditClicked="HandleEdit" DeleteClicked="HandleDelete"/>
+<T_Msg @ref="Msg" />
+
+@if (isViewing)
+{
+    <FrmView TableName="VoucherHead"
+             PrimaryKeyColumn="VoucherNo"
+             OnClosed="HandleClose"
+             EditClicked="HandleEdit"
+             DeleteClicked="HandleDelete" 
+             InitialFilters="VoucherNo:VoucherType"/>
 }
-<T_Frm FormName="Account Voucher" OnFormTypeChange="HandleTypeChange">
-<ChildContent>
-    <T_Row>
-        <T_Input Title="Voucher No *" ReadOnly=true @bind-Value="@model.dict["VoucherNo"]" ColSize="col-md-3"/>
-        <div class="col-md-3">
-            <label class="form-label">Voucher Type *</label>
-            <select class="form-control" @bind="@model.dict["VoucherType"]">
-                <option value="">Select Type</option>
-                <option value="JOURNAL">Journal Entry</option>
-                <option value="PAYMENT">Payment Voucher</option>
-                <option value="RECEIPT">Receipt Voucher</option>
-                <option value="CONTRA">Contra Voucher</option>
-                <option value="SALES">Sales Voucher</option>
-                <option value="PURCHASE">Purchase Voucher</option>
-            </select>
-        </div>
-        <T_Input Title="Voucher Date" Type="date" @bind-Value="@model.dict["VoucherDate"]" ColSize="col-md-3"/>
-        <T_Input Title="Login Code" @bind-Value="@model.dict["LoginCode"]" ColSize="col-md-3"/>
-    </T_Row>
-    <T_Row>
-        <T_Input Title="Cheque No" @bind-Value="@model.dict["ChequeNo"]" ColSize="col-md-3"/>
-        <T_Input Title="Cheque Date" Type="date" @bind-Value="@model.dict["ChequeDate"]" ColSize="col-md-3"/>
-        <div class="col-md-3">
-            <label class="form-label">Mode of Pay</label>
-            <select class="form-control" @bind="@model.dict["ModeOfPay"]">
-                <option value="CASH">Cash</option>
-                <option value="CHEQUE">Cheque</option>
-                <option value="CARD">Card</option>
-                <option value="UPI">UPI</option>
-                <option value="NEFT">NEFT</option>
-                <option value="RTGS">RTGS</option>
-                <option value="ONLINE">Online Transfer</option>
-            </select>
-        </div>
-        <T_Input Title="Recon Date" Type="date" @bind-Value="@model.dict["ReconDate"]" ColSize="col-md-3"/>
-    </T_Row>
-    <T_Row>
-        <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"/>
-        <T_Checkbox Title="Show" @bind-Value="@model.dict["Show"]" ColSize="col-md-3"/>
-        <T_Checkbox Title="Consider in Accounts" @bind-Value="@model.dict["ConsiderinAccounts"]" ColSize="col-md-3"/>
-    </T_Row>
-    <T_Row>
-        <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-12"/>
-    </T_Row>
-    <TableView TableName="Voucher Details" HandleAdd="HandleAdd">
-        <TableHeads>
-            <th>Action</th>
-            <th>Seq</th>
-            <th>Ledger Account</th>
-            <th>Opposite Ledger</th>
-            <th>Debit Amount</th>
-            <th>Credit Amount</th>
-        </TableHeads>
-        <TableRows>
-            @for(int i = 0; i < detailComponents.Count; i++){
-                int index = i;
-                <VoucherDetail 
-                    SerialNo="@(index+1)" 
-                    VoucherNo="@model.dict["VoucherNo"]" 
-                    VoucherType="@model.dict["VoucherType"]"
-                    OnRemove="@((idx) => HandleRemove(idx))"
-                    OnCalculationChanged="CalculateTotals"
-                    InitialDataRow="detailRows.Count > index ? detailRows[index] : null"
-                    @ref="detailComponents[index]" />
-            }
-        </TableRows>
-        <TableFooter>
-            Total Entries: @detailComponents.Count | Total Debit: @totalDebit.ToString("F2") | Total Credit: @totalCredit.ToString("F2") | Difference: @difference.ToString("F2")
-        </TableFooter>
-    </TableView>
-    @if (Math.Abs(difference) > 0.01m)
-    {
-        <div class="alert alert-warning">
-            <strong>Warning:</strong> Voucher is not balanced. Debit and Credit amounts must be equal.
-        </div>
-    }
-    else if (detailComponents.Count > 0)
-    {
-        <div class="alert alert-success">
-            <strong>Balanced:</strong> Voucher is properly balanced.
-        </div>
-    }
-</ChildContent>
 
-<CardFooterContent>
-    <T_Button Text="Save" Style="" OnClick="HandleSave" Disabled="@(Math.Abs(difference) > 0.01m)"/>
-    <T_Button Text="Clear" Style="" OnClick="HandleClear"/>
-    <T_Button Text="View" Style="" OnClick="HandleView"/>
-    <T_Button Text="Print" Style=""/>
-</CardFooterContent>
+<T_Frm FormName="Account Voucher" OnFormTypeChange="HandleTypeChange">
+    <ChildContent>
+        <T_Row>
+            <T_Input Title="Voucher No *" ReadOnly="true" @bind-Value="@model.dict["VoucherNo"]" ColSize="col-md-3" />
+
+
+            <T_Select @bind-Value="@model.dict["VoucherType"]"
+                        Label="VouchterType"
+                        Options="CREDITNOTE:Credit Note,CONTRA:Contra,AMCBILL:AMC Bill,RECEIPTS:Receipts,PAYMENTS:Payments"
+                        GetInputReference="@((eref) => getInputReferences(0, eref))"
+                        NextReference="@(GetRef(1))"
+                        @ref="firstReference" />
+
+
+            <T_Input Title="Voucher Date" Type="date" @bind-Value="@model.dict["VoucherDate"]" ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(1, eref))"
+                     NextReference="@(GetRef(2))" />
+
+            <T_Input Title="Login Code" @bind-Value="@model.dict["LoginCode"]" ColSize="col-md-3" ReadOnly="true"
+                     GetInputReference="@((eref) => getInputReferences(2, eref))"
+                     NextReference="@(GetRef(3))" />
+        </T_Row>
+        <T_Row>
+            <T_Input Title="Cheque No" @bind-Value="@model.dict["ChequeNo"]" ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(3, eref))"
+                     NextReference="@(GetRef(4))" />
+
+            <T_Input Title="Cheque Date" Type="date" @bind-Value="@model.dict["ChequeDate"]" ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(4, eref))"
+                     NextReference="@(GetRef(5))" />
+
+
+                <T_Select @bind-Value="@model.dict["ModeOfPay"]"
+                          Layout="1"
+                          Label="Mode Of Pay"
+                          Options="CREDIT:Credit,CASH:Cash"
+                          GetInputReference="@((eref) => getInputReferences(5, eref))"
+                          NextReference="@(GetRef(6))" />
+
+
+            <T_Input Title="Recon Date" Type="date" @bind-Value="@model.dict["ReconDate"]" ColSize="col-md-3"
+                     GetInputReference="@((eref) => getInputReferences(6, eref))"
+                     NextReference="@(GetRef(7))" />
+        </T_Row>
+        <T_Row>
+            <T_Checkbox Title="Cancelled" @bind-Value="@model.dict["Cancelled"]" ColSize="col-md-3"
+                        GetInputReference="@((eref) => getInputReferences(7, eref))"
+                        NextReference="@(GetRef(8))" />
+
+            <T_Checkbox Title="Show" @bind-Value="@model.dict["Show"]" ColSize="col-md-3"
+                        GetInputReference="@((eref) => getInputReferences(8, eref))"
+                        NextReference="@(GetRef(9))" />
+
+            <T_Checkbox Title="Consider in Accounts" @bind-Value="@model.dict["ConsiderinAccounts"]" ColSize="col-md-3"
+                        GetInputReference="@((eref) => getInputReferences(9, eref))"
+                        NextReference="@(GetRef(10))" />
+        </T_Row>
+        <T_Row>
+            <T_Textarea Title="Narration" @bind-Value="@model.dict["Narration"]" ColSize="col-md-12" Rows="1"
+                        GetInputReference="@((eref) => getInputReferences(10, eref))"
+                        OnEnterPressed="HandleAdd" />
+        </T_Row>
+
+        <TableView TableName="Voucher Details" HandleAdd="HandleAdd" Info="(Press : ALT + A)">
+            <TableHeads>
+                <th>Action</th>
+                <th>Seq</th>
+                <th>Ledger Account</th>
+                <th>Opposite Ledger</th>
+                <th class="text-end">Debit Amount</th>
+                <th class="text-end">Credit Amount</th>
+            </TableHeads>
+            <TableRows>
+                @for (int i = 0; i < detailComponents.Count; i++)
+                {
+                    int index = i;
+                    int detailId = detailIds.Count > index ? detailIds[index] : index;
+
+                    <VoucherDetail @key="@($"detail-{detailId}")"
+                                   SerialNo="@(index + 1)"
+                                   VoucherNo="@model.dict["VoucherNo"]"
+                                   VoucherType="@model.dict["VoucherType"]"
+                                   OnRemove="HandleRemove"
+                                   OnCalculationChanged="CalculateTotals"
+                                   OnAdd="HandleAdd"
+                                   OnEnterPressed="HandleAdd"
+                                   InitialDataRow="@(detailRows.Count > index ? detailRows[index] : null)"
+                                   @ref="detailComponents[index]" />
+                }
+            </TableRows>
+            <TableFooter>
+                Total Entries: @detailComponents.Count | Total Debit: @totalDebit.ToString("F2") | Total Credit: @totalCredit.ToString("F2") | Difference: @difference.ToString("F2")
+            </TableFooter>
+        </TableView>
+
+        @if (Math.Abs(difference) > 0.01m)
+        {
+            <div class="alert alert-warning mt-3">
+                <strong>Warning:</strong> Voucher is not balanced. Debit and Credit amounts must be equal.
+            </div>
+        }
+        else if (detailComponents.Count > 0)
+        {
+            <div class="alert alert-success mt-3">
+                <strong>Balanced:</strong> Voucher is properly balanced.
+            </div>
+        }
+    </ChildContent>
+
+    <CardFooterContent>
+        <T_Button Text="Save" OnClick="HandleSave" Disabled="@(Math.Abs(difference) > 0.01m)" Info="(ALT + S)" />
+        <T_Button Text="Clear" OnClick="HandleClear" Info="(ALT + C)" />
+        <T_Button Text="View" OnClick="HandleView" Info="(ALT + V)" />
+        <T_Button Text="Print" Info="(ALT + P)" />
+    </CardFooterContent>
 </T_Frm>
 
 @code {
+    // =================================================================================
+    // REFERENCES & STATE
+    // =================================================================================
+
+    #region References and State
+    // UI & JS Interop
     private T_Msg Msg;
-    public DotNetObjectReference<Voucher> dotNetRef;
+    private T_Select firstReference;
+    private DotNetObjectReference<Voucher> dotNetRef;
 
-    Model model = new Model("VoucherHead", "VoucherNo");
+    // Data Models
+    private Model model = new Model("VoucherHead", "VoucherNo");
+    private ClsDatabase db = new ClsDatabase();
+
+    // Detail Component Management
     private List<VoucherDetail> detailComponents = new();
-    public List<DataRow> detailRows = new();
-    ClsDatabase db = new ClsDatabase();
+    private List<DataRow> detailRows = new();
+    private List<int> detailIds = new();
+    private int nextDetailId = 1;
 
+    // State Flags
     private bool isViewing = false;
-    private bool isAddClicked = false;
     private bool isEditing = false;
 
+    // Calculation
     private decimal totalDebit = 0;
     private decimal totalCredit = 0;
     private decimal difference = 0;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender){
-        if(firstRender){
-            Console.WriteLine("First Render");
+    // Focus Management
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+    #endregion
+
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    #region Lifecycle Methods
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(model.dict["VoucherDate"]))
+            model.dict["VoucherDate"] = DateTime.Now.ToString("yyyy-MM-dd");
+        if (string.IsNullOrEmpty(model.dict["ModeOfPay"]))
+            model.dict["ModeOfPay"] = "CREDIT";
+        if (string.IsNullOrEmpty(model.dict["ConsiderinAccounts"]))
+            model.dict["ConsiderinAccounts"] = "1";
+        if (string.IsNullOrEmpty(model.dict["Show"]))
+            model.dict["Show"] = "1";
+        if (string.IsNullOrEmpty(model.dict["Cancelled"]))
+            model.dict["Cancelled"] = "0";
+        if (string.IsNullOrEmpty(model.dict["VoucherType"]))
+            model.dict["VoucherType"] = "CREDITNOTE";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (firstReference.reference.Id != null)
+            {
+                firstReference.Focus();
+            }
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
+    #endregion
 
+    // =================================================================================
+    // FOCUS MANAGEMENT
+    // =================================================================================
+
+    #region Focus Management
+    public void getInputReferences(int position, ElementReference eref)
+    {
+        references[position] = eref;
+    }
+
+    private ElementReference GetRef(int idx)
+    {
+        return references.ContainsKey(idx) ? references[idx] : default;
+    }
+    #endregion
+
+    // =================================================================================
+    // EVENT HANDLERS (UI ACTIONS)
+    // =================================================================================
+
+    #region UI Event Handlers
     [JSInvokable]
-    public void HandleView(){
+    public Task HandleView()
+    {
         isViewing = !isViewing;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public void HandleAdd(){
+    public Task HandleAdd()
+    {
         detailComponents.Add(null);
+        detailIds.Add(nextDetailId++);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task HandleClear()
+    {
+        model.Clear();
+        detailComponents.Clear();
+        detailRows.Clear();
+        detailIds.Clear();
+        nextDetailId = 1;
+        totalDebit = 0;
+        totalCredit = 0;
+        difference = 0;
+        isEditing = false;
+        isViewing = false;
+        OnInitialized();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public void HandleClose()
+    {
+        isViewing = false;
         StateHasChanged();
     }
 
-    public void HandleEdit(DataRow row)
+    public async Task HandleEdit(DataRow row)
     {
-        HandleClear();
+        await HandleClear();
+        await Task.Delay(50);
+
         isEditing = true;
         model.Populate(row);
-        DataTable dataTable = db.GetDataTable($"Select * from VoucherDetails where VoucherNo='{model.dict["VoucherNo"]}' ORDER BY Sequence");
-        foreach(DataRow detailRow in dataTable.Rows)
+        DataTable dataTable = db.GetDataTable($"SELECT * FROM VoucherDetails WHERE VoucherNo='{model.dict["VoucherNo"]}' ORDER BY Sequence");
+        foreach (DataRow detailRow in dataTable.Rows)
         {
             detailRows.Add(detailRow);
             detailComponents.Add(null);
+            detailIds.Add(nextDetailId++);
         }
         isViewing = false;
         CalculateTotals();
         StateHasChanged();
+        if (firstReference.reference.Id != null)
+        {
+            firstReference.Focus();
+        }
     }
 
+    public async Task HandleDelete(DataRow row)
+    {
+        try
+        {
+            string pk = row["VoucherNo"].ToString();
+            db.ExecuteQuery($"DELETE FROM VoucherHead WHERE VoucherNo='{pk}'");
+            db.ExecuteQuery($"DELETE FROM VoucherDetails WHERE VoucherNo='{pk}'");
+            await Msg.Success("Record deleted successfully.");
+        }
+        catch (Exception ex)
+        {
+            await Msg.Error($"Error deleting record: {ex.Message}");
+        }
+    }
+
+    public void HandleRemove(int serialNo)
+    {
+        int index = serialNo - 1;
+        if (index >= 0 && index < detailComponents.Count)
+        {
+            detailComponents.RemoveAt(index);
+            detailIds.RemoveAt(index);
+            if (detailRows.Count > index) detailRows.RemoveAt(index);
+            CalculateTotals();
+            StateHasChanged();
+        }
+    }
+
+    public void HandleTypeChange(string s)
+    {
+        model.SetPrefix(s);
+        StateHasChanged();
+    }
+    #endregion
+
+    // =================================================================================
+    // SAVE LOGIC
+    // =================================================================================
+
     [JSInvokable]
-    public async Task HandleSave(){
-        Console.WriteLine("Saving");
-        try{
+    public async Task HandleSave()
+    {
+        try
+        {
             if (string.IsNullOrEmpty(model.dict["VoucherType"]))
             {
                 await Msg.Error("Please select a voucher type.");
@@ -172,108 +346,60 @@
                 await Msg.Error("Voucher is not balanced. Debit and Credit amounts must be equal.");
                 return;
             }
+
+            var transaction = new Transaction();
             model.dict["ModifiedDate"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            bool allDetailsSaved = true;
-            if(isEditing){
-                db.ExecuteQuery($"Delete From VoucherDetails where VoucherNo='{model.dict["VoucherNo"]}'");
+
+            if (isEditing)
+            {
+                transaction.AddQuery($"DELETE FROM VoucherDetails WHERE VoucherNo='{model.dict2["VoucherNo"]}'");
             }
-            foreach(var detail in detailComponents){
-                if(detail != null){
-                    bool saved = detail.SaveDetail();
-                    if(!saved) allDetailsSaved = false;
+
+            foreach (var detail in detailComponents)
+            {
+                if (detail != null)
+                {
+                    detail.SaveDetail(transaction);
                 }
             }
-            if(!allDetailsSaved){
-                throw new Exception("Failed to save some details");
+
+            if (isEditing) model.Update(transaction);
+            else model.Save(transaction);
+
+            if (transaction.Execute())
+            {
+                await Msg.Success("Voucher saved successfully!");
+                await HandleClear();
             }
-            bool er;
-            if(isEditing) er = model.Update();
-            else er = model.Save();
-            if(!er) throw new Exception("Failed to save header");
-            await Msg.Success();
+            else
+            {
+                throw new Exception("Transaction failed to execute.");
+            }
         }
-        catch(Exception e){
-            Console.WriteLine($"Save error: {e.Message}");
-            await Msg.SaveError();
-        }
-    }
-
-    [JSInvokable]
-    public void HandleClear(){
-        Console.WriteLine("Clear Form");
-        model.Clear();
-        detailComponents.Clear();
-        detailRows.Clear();
-        totalDebit = 0;
-        totalCredit = 0;
-        difference = 0;
-        isEditing = false;
-        isAddClicked = false;
-        isViewing = false;
-        StateHasChanged();
-    }
-
-    public void HandleClose(){
-        isAddClicked = false;
-        isViewing = false;
-    }
-
-    public void HandleDelete(DataRow row){
-        string pk = row["VoucherNo"].ToString();
-        db.ExecuteQuery($"Delete From VoucherHead where VoucherNo='{pk}'");
-        db.ExecuteQuery($"Delete From VoucherDetails where VoucherNo='{pk}'");
-    }
-
-    public void HandleRemove(int serialNo){
-        Console.WriteLine($"Removing Row with SerialNo {serialNo}");
-        int index = serialNo - 1;
-        if (index >= 0 && index < detailComponents.Count)
+        catch (Exception e)
         {
-            detailComponents.RemoveAt(index);
-            if(detailRows.Count > index)detailRows.RemoveAt(index);
-            Console.WriteLine($"Removed item at index {index}. New count: {detailComponents.Count}");
-            CalculateTotals();
-            StateHasChanged();
-        }
-        else
-        {
-            Console.WriteLine($"Invalid index {index} for removal. Count: {detailComponents.Count}");
+            await Msg.Error($"Save failed: {e.Message}");
         }
     }
 
-    public void HandleTypeChange(string s){
-        Console.WriteLine($"In Voucher {s}");
-        model.SetPrefix(s);
-        StateHasChanged();
-    }
+
+    // =================================================================================
+    // CALCULATION LOGIC
+    // =================================================================================
 
     private void CalculateTotals()
     {
         totalDebit = 0;
         totalCredit = 0;
-
-        foreach(var detail in detailComponents){
-            if(detail != null){
+        foreach (var detail in detailComponents)
+        {
+            if (detail != null)
+            {
                 totalDebit += detail.GetDebitAmount();
                 totalCredit += detail.GetCreditAmount();
             }
         }
-
         difference = totalDebit - totalCredit;
         StateHasChanged();
-    }
-
-    protected override void OnInitialized()
-    {
-        if (string.IsNullOrEmpty(model.dict["VoucherDate"]))
-            model.dict["VoucherDate"] = DateTime.Now.ToString("yyyy-MM-dd");
-        if (string.IsNullOrEmpty(model.dict["ModeOfPay"]))
-            model.dict["ModeOfPay"] = "CASH";
-        if (string.IsNullOrEmpty(model.dict["ConsiderinAccounts"]))
-            model.dict["ConsiderinAccounts"] = "true";
-        if (string.IsNullOrEmpty(model.dict["Show"]))
-            model.dict["Show"] = "true";
-        if (string.IsNullOrEmpty(model.dict["Cancelled"]))
-            model.dict["Cancelled"] = "false";
     }
 }

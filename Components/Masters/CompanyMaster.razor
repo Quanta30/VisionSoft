@@ -6,7 +6,7 @@
 <T_Msg @ref="Msg" />
 @if (isViewing)
 {
-    <FrmView TableName="CompanyMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+    <FrmView TableName="CompanyMaster" OnClosed="HandleClose" EditClicked="HandleEdit" PrimaryKeyColumn="CompanyCode" InitialFilters="CompanyCode:CompanyName"/>
 }
 
 <T_Frm FormName="Company Master">
@@ -37,9 +37,9 @@
     </ChildContent>
 
     <CardFooterContent>
-        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
-        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
-        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style="" Info="(Alt + S)"/>
+        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style="" Info="(Alt + C)"/>
+        <T_Button Text="View" btnType="View" OnClick="HandleView" Style="" Info="(Alt + V)"/>
     </CardFooterContent>
 </T_Frm>
 
@@ -64,7 +64,6 @@
     
     private ElementReference GetRef(int idx) 
     {
-        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
         return (idx >= 0 && idx < references.Count) 
             ? references[idx] 
             : default;

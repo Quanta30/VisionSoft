@@ -4,9 +4,14 @@
 @rendermode InteractiveServer
 
 <T_Msg @ref="Msg" />
+
 @if (isViewing)
 {
-    <FrmView TableName="LedgerMaster" OnClosed="HandleClose" EditClicked="HandleEdit" />
+    <FrmView Query="select LedgerCode,LedgerName,GroupName from LedgerMaster join GroupMaster On LedgerMaster.GroupCode = GroupMaster.GroupCode"
+             PrimaryKeyColumn="LedgerCode"
+             InitialFilters="LedgerCode:LedgerName:GroupName"
+             OnClosed="HandleClose"
+             EditClicked="HandleEdit" />
 }
 
 <T_Frm FormName="Ledger Master">
@@ -16,214 +21,221 @@
             <T_Input Title="Ledger Code *" ReadOnly="true"
                      @bind-Value="@ledgerModel.dict["LedgerCode"]"
                      ColSize="col-md-3" />
+
             <T_Input Title="Ledger Name *"
                      @bind-Value="@ledgerModel.dict["LedgerName"]"
                      MaxLength="1000" ColSize="col-md-6"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(1))
+                     GetInputReference="@((eref) => getInputReferences(0, eref))"
+                     NextReference="@(GetRef(1))"
                      @ref="firstReference" />
-            <T_RInput Title="Group"
-                     Value="@ledgerModel.dict["GroupCode"]"
-                     ValueChanged="OnGroupCodeChanged"
-                     ColSize="col-md-3"
-                     TableName="GroupMaster"
-                     PrimaryColumn="GroupCode"
-                     DisplayColumn="GroupName"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(2)) />
+
+            <T_RInput Title="Group *"
+                      Value="@ledgerModel.dict["GroupCode"]"
+                      ValueChanged="OnGroupCodeChanged"
+                      ColSize="col-md-3"
+                      TableName="GroupMaster"
+                      PrimaryColumn="GroupCode"
+                      DisplayColumn="GroupName"
+                      GetInputReference="@((eref) => getInputReferences(1, eref))"
+                      NextReference="@(GetRef(2))" />
         </T_Row>
         <T_Row>
             <T_Input Title="Debit Opening Balance" Type="number" Step="0.01"
                      @bind-Value="@ledgerModel.dict["DebitOpeningBalance"]"
-                     ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(3)) />
+                     ColSize="col-md-4"
+                     GetInputReference="@((eref) => getInputReferences(2, eref))"
+                     NextReference="@(GetRef(3))" />
+
             <T_Input Title="Credit Opening Balance" Type="number" Step="0.01"
                      @bind-Value="@ledgerModel.dict["CreditOpeningBalance"]"
-                     ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(4)) />
-            <T_Input Title="Closing Balance" Type="number" Step="0.01"
+                     ColSize="col-md-4"
+                     GetInputReference="@((eref) => getInputReferences(3, eref))"
+                     NextReference="@(GetRef(4))" />
+
+            <T_Input Title="Closing Balance" Type="number" Step="0.01" ReadOnly="true"
                      @bind-Value="@ledgerModel.dict["ClosingBalance"]"
-                     ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     OnEnterPressed="()=>{HandleEnter(nextReference);}" />
+                     ColSize="col-md-4"
+                     GetInputReference="@((eref) => getInputReferences(4, eref))"
+                     NextReference="@(GetRef(5))" />
         </T_Row>
 
         @if (showCustomerFields)
         {
-            <CustomerMaster @ref="customerMasterRef" 
-                          customerModel="@customerModel"
-                          GetInputReference="getInputReferences"
-                          StartReference="GetInputReference" />
+            <CustomerMaster @ref="customerMasterRef"
+                            customerModel="@customerModel"
+                            RegisterReference="getInputReferences"
+                            GetParentRef="GetRef"
+                            StartIndex="5"
+                            OnFinalEnter="HandleSave" />
         }
 
         @if (showSupplierFields)
         {
-            <SupplierMaster @ref="supplierMasterRef" 
-                          supplierModel="@supplierModel"
-                          StartReference="getComponentReferences" />
+            <SupplierMaster @ref="supplierMasterRef"
+                            supplierModel="@supplierModel"
+                            RegisterReference="getInputReferences"
+                            GetParentRef="GetRef"
+                            StartIndex="5"
+                            OnFinalEnter="HandleSave" />
         }
     </ChildContent>
 
     <CardFooterContent>
-        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" />
-        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" />
-        <T_Button Text="View" btnType="View" OnClick="HandleView" />
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Info="(ALT + S)" />
+        <T_Button Text="Clear" OnClick="HandleClear" Info="(ALT + C)" />
+        <T_Button Text="View" OnClick="HandleView" Info="(ALT + V)" />
+        <T_Button Text="Print" OnClick="HandlePrint" Info="(ALT + P)" />
     </CardFooterContent>
 </T_Frm>
 
 @code {
+    // =================================================================================
+    // REFERENCES & STATE
+    // =================================================================================
+
+    #region References and State
+    // UI & JS Interop
     private T_Msg Msg;
+    private T_Input firstReference;
     private DotNetObjectReference<LedgerMaster> dotNetRef;
+
+    // Child Component References
     private CustomerMaster customerMasterRef;
     private SupplierMaster supplierMasterRef;
-    private T_Input firstReference;
-    private T_Input nextReference;
 
-    ClsDatabase db = new ClsDatabase();
+    // Data Models
+    private Model ledgerModel = new Model("LedgerMaster", "LedgerCode");
+    private Model customerModel = new Model("CustomerMaster", "CustomerCode");
+    private Model supplierModel = new Model("SupplierMaster", "SupplierCode");
+    private ClsDatabase db = new ClsDatabase();
 
-    Model ledgerModel = new Model("LedgerMaster", "LedgerCode");
-    Model customerModel = new Model("CustomerMaster", "CustomerCode");
-    Model supplierModel = new Model("SupplierMaster", "SupplierCode");
-
+    // State Flags
     private bool isViewing = false;
     private bool isEditing = false;
     private bool showCustomerFields = false;
     private bool showSupplierFields = false;
-    string GroupName;
 
-    // ============================= ELEMENT REFERENCES MANAGEMENT =============================
-    
-    public List<ElementReference> references = new List<ElementReference>();
-    
-    public void getInputReferences(ElementReference eref)
-    {
-        references.Add(eref);
-        Console.WriteLine($"Added reference #{references.Count - 1} for element");
-    }
-    
-    private ElementReference GetRef(int idx) 
-    {
-        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
-        return (idx >= 0 && idx < references.Count) 
-            ? references[idx] 
-            : default;
-    }
+    // Focus Management
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+    #endregion
 
-    public void getComponentReferences(T_Input eref){
-        nextReference = eref;
-    }
+    // =================================================================================
+    // LIFECYCLE & FOCUS MANAGEMENT
+    // =================================================================================
 
-    public async void HandleEnter( T_Input eref){
-     
-          await eref.Focus();
-        
-    }
-
-
-    // ============================= COMPONENT LIFECYCLE METHODS =============================
-
+    #region Lifecycle and Focus
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await firstReference.Focus();
+            if (firstReference?.reference.Id != null) await firstReference.Focus();
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
 
-    // ============================= CRUD OPERATIONS =============================
+    public void getInputReferences(int position, ElementReference eref)
+    {
+        references[position] = eref;
+    }
 
+    private ElementReference GetRef(int idx)
+    {
+        return references.ContainsKey(idx) ? references[idx] : default;
+    }
+    #endregion
+
+    // =================================================================================
+    // CRUD & FORM ACTIONS
+    // =================================================================================
+
+    #region CRUD and Form Actions
     [JSInvokable]
     public async Task HandleSave()
     {
-        if (!ValidateForm())
+        if (!await ValidateForm()) return;
+
+        try
         {
-            await Msg.SaveError();
+            var transaction = new Transaction();
+            
+            // Link the customer/supplier record to the ledger being created/updated
+            if (showCustomerFields) customerModel.dict["LedgerCode"] = ledgerModel.dict["LedgerCode"];
+            if (showSupplierFields) supplierModel.dict["LedgerCode"] = ledgerModel.dict["LedgerCode"];
+            
+            // Add operations to transaction
+            if (isEditing)
+            {
+                ledgerModel.Update(transaction);
+                if (showCustomerFields) customerMasterRef?.UpdateCustomer(transaction);
+                if (showSupplierFields) supplierMasterRef?.UpdateSupplier(transaction);
+            }
+            else
+            {
+                ledgerModel.Save(transaction);
+                if (showCustomerFields) customerMasterRef?.SaveCustomer(transaction);
+                if (showSupplierFields) supplierMasterRef?.SaveSupplier(transaction);
+            }
+
+            if (transaction.Execute())
+            {
+                await Msg.Success("Ledger saved successfully!");
+                await HandleClear();
+            }
+            else
+            {
+                throw new Exception("Transaction failed to execute.");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            try
-            {
-                if (isEditing)
-                {
-                    ledgerModel.Update();
-                    if (showCustomerFields && customerMasterRef != null)
-                        customerMasterRef.UpdateCustomer();
-                    if (showSupplierFields && supplierMasterRef != null)
-                        supplierMasterRef.UpdateSupplier();
-                }
-                else
-                {
-                    ledgerModel.Save();
-                    if (showCustomerFields && customerMasterRef != null)
-                        customerMasterRef.SaveCustomer();
-                    if (showSupplierFields && supplierMasterRef != null)
-                        supplierMasterRef.SaveSupplier();
-                }
-                await Msg.Success();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Save error: {ex.Message}");
-                await Msg.SaveError();
-            }
+            await Msg.Error($"Save failed: {ex.Message}");
         }
     }
 
     [JSInvokable]
-    public void HandleClear()
+    public Task HandleClear()
     {
         ledgerModel.Clear();
         customerModel.Clear();
         supplierModel.Clear();
-        if (customerMasterRef != null)
-            customerMasterRef.ClearCustomer();
-        if (supplierMasterRef != null)
-            supplierMasterRef.ClearSupplier();
         isEditing = false;
         showCustomerFields = false;
         showSupplierFields = false;
-        
-        // Clear references
         references.Clear();
-        
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public void HandleView()
+    public Task HandleView()
     {
         isViewing = !isViewing;
         StateHasChanged();
+        return Task.CompletedTask;
     }
+    
+    [JSInvokable]
+    public void HandlePrint() { /* TODO: Implement printing */ }
 
     public async Task HandleEdit(DataRow row)
     {
+        await HandleClear();
         isEditing = true;
         isViewing = false;
 
-        ledgerModel.Populate(row);
-        OnGroupCodeChanged(ledgerModel.dict["GroupCode"]);
+        ledgerModel.PopulateViaKey(row["LedgerCode"]);
+        await OnGroupCodeChanged(ledgerModel.dict["GroupCode"]);
 
-        // Load customer data if applicable
-        if (showCustomerFields)
+        if (showCustomerFields && customerMasterRef != null)
         {
-            var customerDt = db.GetDataTable(
-                $"SELECT * FROM CustomerMaster WHERE LedgerCode = '{ledgerModel.dict["LedgerCode"]}'");
-            if (customerDt.Rows.Count > 0 && customerMasterRef != null)
-                customerMasterRef.PopulateCustomer(customerDt.Rows[0]);
+            var customerDt = db.GetDataTable($"SELECT * FROM CustomerMaster WHERE LedgerCode = '{ledgerModel.dict["LedgerCode"]}'");
+            if (customerDt.Rows.Count > 0) customerMasterRef.PopulateCustomer(customerDt.Rows[0]);
         }
-
-        // Load supplier data if applicable
-        if (showSupplierFields)
+        if (showSupplierFields && supplierMasterRef != null)
         {
-            var supplierDt = db.GetDataTable(
-                $"SELECT * FROM SupplierMaster WHERE LedgerCode = '{ledgerModel.dict["LedgerCode"]}'");
-            if (supplierDt.Rows.Count > 0 && supplierMasterRef != null)
-                supplierMasterRef.PopulateSupplier(supplierDt.Rows[0]);
+            var supplierDt = db.GetDataTable($"SELECT * FROM SupplierMaster WHERE LedgerCode = '{ledgerModel.dict["LedgerCode"]}'");
+            if (supplierDt.Rows.Count > 0) supplierMasterRef.PopulateSupplier(supplierDt.Rows[0]);
         }
 
         StateHasChanged();
@@ -234,65 +246,44 @@
         isViewing = false;
         StateHasChanged();
     }
+    #endregion
 
-    // ============================= VALIDATION =============================
+    // =================================================================================
+    // LOGIC & VALIDATION
+    // =================================================================================
 
-    private bool ValidateForm()
+    public async Task OnGroupCodeChanged(string code)
+    {
+        string groupName = db.GetScalar($"SELECT GroupName FROM GroupMaster WHERE GroupCode = '{code}'")?.ToString() ?? "";
+        ledgerModel.dict["GroupCode"] = code;
+
+        showCustomerFields = groupName.Equals("SUNDRY DEBTORS", StringComparison.OrdinalIgnoreCase);
+        showSupplierFields = groupName.Equals("SUNDRY CREDITORS", StringComparison.OrdinalIgnoreCase);
+
+        // Allow the UI to render the child component before trying to focus it
+        await Task.Delay(1); 
+        StateHasChanged();
+    }
+
+    private async Task<bool> ValidateForm()
     {
         var errors = new List<string>();
-        
         if (string.IsNullOrWhiteSpace(ledgerModel.dict["LedgerName"]))
             errors.Add("Ledger Name is required");
+        if (string.IsNullOrWhiteSpace(ledgerModel.dict["GroupCode"]) || ledgerModel.dict["GroupCode"] == "0")
+            errors.Add("Group is required");
 
-        if (showCustomerFields && customerMasterRef != null)
-        {
-            var customerErrors = customerMasterRef.ValidateCustomer();
-            errors.AddRange(customerErrors);
-        }
-
-        if (showSupplierFields && supplierMasterRef != null)
-        {
-            var supplierErrors = supplierMasterRef.ValidateSupplier();
-            errors.AddRange(supplierErrors);
-        }
+        if (showCustomerFields && customerMasterRef != null) errors.AddRange(customerMasterRef.ValidateCustomer());
+        if (showSupplierFields && supplierMasterRef != null) errors.AddRange(supplierMasterRef.ValidateSupplier());
 
         if (errors.Any())
         {
             Msg.Show(string.Join(", ", errors), "danger", "bi-exclamation-triangle");
             return false;
         }
-
         return true;
     }
 
-    // ============================= GROUP CHANGE HANDLING =============================
-
-    public void OnGroupCodeChanged(string code)
-    {
-        GroupName = db.GetScalar($"Select GroupName from GroupMaster where GroupCode = '{code}'")?.ToString();
-        ledgerModel.dict["GroupCode"] = code;
-        
-        // Reset both flags
-        showCustomerFields = false;
-        showSupplierFields = false;
-        
-        if (GroupName == "SUNDRY DEBTORS")
-        {
-            showCustomerFields = true;
-            // Set the LedgerCode for the customer
-            customerModel.dict["LedgerCode"] = ledgerModel.dict["LedgerCode"];
-        }
-        else if (GroupName == "SUNDRY CREDITORS")
-        {
-            showSupplierFields = true;
-            // Set the LedgerCode for the supplier
-            supplierModel.dict["LedgerCode"] = ledgerModel.dict["LedgerCode"];
-        }
-        
-        StateHasChanged();
-    }
-
-    // ============================= CLEANUP =============================
 
     public void Dispose() => dotNetRef?.Dispose();
 }

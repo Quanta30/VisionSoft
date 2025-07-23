@@ -16,9 +16,9 @@
 
     <!-- Product Selection -->
     <td>
-        <T_RInput Title="" Layout="3" TableName="PhysicalStockView" 
+        <T_RInput Title="" Layout="3" TableName="ProductMaster" 
                   PrimaryColumn="ProductName" DisplayColumn="ProductName" 
-                  Value=@StockName ValueChanged="OnStockChanged"
+                  Value=@ProductName ValueChanged="OnStockChanged"
                   GetInputReference="@((eref) => getInputReferences(0, eref))" 
                   NextReference="@(GetRef(1))" 
                   @ref="firstReference"/>
@@ -121,6 +121,7 @@
     [Parameter] public ElementReference endReference { get; set; }
     [Parameter] public Transaction transaction { get; set; }
     [Parameter] public EventCallback OnAdd { get; set; }
+    [Parameter] public string SupplierCode {get; set;}
 
     // ============================= MODEL & HELPERS =============================
     
@@ -135,7 +136,8 @@
     public float gst = 0;
     public float netAmount = 0;
     public int GstCategoryCode = 2;
-    public string StockName;
+    public string ProductName;
+    public string ProductCode;
     public string HsnCode;
     public float PurchaseRate = 0;
 
@@ -178,8 +180,8 @@
         if (InitialDataRow != null && firstRender)
         {  
             model.Populate(InitialDataRow);
-            StockName = utilities.StockIdToName(model.dict["StockID"]);
-            HsnCode = db.GetScalar($"SELECT HSNCode FROM ProductMaster WHERE ProductName = '{StockName}'");
+            ProductName = utilities.StockIdToName(model.dict["StockID"]);
+            HsnCode = db.GetScalar($"SELECT HSNCode FROM ProductMaster WHERE ProductName = '{ProductName}'");
             
             // Determine GstCategoryCode from non-zero GST fields
             if (float.TryParse(model.dict["GST5APPAMOUNT"], out float gst5) && gst5 > 0) 
@@ -224,8 +226,8 @@
 
     public async Task OnEnterPressed()
     {
-        Console.WriteLine($"PurchaseBillDetail {SerialNo}: OnEnterPressed, StockName: {StockName}, endReference valid: {endReference.Id != null}");
-        if (StockName == "" || StockName == null || !IsValidQuantity(out _))
+        Console.WriteLine($"PurchaseBillDetail {SerialNo}: OnEnterPressed, ProductName: {ProductName}, endReference valid: {endReference.Id != null}");
+        if (ProductName == "" || ProductName == null || !IsValidQuantity(out _))
         {
             if (endReference.Id != null)
             {
@@ -249,7 +251,8 @@
     {
         try
         {
-            StockName = sname;
+            ProductName = sname;
+            ProductCode = db.GetScalar($"Select ProductCode from ProductMaster where ProductName = {ProductName}");
             model.dict["StockID"] = utilities.StockNameToId(sname);
             HsnCode = db.GetScalar($"SELECT HSNCode FROM ProductMaster WHERE ProductName = '{sname}'");
             UpdateStockDetails();
@@ -287,12 +290,29 @@
         }
     }
 
+    private void AddStock(){
+        string GstCategoryCodeOfProduct = db.GetScalar($"Select GstCategoryCode from ProductMaster where ProductCode = {ProductCode}");
+        Model PhysicalStockModel = new Model("PhysicalStock", "StockId");
+
+        PhysicalStockModel.dict["ProductCode"] = ProductCode;
+        PhysicalStockModel.dict["GstCategoryCode"] = GstCategoryCodeOfProduct;
+        PhysicalStockModel.dict["PurchaseRate"] = model.dict["Rate"];
+        PhysicalStockModel.dict["EntryNo"] = PurchaseBillNo;
+        PhysicalStockModel.dict["EntryType"] = "PURCHASE";
+        PhysicalStockModel.dict["SupplierCode"] = SupplierCode;
+
+        PhysicalStockModel.Save(transaction);
+    }
+
     private void UpdatePhysicalStock()
     {
         if (!float.TryParse(model.dict["Quantity"], out float quantity) || quantity <= 0)
         {
             Console.WriteLine($"PurchaseBillDetail {SerialNo}: Invalid quantity '{model.dict["Quantity"]}', skipping stock update");
             return;
+        }
+        if(Convert.ToInt32(db.GetScalar($"select count(ProductCode) from PhysicalStock where ProductCode='{ProductCode}'")) == 0){
+            AddStock();
         }
         utilities.AdjustStock(model.dict["StockID"], "ADD", model.dict["Quantity"], transaction);
     }
@@ -344,11 +364,11 @@
         if (string.IsNullOrEmpty(qty))
         {
             model.dict["Quantity"] = "0";
-            Msg.Show($"Warning: Quantity cannot be empty for {StockName}", "danger", "");
+            Msg.Show($"Warning: Quantity cannot be empty for {ProductName}", "danger", "");
         }
         else if (!int.TryParse(qty, out int quantity) || quantity <= 0)
         {
-            Msg.Show($"Warning: Invalid quantity '{qty}' for {StockName}", "danger", "");
+            Msg.Show($"Warning: Invalid quantity '{qty}' for {ProductName}", "danger", "");
         }
         else
         {
@@ -362,7 +382,7 @@
         if (float.TryParse(model.dict["Quantity"], out quantity) && quantity > 0)
             return true;
         Console.WriteLine($"PurchaseBillDetail {SerialNo}: Invalid quantity '{model.dict["Quantity"]}'");
-        Msg.Show($"Error: Quantity must be a valid number greater than 0 for {StockName}", "danger", "");
+        Msg.Show($"Error: Quantity must be a valid number greater than 0 for {ProductName}", "danger", "");
         return false;
     }
 

@@ -1,166 +1,194 @@
 @page "/areamaster"
 @inject IJSRuntime JS
 @using System.Data
-@rendermode InteractiveServer 
+@rendermode InteractiveServer
 
 <T_Msg @ref="Msg" />
+
 @if (isViewing)
 {
-    <FrmView TableName="AreaMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+    <FrmView TableName="AreaMaster"
+             PrimaryKeyColumn="AreaCode"
+             OnClosed="HandleClose"
+             EditClicked="HandleEdit" />
 }
 
 <T_Frm FormName="Area Master">
     <ChildContent>
         <T_Row>
-            <T_Input Title="Area Code *" ReadOnly="true" 
-                     @bind-Value="@model.dict["AreaCode"]" 
+            <T_Input Title="Area Code *" ReadOnly="true"
+                     @bind-Value="@model.dict["AreaCode"]"
                      ColSize="col-md-4" />
-            <T_Input Title="Area Name *" 
-                     @bind-Value="@model.dict["AreaName"]" 
+
+            <T_Input Title="Area Name *"
+                     @bind-Value="@model.dict["AreaName"]"
                      MaxLength="500" ColSize="col-md-4"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(1))
+                     GetInputReference="@((eref) => getInputReferences(0, eref))"
+                     NextReference="@(GetRef(1))"
                      @ref="firstReference" />
-            <T_RInput Title="Route" 
-                      TableName="RouteMaster" 
-                      DisplayColumn="RouteName" 
+
+            <T_RInput Title="Route *"
+                      TableName="RouteMaster"
+                      DisplayColumn="RouteName"
                       PrimaryColumn="RouteCode"
-                      @bind-Value="@model.dict["RouteCode"]" 
+                      @bind-Value="@model.dict["RouteCode"]"
                       ColSize="col-md-4"
-                      GetInputReference="getInputReferences"
-                      NextReference=@(GetRef(0)) />
+                      GetInputReference="@((eref) => getInputReferences(1, eref))"
+                      NextReference="@(GetRef(0))" />
         </T_Row>
     </ChildContent>
 
     <CardFooterContent>
-        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
-        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
-        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Info="(ALT + S)" />
+        <T_Button Text="Clear" OnClick="HandleClear" Info="(ALT + C)" />
+        <T_Button Text="View" OnClick="HandleView" Info="(ALT + V)" />
+        <T_Button Text="Print" OnClick="HandlePrint" Info="(ALT + P)" />
     </CardFooterContent>
 </T_Frm>
 
 @code {
-    private T_Msg Msg;
-    private DotNetObjectReference<AreaMaster> dotNetRef;
-    private T_Input firstReference;
+    // =================================================================================
+    // REFERENCES & STATE
+    // =================================================================================
 
-    Model model = new Model("AreaMaster", "AreaCode");
+    #region References and State
+    // UI & JS Interop
+    private T_Msg Msg;
+    private T_Input firstReference;
+    private DotNetObjectReference<AreaMaster> dotNetRef;
+
+    // Data Models
+    private Model model = new Model("AreaMaster", "AreaCode");
+
+    // State Flags
     private bool isViewing = false;
     private bool isEditing = false;
 
-    // ============================= ELEMENT REFERENCES MANAGEMENT =============================
-    
-    public List<ElementReference> references = new List<ElementReference>();
-    
-    public void getInputReferences(ElementReference eref)
-    {
-        references.Add(eref);
-        Console.WriteLine($"Added reference #{references.Count - 1} for element");
-    }
-    
-    private ElementReference GetRef(int idx) 
-    {
-        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
-        return (idx >= 0 && idx < references.Count) 
-            ? references[idx] 
-            : default;
-    }
+    // Focus Management
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+    #endregion
 
-    // ============================= COMPONENT LIFECYCLE METHODS =============================
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
 
+    #region Lifecycle Methods
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if(firstRender)
+        if (firstRender)
         {
-            await firstReference.Focus();
-            Console.WriteLine("AreaMaster OnAfterRenderAsync executed");
+            // Set initial focus to the first editable field.
+            if (firstReference?.reference.Id != null)
+            {
+                await firstReference.Focus();
+            }
+
+            // Setup JS interop for hotkeys (e.g., ALT + S for Save).
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
+    #endregion
 
-    // ============================= CRUD OPERATIONS =============================
+    // =================================================================================
+    // FOCUS MANAGEMENT
+    // =================================================================================
 
+    #region Focus Management
+    /// <summary>
+    /// Collects references of focusable child components using a dictionary to maintain order.
+    /// </summary>
+    public void getInputReferences(int position, ElementReference eref)
+    {
+        references[position] = eref;
+    }
+
+    /// <summary>
+    /// Retrieves a component reference by its registered position.
+    /// </summary>
+    private ElementReference GetRef(int idx)
+    {
+        return references.ContainsKey(idx) ? references[idx] : default;
+    }
+    #endregion
+
+    // =================================================================================
+    // CRUD & FORM ACTIONS
+    // =================================================================================
+
+    #region CRUD and Form Actions
     [JSInvokable]
     public async Task HandleSave()
     {
         if (!ValidateForm())
         {
-            await Msg.SaveError();
+            // Validation messages are shown by ValidateForm().
+            return;
         }
-        else
+
+        try
         {
-            try
+            var transaction = new Transaction();
+
+            if (isEditing)
             {
-                bool success = isEditing
-                    ? model.Update()
-                    : model.Save();
-
-                if (success)
-                {
-                    await Msg.Success();
-
-                    if (!isEditing)
-                    {
-                        HandleClear();
-                    }
-
-                    isEditing = false;
-                }
-                else
-                {
-                    await Msg.SaveError();
-                }
+                model.Update(transaction);
             }
-            catch (Exception ex)
+            else
             {
-                await Msg.SaveError();
-                Console.WriteLine($"Error saving Area record: {ex.Message}");
+                model.Save(transaction);
             }
+
+            if (transaction.Execute())
+            {
+                await Msg.Success("Area saved successfully!");
+                await HandleClear();
+            }
+            else
+            {
+                throw new Exception("Transaction failed to execute.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await Msg.Error($"Save failed: {ex.Message}");
         }
     }
 
     [JSInvokable]
-    public void HandleClear()
+    public Task HandleClear()
     {
         model.Clear();
         isEditing = false;
-        
-        // Clear references
-        references.Clear();
-        
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public void HandleView()
+    public Task HandleView()
     {
         isViewing = !isViewing;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
     public void HandlePrint()
     {
+        // TODO: Implement printing logic if needed.
         Console.WriteLine("Print Area Master");
-        // implement printing logic if needed
-        StateHasChanged();
     }
 
     public async Task HandleEdit(DataRow row)
     {
-        try
+        await HandleClear();
+        isEditing = true;
+        isViewing = false;
+        model.Populate(row);
+        StateHasChanged();
+        if (firstReference?.reference.Id != null)
         {
-            isEditing = true;
-            isViewing = false;
-
-            model.Populate(row);
-
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading Area record: {ex.Message}");
+            await firstReference.Focus();
         }
     }
 
@@ -169,33 +197,24 @@
         isViewing = false;
         StateHasChanged();
     }
+    #endregion
 
-    // ============================= VALIDATION =============================
+    // =================================================================================
+    // VALIDATION
+    // =================================================================================
 
     private bool ValidateForm()
     {
         var errors = new List<string>();
 
-        // Required field validations
-        if (string.IsNullOrWhiteSpace(model.dict["AreaCode"])) 
-            errors.Add("Area Code is required");
-
-        if (string.IsNullOrWhiteSpace(model.dict["AreaName"])) 
+        if (string.IsNullOrWhiteSpace(model.dict["AreaName"]))
+        {
             errors.Add("Area Name is required");
-
-        if (string.IsNullOrWhiteSpace(model.dict["RouteCode"])) 
+        }
+        if (string.IsNullOrWhiteSpace(model.dict["RouteCode"]) || model.dict["RouteCode"] == "0")
+        {
             errors.Add("Route is required");
-
-        // Length validation for AreaName
-        if (!string.IsNullOrWhiteSpace(model.dict["AreaName"]) && model.dict["AreaName"].Length > 500)
-            errors.Add("Area Name cannot exceed 500 characters");
-
-        // Numeric validation for codes
-        if (!string.IsNullOrWhiteSpace(model.dict["AreaCode"]) && !int.TryParse(model.dict["AreaCode"], out _))
-            errors.Add("Area Code must be a valid number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["RouteCode"]) && !int.TryParse(model.dict["RouteCode"], out _))
-            errors.Add("Route Code must be a valid number");
+        }
 
         if (errors.Any())
         {
@@ -207,7 +226,9 @@
         return true;
     }
 
-    // ============================= CLEANUP =============================
+    // =================================================================================
+    // CLEANUP
+    // =================================================================================
 
     public void Dispose()
     {

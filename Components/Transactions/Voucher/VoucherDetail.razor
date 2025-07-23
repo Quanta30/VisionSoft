@@ -1,59 +1,126 @@
 @using System.Data
 @namespace VisionSoft.Components.Transactions.Voucher
 @rendermode InteractiveServer
+
 <tr>
     <td>
-        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style=""/>
+        <T_Button Text="X" btnType="Danger" OnClick="HandleRemove" Style="" />
     </td>
     <td>
         @SerialNo
     </td>
     <td>
-        <T_RInput Title="" Layout="3" TableName="LedgerMaster" PrimaryColumn="LedgerCode" DisplayColumn="LedgerName" Value="@model.dict["LedgerCode"]" ValueChanged="OnLedgerChanged"/>
+        <T_RInput Title="" Layout="3" TableName="LedgerMaster" PrimaryColumn="LedgerCode" DisplayColumn="LedgerName"
+                  Value="@model.dict["LedgerCode"]" ValueChanged="OnLedgerChanged"
+                  GetInputReference="@((eref) => getInputReferences(0, eref))"
+                  NextReference="@(GetRef(1))"
+                  @ref="firstReference" />
     </td>
     <td>
-        <T_RInput Title="" Layout="3" TableName="LedgerMaster" PrimaryColumn="LedgerCode" DisplayColumn="LedgerName" Value="@model.dict["OppositeLedgerCode"]" ValueChanged="OnOppositeLedgerChanged"/>
+        <T_RInput Title="" Layout="3" TableName="LedgerMaster" PrimaryColumn="LedgerCode" DisplayColumn="LedgerName"
+                  Value="@model.dict["OppositeLedgerCode"]" ValueChanged="OnOppositeLedgerChanged"
+                  GetInputReference="@((eref) => getInputReferences(1, eref))"
+                  NextReference="@(GetRef(2))" />
     </td>
     <td>
         <div style="width:100px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["DebitAmount"]" Placeholder="0.00" ChangeFunction="OnAmountChanged"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["DebitAmount"]" Placeholder="0.00"
+                     ChangeFunction="OnAmountChanged" Type="Number"
+                     GetInputReference="@((eref) => getInputReferences(2, eref))"
+                     NextReference="@(GetRef(3))" />
         </div>
     </td>
     <td>
         <div style="width:100px">
-            <T_Input Title="" Layout="3" @bind-Value="@model.dict["CreditAmount"]" Placeholder="0.00" ChangeFunction="OnAmountChanged"/>
+            <T_Input Title="" Layout="3" @bind-Value="@model.dict["CreditAmount"]" Placeholder="0.00"
+                     ChangeFunction="OnAmountChanged" Type="Number"
+                     GetInputReference="@((eref) => getInputReferences(3, eref))"
+                     OnEnterPressed="OnEnterPressed" />
         </div>
     </td>
 </tr>
 
 @code {
+    // =================================================================================
+    // PARAMETERS
+    // =================================================================================
+
     [Parameter] public EventCallback<int> OnRemove { get; set; }
     [Parameter] public int SerialNo { get; set; }
     [Parameter] public string VoucherNo { get; set; }
     [Parameter] public string VoucherType { get; set; }
     [Parameter] public EventCallback OnCalculationChanged { get; set; }
+    [Parameter] public EventCallback OnAdd { get; set; }
+    [Parameter] public EventCallback OnEnterPressed { get; set; }
     [Parameter] public DataRow InitialDataRow { get; set; }
+
+    // =================================================================================
+    // REFERENCES & STATE
+    // =================================================================================
 
     private Model model = new Model("VoucherDetails", "");
     private ClsDatabase db = new ClsDatabase();
 
-    protected override void OnParametersSet(){
-        if (InitialDataRow != null)
+    // Focus Management
+    public T_RInput firstReference;
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(model.dict["DebitAmount"])) model.dict["DebitAmount"] = "0";
+        if (string.IsNullOrEmpty(model.dict["CreditAmount"])) model.dict["CreditAmount"] = "0";
+    }
+
+    protected override void OnParametersSet()
+    {
+        model.dict["VoucherNo"] = VoucherNo;
+        model.dict["Sequence"] = SerialNo.ToString();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            model.Populate(InitialDataRow);
-        }
-        else
-        {
-            model.dict["VoucherNo"] = VoucherNo;
-            model.dict["Sequence"] = SerialNo.ToString();
+            if (InitialDataRow != null)
+            {
+                model.Populate(InitialDataRow);
+                InitialDataRow = null; // Prevent re-population
+                StateHasChanged();
+            }
+            if (firstReference?.reference.Id != null)
+            {
+                await firstReference.Focus();
+            }
         }
     }
 
-    private void OnLedgerChanged(string ledgerCode)
+    // =================================================================================
+    // FOCUS MANAGEMENT
+    // =================================================================================
+
+    public void getInputReferences(int position, ElementReference eref)
+    {
+        references[position] = eref;
+    }
+
+    private ElementReference GetRef(int idx)
+    {
+        return references.ContainsKey(idx) ? references[idx] : default;
+    }
+
+    // =================================================================================
+    // EVENT HANDLERS
+    // =================================================================================
+
+    private async Task OnLedgerChanged(string ledgerCode)
     {
         model.dict["LedgerCode"] = ledgerCode;
         ValidateAmounts();
-        OnCalculationChanged.InvokeAsync();
+        await OnCalculationChanged.InvokeAsync();
         StateHasChanged();
     }
 
@@ -63,11 +130,10 @@
         StateHasChanged();
     }
 
-    private void OnAmountChanged(string value)
+    private async Task OnAmountChanged(string value)
     {
-        Console.WriteLine("Change in Amounts");
         ValidateAmounts();
-        OnCalculationChanged.InvokeAsync();
+        await OnCalculationChanged.InvokeAsync();
         StateHasChanged();
     }
 
@@ -83,53 +149,22 @@
         }
     }
 
-    public async Task HandleRemove()
+    private async Task HandleRemove()
     {
-        Console.WriteLine($"Removing row with SerialNo: {SerialNo}");
         await OnRemove.InvokeAsync(SerialNo);
     }
 
-    public bool SaveDetail()
+    // =================================================================================
+    // PUBLIC API
+    // =================================================================================
+
+    public void SaveDetail(Transaction transaction)
     {
-        try
+        if (string.IsNullOrEmpty(model.dict["LedgerCode"]) || model.dict["LedgerCode"] == "0")
         {
-            Console.WriteLine($"Saving detail {SerialNo}");
-            model.dict["VoucherNo"] = VoucherNo;
-            model.dict["Sequence"] = SerialNo.ToString();
-
-            if (string.IsNullOrEmpty(model.dict["LedgerCode"]) || model.dict["LedgerCode"] == "0")
-            {
-                Console.WriteLine("Cannot save - no ledger selected");
-                return false;
-            }
-
-            decimal debit = decimal.TryParse(model.dict["DebitAmount"], out decimal d) ? d : 0;
-            decimal credit = decimal.TryParse(model.dict["CreditAmount"], out decimal c) ? c : 0;
-
-            if (debit != 0 && credit != 0)
-            {
-                Console.WriteLine("Cannot save - both debit and credit amounts cannot be non-zero");
-                return false;
-            }
-
-            bool saved = model.Save();
-
-            if (saved)
-            {
-                Console.WriteLine($"Detail {SerialNo} saved successfully");
-            }
-            else
-            {
-                Console.WriteLine($"Failed to save detail {SerialNo}");
-            }
-
-            return saved;
+            return; // Do not save rows without a ledger
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error saving detail {SerialNo}: {ex.Message}");
-            return false;
-        }
+        model.Save(transaction);
     }
 
     public decimal GetDebitAmount()
@@ -140,11 +175,5 @@
     public decimal GetCreditAmount()
     {
         return decimal.TryParse(model.dict["CreditAmount"], out decimal credit) ? credit : 0;
-    }
-
-    protected override void OnInitialized()
-    {
-        if (string.IsNullOrEmpty(model.dict["DebitAmount"])) model.dict["DebitAmount"] = "0";
-        if (string.IsNullOrEmpty(model.dict["CreditAmount"])) model.dict["CreditAmount"] = "0";
     }
 }

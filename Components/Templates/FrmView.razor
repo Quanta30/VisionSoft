@@ -32,7 +32,7 @@
             <div class="card-header bg-light border-bottom">
                 <!-- Row 1: Title and Close Button -->
                 <div class="d-flex justify-content-between align-items-center py-2">
-                    <h5 class="mb-0 text-dark fw-semibold">Select @TableName</h5>
+                    <h5 class="mb-0 text-dark fw-semibold">Select @Title</h5>
                     <button type="button" class="btn btn-danger btn-sm" @onclick="CloseModal">Close</button>
                 </div>
                 
@@ -42,8 +42,7 @@
                     <div class="input-group" style="width: 400px;">
                         <input type="text" class="form-control"
                                style="height: 36px;"
-                               placeholder="Search @TableName..."
-                               @bind="searchText" @bind:event="oninput"
+                               value=@searchText @oninput="OnSearchInputChanged"
                                @ref="searchInput" />
                         <button type="button" class="btn btn-outline-secondary" @onclick="ClearSearch" aria-label="Clear search text">X</button>
                     </div>
@@ -73,8 +72,8 @@
                                 {
                                     @foreach (var column in Columns)
                                     {
-                                        <div class="form-check dropdown-item-text">
-                                            <input class="form-check-input" type="checkbox" 
+                                        <div class="form-check dropdown-item-text" style="margin-left:1rem;">
+                                            <input class="form-check-input" style="" type="checkbox" 
                                                    id="@($"col-{column}")" 
                                                    @onchange="(e) => OnColumnToggle(column, (bool)(e.Value ?? false))"
                                                    checked="@selectedColumns.Contains(column)" />
@@ -191,6 +190,11 @@
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
     #region Parameters
+
+    /// <summary>
+    /// The Title To Be isplayed in the modal header.
+    /// </summary>
+    [Parameter] public string Title {get; set; } = "Data";
     /// <summary>
     /// The name of the database table to query.
     /// </summary>
@@ -203,6 +207,7 @@
     /// The primary key column of the table, used for sorting. Must be specified for pagination to work correctly.
     /// </summary>
     [Parameter] public string PrimaryKeyColumn { get; set; } = "";
+    [Parameter] public string Query {get; set;}
     /// <summary>
     /// A colon-separated list of column names to select by default.
     /// </summary>
@@ -261,7 +266,8 @@
     protected override async Task OnParametersSetAsync()
     {
         searchText = SearchText ?? "";
-        if (!string.IsNullOrEmpty(TableName))
+
+        if (!string.IsNullOrEmpty(TableName) || !string.IsNullOrEmpty(Query))
         {
             await InitializeColumns();
             await LoadData();
@@ -294,8 +300,17 @@
 
         try
         {
-            var dtCols = db.GetDataTable($"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{TableName}' ORDER BY ORDINAL_POSITION");
+            DataTable dtCols;
+            if(!string.IsNullOrEmpty(Query)){
+                // If a custom query is provided, execute it to get the data
+                string schemaQuery = $"SELECT * FROM ({Query}) AS Sub WHERE 1=0";
+                dtCols = db.GetDataTable(schemaQuery);
+                foreach(DataColumn column in dtCols.Columns)Columns.Add(column.ColumnName);
+            }
+            else {
+            dtCols = db.GetDataTable($"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{TableName}' ORDER BY ORDINAL_POSITION");
             Columns = dtCols.Rows.Cast<DataRow>().Select(r => r["COLUMN_NAME"]?.ToString()!).ToList();
+            }
 
             if (!string.IsNullOrEmpty(InitialFilters))
             {
@@ -320,7 +335,8 @@
     /// Loads data from the database based on the current search, filter, and pagination settings.
     /// </summary>
     private async Task LoadData()
-    {
+    {   
+        Console.WriteLine("LOADING DATA.....");
         if (string.IsNullOrEmpty(PrimaryKeyColumn))
         {
             await Msg.Error("Primary Key Column must be specified for data loading and pagination.");
@@ -343,17 +359,28 @@
                 whereClause = "WHERE " + string.Join(" OR ", selectedColumns.Select(c => $"CAST([{c}] AS NVARCHAR(MAX)) {filterCondition} {pattern}"));
             }
 
-            string countQuery = $"SELECT COUNT(*) as cnt FROM [{TableName}] {whereClause}";
+            string baseTable;
+            if(!string.IsNullOrEmpty(Query))
+            {
+                // If a custom query is provided, use it as the base table
+                baseTable = $"({Query}) AS Sub";
+            }
+            else
+            {
+                baseTable = $"[{TableName}]";
+            }
+            string countQuery = $"SELECT COUNT(*) as cnt FROM {baseTable} {whereClause}";
             totalRecords = Convert.ToInt32(db.GetDataTable(countQuery).Rows[0]["cnt"]);
             totalPages = totalRecords > 0 ? (int)Math.Ceiling((double)totalRecords / pageSize) : 1;
             currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
 
             string dataQuery = $@"
-                SELECT * FROM [{TableName}] {whereClause}
+                SELECT * FROM {baseTable} {whereClause}
                 ORDER BY [{PrimaryKeyColumn}]
                 OFFSET {(currentPage - 1) * pageSize} ROWS
                 FETCH NEXT {pageSize} ROWS ONLY";
 
+            Console.WriteLine($"Executing data query: {dataQuery}"); // For debugging purposes
             TableData = db.GetDataTable(dataQuery);
         }
         catch (Exception ex)
@@ -366,10 +393,12 @@
         finally
         {
             IsLoading = false;
-            await InvokeAsync(StateHasChanged);
+            StateHasChanged();
         }
     }
     #endregion
+
+
 
     // =================================================================================
     // KEYBOARD & NAVIGATION

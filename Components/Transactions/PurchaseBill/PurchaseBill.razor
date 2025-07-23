@@ -59,25 +59,22 @@
                       NextReference="@(GetRef(4))" />
 
             <T_Select @bind-Value="@model.dict["ModeOfPay"]" Label="Mode Of Pay"
-                      Options="CASH:Cash,CARD:Card,UPI:UPI,CHEQUE:Cheque,CREDIT:Credit,NEFT:NEFT,RTGS:RTGS"
+                      Options="CREDIT:Credit,CASH:Cash"
                       ColSize="col-md-4"
                       GetInputReference="@((eref) => getInputReferences(4, eref))"
-                      NextReference="@(GetRef(5))" />
+                      NextReference="@(GetRef(6))" />
 
-            <T_Checkbox Title="Cancelled"
-                        @bind-Value="@model.dict["Cancelled"]"
+            <T_Checkbox Title="Consider In Accounts"
+                        @bind-Value="@model.dict["ConsiderInAccounts"]"
                         ColSize="col-md-4"
-                        GetInputReference="@((eref) => getInputReferences(5, eref))"
-                        NextReference="@(GetRef(6))" />
+                        GetInputReference="@((eref) => getInputReferences(6, eref))"
+                        NextReference="@(GetRef(7))" />
+
         </T_Row>
 
         <!-- Options and Narration -->
         <T_Row>
-            <T_Checkbox Title="Consider In Accounts"
-                        @bind-Value="@model.dict["ConsiderInAccounts"]"
-                        ColSize="col-md-6"
-                        GetInputReference="@((eref) => getInputReferences(6, eref))"
-                        NextReference="@(GetRef(7))" />
+
 
             <T_Textarea Title="Narration"
                         @bind-Value="@model.dict["Narration"]"
@@ -128,6 +125,7 @@
                         GstStateCode="@GstStateCode"
                         endReference="@(GetRef(10))"
                         transaction="@transaction"
+                        SupplierCode="@model.dict["SupplierCode"]"
                         @ref="@detailComponents[index]" />
                 }
             </TableRows>
@@ -235,7 +233,7 @@
         if (string.IsNullOrEmpty(model.dict["DueDate"]))
             model.dict["DueDate"] = DateTime.Now.AddDays(30).ToString("yyyy-MM-dd");
 
-        model.dict["ModeOfPay"] ??= "CASH";
+        model.dict["ModeOfPay"] = "CREDIT";
         model.dict["ConsiderInAccounts"] ??= "true";
         model.dict["Cancelled"] ??= "false";
         model.dict2["TotalQty"] = "0";
@@ -362,6 +360,7 @@
         isEditing = true;
         model.Populate(row);
         model.dict2["PurchaseBillNo"] = model.dict["PurchaseBillNo"]; // Store original PurchaseBillNo
+        model.dict2["TotalQty"] = "0";
         UpdateSupplierDetails();
 
         var dataTable = db.GetDataTable($"SELECT * FROM PurchaseBillDetails WHERE PurchaseBillNo = '{model.dict["PurchaseBillNo"]}'");
@@ -373,9 +372,11 @@
         }
 
         isViewing = false;
+        CalculateTotals();
         StateHasChanged();
         // Wait for render to complete and references to be set
         await Task.Delay(50);
+        
         if (firstReference != null)
         {
             Console.WriteLine("Focusing firstReference in HandleEdit");

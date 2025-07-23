@@ -6,207 +6,240 @@
 <T_Msg @ref="Msg" />
 @if (isViewing)
 {
-    <FrmView TableName="ProductMaster" OnClosed="HandleClose" EditClicked="HandleEdit"/>
+    <FrmView TableName="ProductMaster" OnClosed="HandleClose" EditClicked="HandleEdit" PrimaryKeyColumn="ProductCode"/>
 }
 
 <T_Frm FormName="Product Master">
     <ChildContent>
         <T_Row>
-            <T_Input Title="Product Code *" ReadOnly="true" 
-                     @bind-Value="@model.dict["ProductCode"]" 
+            <T_Input Title="Product Code *" ReadOnly="true"
+                     @bind-Value="@model.dict["ProductCode"]"
                      ColSize="col-md-2" />
-            <T_Input Title="Product Name *" 
-                     @bind-Value="@model.dict["ProductName"]" 
+            <T_Input Title="Product Name *"
+                     @bind-Value="@model.dict["ProductName"]"
                      MaxLength="50" ColSize="col-md-4"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(1))
+                     GetInputReference="@((eref) => getInputReferences(0, eref))"
+                     NextReference="@(GetRef(1))"
                      @ref="firstReference" />
-            <T_RInput Title="Company" 
-                      @bind-Value="@model.dict["CompanyCode"]" 
+            <T_RInput Title="Company"
+                      @bind-Value="@model.dict["CompanyCode"]"
                       ColSize="col-md-3"
-                      TableName="CompanyMaster" 
-                      PrimaryColumn="CompanyCode" 
+                      TableName="CompanyMaster"
+                      PrimaryColumn="CompanyCode"
                       DisplayColumn="CompanyName"
-                      GetInputReference="getInputReferences"
-                      NextReference=@(GetRef(2)) />
-            <T_RInput Title="GST Category" 
-                      @bind-Value="@model.dict["GSTCategoryCode"]" 
+                      GetInputReference="@((eref) => getInputReferences(1, eref))"
+                      NextReference="@(GetRef(2))" />
+            <T_RInput Title="GST Category"
+                      @bind-Value="@model.dict["GSTCategoryCode"]"
                       ColSize="col-md-3"
-                      TableName="GstCategoryMaster" 
-                      PrimaryColumn="GSTCategoryCode" 
+                      TableName="GstCategoryMaster"
+                      PrimaryColumn="GSTCategoryCode"
                       DisplayColumn="GSTCategoryName"
-                      GetInputReference="getInputReferences"
-                      NextReference=@(GetRef(3)) />
+                      GetInputReference="@((eref) => getInputReferences(2, eref))"
+                      NextReference="@(GetRef(3))" />
         </T_Row>
         <T_Row>
-            <T_Input Title="HSN Code" 
-                     @bind-Value="@model.dict["HSNCode"]" 
+            <T_Input Title="HSN Code"
+                     @bind-Value="@model.dict["HSNCode"]"
                      MaxLength="50" ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(4)) />
-            <T_Input Title="Description" 
-                     @bind-Value="@model.dict["Description"]" 
+                     GetInputReference="@((eref) => getInputReferences(3, eref))"
+                     NextReference="@(GetRef(4))" />
+            <T_Input Title="Description"
+                     @bind-Value="@model.dict["Description"]"
                      MaxLength="500" ColSize="col-md-6"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(5)) />
-            <T_Input Title="Warranty (Months)" Type="number" 
-                     @bind-Value="@model.dict["Warranty"]" 
+                     GetInputReference="@((eref) => getInputReferences(4, eref))"
+                     NextReference="@(GetRef(5))" />
+            <T_Input Title="Warranty (Months)" Type="number"
+                     @bind-Value="@model.dict["Warranty"]"
                      ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(6)) />
+                     GetInputReference="@((eref) => getInputReferences(5, eref))"
+                     NextReference="@(GetRef(6))" />
         </T_Row>
         <T_Row>
-            <T_Checkbox Title="Maintain Stock" 
-                        @bind-Value="@model.dict["MaintainStock"]" 
+            <T_Checkbox Title="Maintain Stock"
+                        @bind-Value="@model.dict["MaintainStock"]"
                         ColSize="col-md-3"
-                        GetInputReference="getInputReferences"
-                        NextReference=@(GetRef(7)) />
-            <T_Input Title="Online Calls" Type="number" 
-                     @bind-Value="@model.dict["OnlineCalls"]" 
+                        GetInputReference="@((eref) => getInputReferences(6, eref))"
+                        NextReference="@(GetRef(7))" />
+            <T_Input Title="Online Calls" Type="number"
+                     @bind-Value="@model.dict["OnlineCalls"]"
                      ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(8)) />
-            <T_Input Title="Onsite Calls" Type="number" 
-                     @bind-Value="@model.dict["OnsiteCalls"]" 
+                     GetInputReference="@((eref) => getInputReferences(7, eref))"
+                     NextReference="@(GetRef(8))" />
+            <T_Input Title="Onsite Calls" Type="number"
+                     @bind-Value="@model.dict["OnsiteCalls"]"
                      ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(9)) />
-            <T_Input Title="Training Calls" Type="number" 
-                     @bind-Value="@model.dict["TrainingCalls"]" 
+                     GetInputReference="@((eref) => getInputReferences(8, eref))"
+                     NextReference="@(GetRef(9))" />
+            <T_Input Title="Training Calls" Type="number"
+                     @bind-Value="@model.dict["TrainingCalls"]"
                      ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(10)) />
+                     GetInputReference="@((eref) => getInputReferences(9, eref))"
+                     NextReference="@(GetRef(10))" />
         </T_Row>
         <T_Row>
-            <T_Input Title="Maximum Booking Stock" Type="number" 
-                     @bind-Value="@model.dict["MaximumBookingStock"]" 
+            <T_Input Title="Maximum Booking Stock" Type="number"
+                     @bind-Value="@model.dict["MaximumBookingStock"]"
                      ColSize="col-md-3"
-                     GetInputReference="getInputReferences"
-                     NextReference=@(GetRef(0)) />
+                     GetInputReference="@((eref) => getInputReferences(10, eref))"
+                     NextReference="@(GetRef(0))"
+                     OnEnterPressed="HandleSave" />
         </T_Row>
     </ChildContent>
 
     <CardFooterContent>
-        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Style=""/>
-        <T_Button Text="Clear" btnType="Clear" OnClick="HandleClear" Style=""/>
-        <T_Button Text="View" btnType="View" OnClick="HandleView" Style=""/>
+        <T_Button Text="Save" btnType="Save" OnClick="HandleSave" Info="(ALT + S)" />
+        <T_Button Text="Clear" OnClick="HandleClear" Info="(ALT + C)" />
+        <T_Button Text="View" OnClick="HandleView" Info="(ALT + V)" />
+        <T_Button Text="Print" OnClick="HandlePrint" Info="(ALT + P)" />
     </CardFooterContent>
 </T_Frm>
 
 @code {
-    private T_Msg Msg;
-    private DotNetObjectReference<ProductMaster> dotNetRef;
-    private T_Input firstReference;
+    // =================================================================================
+    // REFERENCES & STATE
+    // =================================================================================
 
-    Model model = new Model("ProductMaster", "ProductCode");
+    #region References and State
+    // UI & JS Interop
+    private T_Msg Msg;
+    private T_Input firstReference;
+    private DotNetObjectReference<ProductMaster> dotNetRef;
+
+    // Data Models
+    private Model model = new Model("ProductMaster", "ProductCode");
+
+    // State Flags
     private bool isViewing = false;
     private bool isEditing = false;
 
-    // ============================= ELEMENT REFERENCES MANAGEMENT =============================
-    
-    public List<ElementReference> references = new List<ElementReference>();
-    
-    public void getInputReferences(ElementReference eref)
-    {
-        references.Add(eref);
-        Console.WriteLine($"Added reference #{references.Count - 1} for element");
-    }
-    
-    private ElementReference GetRef(int idx) 
-    {
-        Console.WriteLine($"GetRef called with idx={idx}, references.Count={references.Count}");
-        return (idx >= 0 && idx < references.Count) 
-            ? references[idx] 
-            : default;
-    }
+    // Focus Management
+    private Dictionary<int, ElementReference> references = new Dictionary<int, ElementReference>();
+    #endregion
 
-    // ============================= COMPONENT LIFECYCLE METHODS =============================
+    // =================================================================================
+    // LIFECYCLE METHODS
+    // =================================================================================
+
+    #region Lifecycle Methods
+    protected override void OnInitialized()
+    {
+        // Set default values for a new record
+        model.dict["MaintainStock"] ??= "0";
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if(firstRender)
+        if (firstRender)
         {
-            await firstReference.Focus();
-            Console.WriteLine("ProductMaster OnAfterRenderAsync executed");
+            // Set initial focus to the first editable field.
+            if (firstReference?.reference.Id != null)
+            {
+                await firstReference.Focus();
+            }
+
+            // Setup JS interop for hotkeys (e.g., ALT + S for Save).
             dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("setupFormKeyHandler", dotNetRef);
         }
     }
+    #endregion
 
-    // ============================= CRUD OPERATIONS =============================
+    // =================================================================================
+    // FOCUS MANAGEMENT
+    // =================================================================================
 
+    #region Focus Management
+    /// <summary>
+    /// Collects references of focusable child components using a dictionary to maintain order.
+    /// </summary>
+    public void getInputReferences(int position, ElementReference eref)
+    {
+        references[position] = eref;
+    }
+
+    /// <summary>
+    /// Retrieves a component reference by its registered position.
+    /// </summary>
+    private ElementReference GetRef(int idx)
+    {
+        return references.ContainsKey(idx) ? references[idx] : default;
+    }
+    #endregion
+
+    // =================================================================================
+    // CRUD & FORM ACTIONS
+    // =================================================================================
+
+    #region CRUD and Form Actions
     [JSInvokable]
     public async Task HandleSave()
     {
-        if (!ValidateForm())
+        if (!ValidateForm()) return;
+
+        try
         {
-            await Msg.SaveError();
+            var transaction = new Transaction();
+            if (isEditing)
+            {
+                model.Update(transaction);
+            }
+            else
+            {
+                model.Save(transaction);
+            }
+
+            if (transaction.Execute())
+            {
+                await Msg.Success("Product record saved successfully!");
+                await HandleClear();
+            }
+            else
+            {
+                throw new Exception("Transaction failed to execute.");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            try
-            {
-                bool success = isEditing
-                    ? model.Update()
-                    : model.Save();
-
-                if (success)
-                {
-                    await Msg.Success();
-
-                    if (!isEditing)
-                    {
-                        HandleClear();
-                    }
-
-                    isEditing = false;
-                }
-                else
-                {
-                    await Msg.SaveError();
-                }
-            }
-            catch (Exception ex)
-            {
-                await Msg.SaveError();
-                Console.WriteLine($"Error saving Product Master record: {ex.Message}");
-            }
+            await Msg.Error($"Save failed: {ex.Message}");
         }
     }
 
     [JSInvokable]
-    public void HandleClear()
+    public Task HandleClear()
     {
         model.Clear();
         isEditing = false;
-        
-        // Clear references
-        references.Clear();
-        
+        OnInitialized(); // Re-apply default values
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public void HandleView()
+    public Task HandleView()
     {
         isViewing = !isViewing;
         StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public void HandlePrint()
+    {
+        // TODO: Implement printing logic if needed.
+        Console.WriteLine("Print Product Master");
     }
 
     public async Task HandleEdit(DataRow row)
     {
-        try
+        await HandleClear();
+        isEditing = true;
+        isViewing = false;
+        model.Populate(row);
+        StateHasChanged();
+        if (firstReference?.reference.Id != null)
         {
-            isEditing = true;
-            isViewing = false;
-
-            model.Populate(row);
-
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading Product Master record: {ex.Message}");
+            await firstReference.Focus();
         }
     }
 
@@ -215,63 +248,18 @@
         isViewing = false;
         StateHasChanged();
     }
+    #endregion
 
-    // ============================= VALIDATION =============================
+    // =================================================================================
+    // VALIDATION
+    // =================================================================================
 
     private bool ValidateForm()
     {
         var errors = new List<string>();
 
-        // Required field validations
-        if (string.IsNullOrWhiteSpace(model.dict["ProductCode"])) 
-            errors.Add("Product Code is required");
-
-        if (string.IsNullOrWhiteSpace(model.dict["ProductName"])) 
+        if (string.IsNullOrWhiteSpace(model.dict["ProductName"]))
             errors.Add("Product Name is required");
-
-        // Length validations
-        if (!string.IsNullOrWhiteSpace(model.dict["ProductName"]) && model.dict["ProductName"].Length > 50)
-            errors.Add("Product Name cannot exceed 50 characters");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["HSNCode"]) && model.dict["HSNCode"].Length > 50)
-            errors.Add("HSN Code cannot exceed 50 characters");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["Description"]) && model.dict["Description"].Length > 500)
-            errors.Add("Description cannot exceed 500 characters");
-
-        // Numeric validations
-        if (!string.IsNullOrWhiteSpace(model.dict["Warranty"]) && 
-            (!int.TryParse(model.dict["Warranty"], out var warranty) || warranty < 0))
-            errors.Add("Warranty must be a valid positive number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["OnlineCalls"]) && 
-            (!int.TryParse(model.dict["OnlineCalls"], out var onlineCalls) || onlineCalls < 0))
-            errors.Add("Online Calls must be a valid positive number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["OnsiteCalls"]) && 
-            (!int.TryParse(model.dict["OnsiteCalls"], out var onsiteCalls) || onsiteCalls < 0))
-            errors.Add("Onsite Calls must be a valid positive number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["TrainingCalls"]) && 
-            (!int.TryParse(model.dict["TrainingCalls"], out var trainingCalls) || trainingCalls < 0))
-            errors.Add("Training Calls must be a valid positive number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["MaximumBookingStock"]) && 
-            (!int.TryParse(model.dict["MaximumBookingStock"], out var maxStock) || maxStock < 0))
-            errors.Add("Maximum Booking Stock must be a valid positive number");
-
-        // Code validations
-        if (!string.IsNullOrWhiteSpace(model.dict["ProductCode"]) && 
-            !int.TryParse(model.dict["ProductCode"], out _))
-            errors.Add("Product Code must be a valid number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["CompanyCode"]) && 
-            !int.TryParse(model.dict["CompanyCode"], out _))
-            errors.Add("Company Code must be a valid number");
-
-        if (!string.IsNullOrWhiteSpace(model.dict["GSTCategoryCode"]) && 
-            !int.TryParse(model.dict["GSTCategoryCode"], out _))
-            errors.Add("GST Category Code must be a valid number");
 
         if (errors.Any())
         {
@@ -283,7 +271,9 @@
         return true;
     }
 
-    // ============================= CLEANUP =============================
+    // =================================================================================
+    // CLEANUP
+    // =================================================================================
 
     public void Dispose()
     {
